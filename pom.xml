@@ -37,6 +37,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <graphql.version>18.0</graphql.version>
+        <graphql.java.extended.scalars.version>17.0</graphql.java.extended.scalars.version>
         <guava.version>31.1-jre</guava.version>
         <jackson.version>2.13.2.2</jackson.version>
         <junit-jupiter.version>5.8.2</junit-jupiter.version>
@@ -46,8 +48,16 @@
         <mockito.version>4.4.0</mockito.version>
         <scala.version>2.13.8</scala.version>
         <sl4j.version>1.7.36</sl4j.version>
+        <schema.registry.version>7.0.1</schema.registry.version>
         <vertx.version>4.2.6</vertx.version>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>confluent</id>
+            <url>http://packages.confluent.io/maven/</url>
+        </repository>
+    </repositories>
 
     <dependencyManagement>
         <dependencies>
@@ -65,6 +75,11 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka-clients</artifactId>
                 <version>${kafka.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-schema-registry-client</artifactId>
+                <version>${schema.registry.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.kcache</groupId>
@@ -118,8 +133,18 @@
             </dependency>
             <dependency>
                 <groupId>io.vertx</groupId>
-                <artifactId>vertx-graphql</artifactId>
+                <artifactId>vertx-web-graphql</artifactId>
                 <version>${vertx.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.graphql-java</groupId>
+                <artifactId>graphql-java</artifactId>
+                <version>${graphql.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.graphql-java</groupId>
+                <artifactId>graphql-java-extended-scalars</artifactId>
+                <version>${graphql.java.extended.scalars.version}</version>
             </dependency>
             <!-- TESTING -->
             <dependency>

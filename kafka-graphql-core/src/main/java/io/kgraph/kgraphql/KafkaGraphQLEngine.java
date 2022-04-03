@@ -78,6 +78,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
     }
 
     public void sync() {
+        // TODO
         /*
         CompletableFuture<Void> commitsFuture = CompletableFuture.runAsync(() -> commits.sync());
         CompletableFuture<Void> timestampsFuture = CompletableFuture.runAsync(() ->

@@ -41,16 +41,20 @@ public class KafkaGraphQLConfig extends KafkaCacheConfig {
         "List of listeners. http and https are supported. Each listener must include the protocol, "
             + "hostname, and port. For example: http://myhost:8080, https://0.0.0.0:8081";
 
-    public static final String CLUSTER_GROUP_ID_CONFIG = "cluster.group.id";
-    public static final String CLUSTER_GROUP_ID_DEFAULT = "kafka-graphql";
-    public static final String CLUSTER_GROUP_ID_DOC =
-        "The group ID used for leader election.";
+    public static final String GRAPHQL_MAX_COMPLEXITY_CONFIG = "graphql.max.complexity";
+    public static final int GRAPHQL_MAX_COMPLEXITY_DEFAULT = 200;
+    public static final String GRAPHQL_MAX_COMPLEXITY_DOC =
+        "The maximum complexity of the fields for a GraphQL query.";
 
-    public static final String LEADER_ELIGIBILITY_CONFIG = "leader.eligibility";
-    public static final boolean LEADER_ELIGIBILITY_DEFAULT = true;
-    public static final String LEADER_ELIGIBILITY_DOC =
-        "If true, this node can participate in leader election. In a multi-colo setup, turn this off "
-            + "for clusters in the replica data center.";
+    public static final String GRAPHQL_MAX_DEPTH_CONFIG = "graphql.max.depth";
+    public static final int GRAPHQL_MAX_DEPTH_DEFAULT = 20;
+    public static final String GRAPHQL_MAX_DEPTH_DOC =
+        "The maximum depth for a GraphQL query.";
+
+    public static final String GRAPHQL_TIMEOUT_MS_CONFIG = "graphql.timeout.ms";
+    public static final int GRAPHQL_TIMEOUT_MS_DEFAULT = 30000;
+    public static final String GRAPHQL_TIMEOUT_MS_DOC =
+        "The timeout in ms for a GraphQL query.";
 
     public static final String SSL_KEYSTORE_LOCATION_CONFIG = "ssl.keystore.location";
     public static final String SSL_KEYSTORE_LOCATION_DOC =
@@ -198,17 +202,23 @@ public class KafkaGraphQLConfig extends KafkaCacheConfig {
                 Importance.HIGH,
                 LISTENERS_DOC
             ).define(
-                CLUSTER_GROUP_ID_CONFIG,
-                Type.STRING,
-                CLUSTER_GROUP_ID_DEFAULT,
-                Importance.HIGH,
-                CLUSTER_GROUP_ID_DOC
+                GRAPHQL_MAX_COMPLEXITY_CONFIG,
+                Type.INT,
+                GRAPHQL_MAX_COMPLEXITY_DEFAULT,
+                Importance.LOW,
+                GRAPHQL_MAX_COMPLEXITY_DOC
             ).define(
-                LEADER_ELIGIBILITY_CONFIG,
-                Type.BOOLEAN,
-                LEADER_ELIGIBILITY_DEFAULT,
-                Importance.MEDIUM,
-                LEADER_ELIGIBILITY_DOC
+                GRAPHQL_MAX_DEPTH_CONFIG,
+                Type.INT,
+                GRAPHQL_MAX_DEPTH_DEFAULT,
+                Importance.LOW,
+                GRAPHQL_MAX_DEPTH_DOC
+            ).define(
+                GRAPHQL_TIMEOUT_MS_CONFIG,
+                Type.INT,
+                GRAPHQL_TIMEOUT_MS_DEFAULT,
+                Importance.LOW,
+                GRAPHQL_TIMEOUT_MS_DOC
             ).define(
                 SSL_KEYSTORE_LOCATION_CONFIG,
                 Type.STRING,
@@ -342,6 +352,18 @@ public class KafkaGraphQLConfig extends KafkaCacheConfig {
 
     public KafkaGraphQLConfig(Map<?, ?> props) {
         super(config, props);
+    }
+
+    public int graphQLMaxComplexity() {
+        return getInt(GRAPHQL_MAX_COMPLEXITY_CONFIG);
+    }
+
+    public int graphQLMaxDepth() {
+        return getInt(GRAPHQL_MAX_DEPTH_CONFIG);
+    }
+
+    public int graphQLTimeoutMs() {
+        return getInt(GRAPHQL_TIMEOUT_MS_CONFIG);
     }
 
     private static String getDefaultHost() {

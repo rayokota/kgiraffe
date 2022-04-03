@@ -92,7 +92,6 @@ public class KafkaGraphQLMain extends AbstractVerticle {
             KafkaGraphQLEngine engine = KafkaGraphQLEngine.getInstance();
             engine.configure(config);
             Vertx vertx = Vertx.vertx();
-            LOG.info("Starting leader election...");
             engine.init();
             vertx.deployVerticle(new KafkaGraphQLMain(config));
         } catch (Exception e) {
