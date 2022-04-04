@@ -40,7 +40,9 @@ public class GraphQLExecutor {
         if (graphQL == null) {
             synchronized (this) {
                 if (graphQL == null) {
-                    GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
+                    // TODO
+                    //GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
+                    GraphQLSchema graphQLSchema = graphQLSchemaBuilder.initHello();
                     this.graphQL = GraphQL
                         .newGraphQL(graphQLSchema)
                         .instrumentation(getInstrumentation())

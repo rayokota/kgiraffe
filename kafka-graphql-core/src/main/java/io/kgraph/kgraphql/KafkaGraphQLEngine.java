@@ -16,7 +16,10 @@
  */
 package io.kgraph.kgraphql;
 
+import graphql.GraphQL;
 import io.kcache.Cache;
+import io.kgraph.kgraphql.schema.GraphQLExecutor;
+import io.kgraph.kgraphql.schema.GraphQLSchemaBuilder;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.utils.Utils;
 import org.slf4j.Logger;
@@ -31,6 +34,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaGraphQLEngine.class);
 
     private KafkaGraphQLConfig config;
+    private GraphQLExecutor executor;
     private Cache<Long, Long> cache;
     private final AtomicBoolean initialized = new AtomicBoolean();
 
@@ -66,6 +70,9 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
     }
 
     public void init() {
+        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder();
+        executor = new GraphQLExecutor(config, null, schemaBuilder);
+
         boolean isInitialized = initialized.compareAndSet(false, true);
         if (!isInitialized) {
             throw new IllegalStateException("Illegal state while initializing engine. Engine "
@@ -92,6 +99,10 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
             authFuture, authUsersFuture, authRolesFuture, kvFuture).join();
 
          */
+    }
+
+    public GraphQL getGraphQL() {
+        return executor.getGraphQL();
     }
 
     @Override

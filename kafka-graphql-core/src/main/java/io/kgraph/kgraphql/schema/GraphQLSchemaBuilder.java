@@ -1,7 +1,11 @@
 package io.kgraph.kgraphql.schema;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
+import graphql.GraphQL;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
+import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLCodeRegistry;
 import graphql.schema.GraphQLEnumType;
@@ -17,9 +21,15 @@ import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.GraphQLTypeReference;
+import graphql.schema.idl.RuntimeWiring;
+import graphql.schema.idl.SchemaGenerator;
+import graphql.schema.idl.SchemaParser;
+import graphql.schema.idl.TypeDefinitionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +38,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static graphql.schema.idl.TypeRuntimeWiring.newTypeWiring;
 
 /**
  * A wrapper for the {@link graphql.schema.GraphQLSchema.Builder}.
@@ -112,6 +124,42 @@ public class GraphQLSchemaBuilder {
 
     public GraphQLSchemaBuilder() {
     }
+
+    public GraphQLSchema initHello() {
+        try {
+            URL url = Resources.getResource("schema.graphql");
+            String sdl = Resources.toString(url, Charsets.UTF_8);
+            return buildSchema(sdl);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private GraphQLSchema buildSchema(String sdl) {
+        TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(sdl);
+        RuntimeWiring runtimeWiring = buildWiring();
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
+        return schemaGenerator.makeExecutableSchema(typeRegistry, runtimeWiring);
+    }
+
+    private RuntimeWiring buildWiring() {
+        return RuntimeWiring.newRuntimeWiring()
+            .type(newTypeWiring("Query")
+                .dataFetcher("hello", getHelloWorldDataFetcher())
+                .dataFetcher("echo", getEchoDataFetcher())
+                .build())
+            .build();
+
+    }
+    public DataFetcher getHelloWorldDataFetcher() {
+        return environment -> "world";
+    }
+
+    public DataFetcher getEchoDataFetcher() {
+        return environment -> environment.getArgument("toEcho");
+    }
+
+
 
     /**
      * @return A freshly built {@link graphql.schema.GraphQLSchema}
