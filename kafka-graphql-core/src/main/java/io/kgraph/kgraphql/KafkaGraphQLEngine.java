@@ -20,6 +20,7 @@ import graphql.GraphQL;
 import io.kcache.Cache;
 import io.kgraph.kgraphql.schema.GraphQLExecutor;
 import io.kgraph.kgraphql.schema.GraphQLSchemaBuilder;
+import io.kgraph.kgraphql.util.Pair;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.utils.Utils;
 import org.slf4j.Logger;
@@ -27,8 +28,22 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
+import io.confluent.kafka.schemaregistry.ParsedSchema;
+import io.confluent.kafka.schemaregistry.SchemaProvider;
+import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
+import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
+import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
 
 public class KafkaGraphQLEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaGraphQLEngine.class);
@@ -70,8 +85,15 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
     }
 
     public void init() {
-        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder();
-        executor = new GraphQLExecutor(config, null, schemaBuilder);
+        List<String> urls = config.getSchemaRegistryUrls();
+        List<String> topics = config.getTopics();
+        List<SchemaProvider> providers = Arrays.asList(
+            new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
+        );
+        SchemaRegistryClient schemaRegistry =
+            new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
+        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(schemaRegistry, topics);
+        executor = new GraphQLExecutor(config, schemaBuilder);
 
         boolean isInitialized = initialized.compareAndSet(false, true);
         if (!isInitialized) {

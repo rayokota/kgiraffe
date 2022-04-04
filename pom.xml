@@ -82,6 +82,16 @@
                 <version>${schema.registry.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-json-schema-provider</artifactId>
+                <version>${schema.registry.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-protobuf-provider</artifactId>
+                <version>${schema.registry.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>io.kcache</groupId>
                 <artifactId>kcache</artifactId>
                 <version>${kcache.version}</version>

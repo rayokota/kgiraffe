@@ -12,7 +12,6 @@ import io.kgraph.kgraphql.KafkaGraphQLConfig;
 import io.kgraph.kgraphql.schema.timeout.MaxQueryDurationInstrumentation;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Map;
 
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
@@ -20,29 +19,24 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 public class GraphQLExecutor {
 
     private volatile GraphQL graphQL;
-    private final SchemaRegistryClient schemaRegistry;
     private final GraphQLSchemaBuilder graphQLSchemaBuilder;
     private final int maxComplexity;
     private final int maxDepth;
     private final int timeoutMs;
 
     public GraphQLExecutor(KafkaGraphQLConfig config,
-                           SchemaRegistryClient schemaRegistry,
                            GraphQLSchemaBuilder builder) {
-        this.schemaRegistry = schemaRegistry;
         this.graphQLSchemaBuilder = builder;
-        this.maxComplexity = config.graphQLMaxComplexity();
-        this.maxDepth = config.graphQLMaxDepth();
-        this.timeoutMs = config.graphQLTimeoutMs();
+        this.maxComplexity = config.getGraphQLMaxComplexity();
+        this.maxDepth = config.getGraphQLMaxDepth();
+        this.timeoutMs = config.getGraphQLTimeoutMs();
     }
 
     public GraphQL getGraphQL() {
         if (graphQL == null) {
             synchronized (this) {
                 if (graphQL == null) {
-                    // TODO
-                    //GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
-                    GraphQLSchema graphQLSchema = graphQLSchemaBuilder.initHello();
+                    GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
                     this.graphQL = GraphQL
                         .newGraphQL(graphQLSchema)
                         .instrumentation(getInstrumentation())

@@ -25,6 +25,7 @@ import graphql.schema.idl.RuntimeWiring;
 import graphql.schema.idl.SchemaGenerator;
 import graphql.schema.idl.SchemaParser;
 import graphql.schema.idl.TypeDefinitionRegistry;
+import io.kgraph.kgraphql.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,9 +36,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import io.confluent.kafka.schemaregistry.ParsedSchema;
+import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 
 import static graphql.schema.idl.TypeRuntimeWiring.newTypeWiring;
 
@@ -48,20 +55,9 @@ public class GraphQLSchemaBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(GraphQLSchemaBuilder.class);
 
-    public static final String QUERY_ROOT = "query_root";
-
-    public static final String DELETED_PARAM_NAME = "deleted";
-    public static final String LIMIT_PARAM_NAME = "limit";
-    public static final String OFFSET_PARAM_NAME = "offset";
-    public static final String ORDER_BY_PARAM_NAME = "order_by";
-    public static final String TAGS_PARAM_NAME = "tags";
-    public static final String WHERE_PARAM_NAME = "where";
-
-    public static final String SCHEMA_ATTR_NAME = "schema";
-    public static final String STATUS_ATTR_NAME = "status";
-    public static final String TAGS_ATTR_NAME = "tags";
-
-    public static final String TENANT = "tenant";
+    private final SchemaRegistryClient schemaRegistry;
+    private final List<String> topics;
+    private final List<Pair<ParsedSchema, ParsedSchema>> subjects;
 
     private final Map<String, GraphQLImplementingType> entityCache = new HashMap<>();
     private final Map<String, GraphQLType> typeCache = new HashMap<>();
@@ -122,9 +118,35 @@ public class GraphQLSchemaBuilder {
             .value("last_12_months", "last_12_months", "Last 12 months")
             .build();
 
-    public GraphQLSchemaBuilder() {
+    public GraphQLSchemaBuilder(SchemaRegistryClient schemaRegistry,
+                                List<String> topics) {
+        this.schemaRegistry = schemaRegistry;
+        this.topics = topics;
+        // TODO handle primitive keys
+        this.subjects = topics.stream()
+            .map(t -> new Pair<>(
+                getLatestSchema(schemaRegistry, t + "-key"),
+                getLatestSchema(schemaRegistry, t + "-value")
+            ))
+            .collect(Collectors.toList());
     }
 
+    private ParsedSchema getLatestSchema(SchemaRegistryClient schemaRegistry, String subject) {
+        try {
+            SchemaMetadata schemaMetadata = schemaRegistry.getLatestSchemaMetadata(subject);
+            Optional<ParsedSchema> optSchema =
+                schemaRegistry.parseSchema(
+                    schemaMetadata.getSchemaType(),
+                    schemaMetadata.getSchema(),
+                    schemaMetadata.getReferences());
+            return optSchema.orElseThrow();
+        } catch (IOException | RestClientException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // TODO remove
+    /*
     public GraphQLSchema initHello() {
         try {
             URL url = Resources.getResource("schema.graphql");
@@ -158,6 +180,7 @@ public class GraphQLSchemaBuilder {
     public DataFetcher getEchoDataFetcher() {
         return environment -> environment.getArgument("toEcho");
     }
+    */
 
 
 
@@ -185,7 +208,7 @@ public class GraphQLSchemaBuilder {
 
     GraphQLObjectType.Builder queryType = GraphQLObjectType.newObject()
         .name(QUERY_ROOT)
-        .description("GraphQL schema for all catalog entities");
+        .description("GraphQL schema for all Kafka schemas");
     queryType.fields(typeRegistry.getAllEntityTypes().stream()
         .filter(this::isNotIgnored)
         .map(e -> getQueryFieldDefinition(codeRegistry, e, allSuperTypes.contains(e.getTypeName())))

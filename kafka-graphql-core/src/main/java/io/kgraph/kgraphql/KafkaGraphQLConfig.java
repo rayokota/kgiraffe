@@ -26,20 +26,31 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Map;
 
 public class KafkaGraphQLConfig extends KafkaCacheConfig {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaGraphQLConfig.class);
 
+    // TODO
     public static final String HOST_NAME_CONFIG = "host.name";
     public static final String HOST_NAME_DOC =
         "The host name used in leader election. Make sure to set this if running with multiple nodes.";
 
+    // TODO
     public static final String LISTENERS_CONFIG = "listeners";
     public static final String LISTENERS_DEFAULT = "http://0.0.0.0:8765";
     public static final String LISTENERS_DOC =
         "List of listeners. http and https are supported. Each listener must include the protocol, "
             + "hostname, and port. For example: http://myhost:8080, https://0.0.0.0:8081";
+
+    public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+    public static final String SCHEMA_REGISTRY_URL_DOC =
+        "Comma-separated list of URLs for schema registry instances that can be used to register "
+            + "or look up schemas.";
+
+    public static final String TOPICS_CONFIG = "topics";
+    public static final String TOPICS_DOC = "Comma-separated list of topics.";
 
     public static final String GRAPHQL_MAX_COMPLEXITY_CONFIG = "graphql.max.complexity";
     public static final int GRAPHQL_MAX_COMPLEXITY_DEFAULT = 200;
@@ -201,6 +212,16 @@ public class KafkaGraphQLConfig extends KafkaCacheConfig {
                 LISTENERS_DEFAULT,
                 Importance.HIGH,
                 LISTENERS_DOC
+            ).define(SCHEMA_REGISTRY_URL_CONFIG,
+                Type.LIST,
+                null,
+                Importance.HIGH,
+                SCHEMA_REGISTRY_URL_DOC
+            ).define(TOPICS_CONFIG,
+                Type.LIST,
+                null,
+                Importance.HIGH,
+                TOPICS_DOC
             ).define(
                 GRAPHQL_MAX_COMPLEXITY_CONFIG,
                 Type.INT,
@@ -354,15 +375,23 @@ public class KafkaGraphQLConfig extends KafkaCacheConfig {
         super(config, props);
     }
 
-    public int graphQLMaxComplexity() {
+    public List<String> getSchemaRegistryUrls() {
+        return getList(SCHEMA_REGISTRY_URL_CONFIG);
+    }
+
+    public List<String> getTopics() {
+        return getList(TOPICS_CONFIG);
+    }
+
+    public int getGraphQLMaxComplexity() {
         return getInt(GRAPHQL_MAX_COMPLEXITY_CONFIG);
     }
 
-    public int graphQLMaxDepth() {
+    public int getGraphQLMaxDepth() {
         return getInt(GRAPHQL_MAX_DEPTH_CONFIG);
     }
 
-    public int graphQLTimeoutMs() {
+    public int getGraphQLTimeoutMs() {
         return getInt(GRAPHQL_TIMEOUT_MS_CONFIG);
     }
 
