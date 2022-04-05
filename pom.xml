@@ -49,7 +49,7 @@
         <mockito.version>4.4.0</mockito.version>
         <scala.version>2.13.8</scala.version>
         <sl4j.version>1.7.36</sl4j.version>
-        <schema.registry.version>7.0.1</schema.registry.version>
+        <schema.registry.version>7.1.0</schema.registry.version>
         <vavr.version>0.10.4</vavr.version>
         <vertx.version>4.2.6</vertx.version>
     </properties>
