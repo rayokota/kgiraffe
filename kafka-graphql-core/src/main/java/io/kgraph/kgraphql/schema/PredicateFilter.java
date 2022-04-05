@@ -18,39 +18,39 @@ class PredicateFilter implements Comparable<PredicateFilter> {
         /**
          * less than
          */
-        LT("lt"),
+        LT("_lt"),
         /**
          * greater than
          */
-        GT("gt"),
+        GT("_gt"),
         /**
          * less than or equal
          */
-        LTE("lte"),
+        LTE("_lte"),
         /**
          * greater than or equal
          */
-        GTE("gte"),
+        GTE("_gte"),
         /**
          * equal
          */
-        EQ("eq"),
+        EQ("_eq"),
         /**
          * beginning of string matches, case sensitive
          */
-        STARTS_WITH("starts_with"),
+        STARTS_WITH("_starts_with"),
         /**
          * in condition
          */
-        IN("in"),
+        IN("_in"),
         /**
          * between condition
          */
-        BETWEEN("between"),
+        BETWEEN("_between"),
         /**
          * since condition
          */
-        SINCE("since");
+        SINCE("_since");
 
         private static final EnumHashBiMap<Criteria, String> lookup =
             EnumHashBiMap.create(Criteria.class);

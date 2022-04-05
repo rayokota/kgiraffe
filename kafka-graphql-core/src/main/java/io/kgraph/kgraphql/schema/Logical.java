@@ -5,7 +5,7 @@ import com.google.common.collect.EnumHashBiMap;
 import java.util.Set;
 
 public enum Logical {
-    AND("and"), OR("or");
+    AND("_and"), OR("_or");
 
     private static final EnumHashBiMap<Logical, String> lookup =
         EnumHashBiMap.create(Logical.class);
