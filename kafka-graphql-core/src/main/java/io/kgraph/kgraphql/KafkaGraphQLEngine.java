@@ -26,10 +26,12 @@ import io.kcache.KafkaCacheConfig;
 import io.kcache.caffeine.CaffeineCache;
 import io.kgraph.kgraphql.schema.GraphQLExecutor;
 import io.kgraph.kgraphql.schema.GraphQLSchemaBuilder;
+import io.vavr.Tuple2;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.common.utils.Utils;
 import org.ojai.Document;
 import org.ojai.json.Json;
@@ -61,7 +63,8 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
 
     private KafkaGraphQLConfig config;
     private GraphQLExecutor executor;
-    private Map<String, Cache<byte[], byte[]>> caches;
+    private Cache<Tuple2<Bytes, Bytes>, UUID> ids;
+    private Map<String, Cache<Bytes, Bytes>> caches;
     private HDocumentDB docdb;
     private final AtomicBoolean initialized;
 
@@ -111,8 +114,9 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         );
         SchemaRegistryClient schemaRegistry =
             new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
-        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(docdb, schemaRegistry, topics);
+        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, schemaRegistry, topics);
         executor = new GraphQLExecutor(config, schemaBuilder);
+        ids = new CaffeineCache<>(null);
 
         initTopics(schemaRegistry);
 
@@ -121,6 +125,14 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
             throw new IllegalStateException("Illegal state while initializing engine. Engine "
                 + "was already initialized");
         }
+    }
+
+    public UUID assignId(Bytes key, Bytes value) {
+        return ids.computeIfAbsent(new Tuple2<>(key, value), k -> UUID.randomUUID());
+    }
+
+    public UUID getId(Bytes key, Bytes value) {
+        return ids.get(new Tuple2<>(key, value));
     }
 
     private void initTopics(SchemaRegistryClient schemaRegistry) {
@@ -137,10 +149,10 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         configs.put(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, groupId);
         configs.put(KafkaCacheConfig.KAFKACACHE_CLIENT_ID_CONFIG, groupId + "-" + topic);
         configs.put(KafkaCacheConfig.KAFKACACHE_TOPIC_SKIP_VALIDATION_CONFIG, true);
-        Cache<byte[], byte[]> cache = new KafkaCache<>(
+        Cache<Bytes, Bytes> cache = new KafkaCache<>(
             new KafkaCacheConfig(configs),
-            Serdes.ByteArray(),
-            Serdes.ByteArray(),
+            Serdes.Bytes(),
+            Serdes.Bytes(),
             new UpdateHandler(schemaRegistry),
             new CaffeineCache<>(null)
         );
@@ -150,7 +162,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         docdb.createCollection(topic);
     }
 
-    class UpdateHandler implements CacheUpdateHandler<byte[], byte[]> {
+    class UpdateHandler implements CacheUpdateHandler<Bytes, Bytes> {
 
         private SchemaRegistryClient schemaRegistry;
 
@@ -158,19 +170,20 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
             this.schemaRegistry = schemaRegistry;
         }
 
-        public void handleUpdate(byte[] key, byte[] value, byte[] oldValue,
+        public void handleUpdate(Bytes key, Bytes value, Bytes oldValue,
                                  TopicPartition tp, long offset, long timestamp) {
             try {
                 String topic = tp.topic();
                 DocumentStore store = docdb.getCollection(topic);
                 GenericRecord record = (GenericRecord)
-                    new KafkaAvroDeserializer(schemaRegistry).deserialize(topic, value);
-                byte[] json = AvroSchemaUtils.toJson(record);
+                    new KafkaAvroDeserializer(schemaRegistry).deserialize(topic, value.get());
+                // TODO
+                byte[] keyBytes = null;
+                byte[] valueBytes = AvroSchemaUtils.toJson(record);
+
                 Document doc =
-                    Json.newDocumentStream(new ByteArrayInputStream(json)).iterator().next();
-                if (doc.getId() == null) {
-                    doc.setId(UUID.randomUUID().toString());
-                }
+                    Json.newDocumentStream(new ByteArrayInputStream(valueBytes)).iterator().next();
+                doc.setId(getId(Bytes.wrap(keyBytes), Bytes.wrap(valueBytes)).toString());
                 store.insert(doc);
                 store.flush();
             } catch (Exception e) {
@@ -200,12 +213,16 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
          */
     }
 
-    public GraphQL getGraphQL() {
-        return executor.getGraphQL();
+    public HDocumentDB getDocDB() {
+        return docdb;
     }
 
-    public DocumentStore getCollection(String name) {
-        return docdb.getCollection(name);
+    public Cache<Bytes, Bytes> getCache(String topic) {
+        return caches.get(topic);
+    }
+
+    public GraphQL getGraphQL() {
+        return executor.getGraphQL();
     }
 
     @Override

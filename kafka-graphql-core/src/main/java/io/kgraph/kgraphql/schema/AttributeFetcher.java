@@ -22,7 +22,7 @@ import static io.kgraph.kgraphql.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
 
 public class AttributeFetcher implements DataFetcher {
 
-    protected final String attributeName;
+    private final String attributeName;
 
     public AttributeFetcher(
         String attributeName) {

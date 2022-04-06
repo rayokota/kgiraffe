@@ -5,7 +5,7 @@ import graphql.schema.DataFetchingEnvironment;
 
 public class EntityFetcher implements DataFetcher {
 
-    protected final GraphQLQueryFactory queryFactory;
+    private final GraphQLQueryFactory queryFactory;
 
     public EntityFetcher(GraphQLQueryFactory queryFactory) {
         this.queryFactory = queryFactory;

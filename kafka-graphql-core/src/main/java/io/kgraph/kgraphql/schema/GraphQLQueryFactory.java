@@ -67,18 +67,18 @@ public class GraphQLQueryFactory {
 
     public static final String DESC = "desc";
 
-    private final HDocumentDB docdb;
+    private final KafkaGraphQLEngine engine;
     private final String topic;
     private final Either<Type, ParsedSchema> keySchema;
     private final ParsedSchema valueSchema;
     private final GraphQLObjectType objectType;
 
-    public GraphQLQueryFactory(HDocumentDB docdb,
+    public GraphQLQueryFactory(KafkaGraphQLEngine engine,
                                String topic,
                                Either<Type, ParsedSchema> keySchema,
                                ParsedSchema valueSchema,
                                GraphQLObjectType objectType) {
-        this.docdb = docdb;
+        this.engine = engine;
         this.topic = topic;
         this.keySchema = keySchema;
         this.valueSchema = valueSchema;
@@ -106,7 +106,7 @@ public class GraphQLQueryFactory {
             offset = offsetValue.getValue().intValue();
         }
 
-        DocumentStore coll = docdb.getCollection(topic);
+        DocumentStore coll = engine.getDocDB().getCollection(topic);
         DocumentStream result = query == null || query.isEmpty() ? coll.find() : coll.find(query);
         return result;
     }
