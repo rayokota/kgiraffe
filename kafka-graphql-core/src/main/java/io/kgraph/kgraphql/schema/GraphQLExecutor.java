@@ -41,8 +41,8 @@ public class GraphQLExecutor {
         if (graphQL == null) {
             synchronized (this) {
                 if (graphQL == null) {
-                    //GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
-                    GraphQLSchema graphQLSchema = graphQLSchemaBuilder.initHello();
+                    GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
+                    // GraphQLSchema graphQLSchema = graphQLSchemaBuilder.initHello();
                     String sdl = new SchemaPrinter().print(graphQLSchema);
                     LOG.info("SDL: " + sdl);
                     this.graphQL = GraphQL

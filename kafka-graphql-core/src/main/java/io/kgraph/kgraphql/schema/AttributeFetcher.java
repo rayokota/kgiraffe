@@ -22,13 +22,10 @@ import static io.kgraph.kgraphql.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
 
 public class AttributeFetcher implements DataFetcher {
 
-    protected final ParsedSchema schema;
     protected final String attributeName;
 
     public AttributeFetcher(
-        ParsedSchema schema,
         String attributeName) {
-        this.schema = schema;
         this.attributeName = attributeName;
     }
 

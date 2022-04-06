@@ -44,6 +44,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.confluent.kafka.schemaregistry.SchemaProvider;
@@ -54,7 +55,6 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
 
 public class KafkaGraphQLEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaGraphQLEngine.class);
@@ -114,6 +114,8 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, schemaRegistry, topics);
         executor = new GraphQLExecutor(config, schemaBuilder);
 
+        initTopics(schemaRegistry);
+
         boolean isInitialized = initialized.compareAndSet(false, true);
         if (!isInitialized) {
             throw new IllegalStateException("Illegal state while initializing engine. Engine "
@@ -121,13 +123,13 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         }
     }
 
-    private void initTopics() {
+    private void initTopics(SchemaRegistryClient schemaRegistry) {
         for (String topic : config.getTopics()) {
-            initTopic(topic);
+            initTopic(schemaRegistry, topic);
         }
     }
 
-    private void initTopic(String topic) {
+    private void initTopic(SchemaRegistryClient schemaRegistry, String topic) {
         Map<String, Object> configs = new HashMap<>(config.originals());
         String groupId = (String)
             configs.getOrDefault(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, "kafka-graphql-1");
@@ -139,7 +141,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
             new KafkaCacheConfig(configs),
             Serdes.ByteArray(),
             Serdes.ByteArray(),
-            new UpdateHandler(),
+            new UpdateHandler(schemaRegistry),
             new CaffeineCache<>(null)
         );
         cache.init();
@@ -149,18 +151,29 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
     }
 
     class UpdateHandler implements CacheUpdateHandler<byte[], byte[]> {
+
+        private SchemaRegistryClient schemaRegistry;
+
+        public UpdateHandler(SchemaRegistryClient schemaRegistry) {
+            this.schemaRegistry = schemaRegistry;
+        }
+
         public void handleUpdate(byte[] key, byte[] value, byte[] oldValue,
                                  TopicPartition tp, long offset, long timestamp) {
             try {
                 String topic = tp.topic();
                 DocumentStore store = docdb.getCollection(topic);
                 GenericRecord record = (GenericRecord)
-                    new KafkaAvroDeserializer().deserialize(topic, value);
+                    new KafkaAvroDeserializer(schemaRegistry).deserialize(topic, value);
                 byte[] json = AvroSchemaUtils.toJson(record);
                 Document doc =
                     Json.newDocumentStream(new ByteArrayInputStream(json)).iterator().next();
+                if (doc.getId() == null) {
+                    doc.setId(UUID.randomUUID().toString());
+                }
                 store.insert(doc);
-            } catch (IOException e) {
+                store.flush();
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }

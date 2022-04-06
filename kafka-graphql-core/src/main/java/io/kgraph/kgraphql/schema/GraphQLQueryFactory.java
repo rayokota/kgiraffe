@@ -106,7 +106,8 @@ public class GraphQLQueryFactory {
         }
 
         DocumentStore coll = engine.getCollection(topic);
-        return query == null || query.isEmpty() ? coll.find() : coll.find(query);
+        DocumentStream result = query == null || query.isEmpty() ? coll.find() : coll.find(query);
+        return result;
     }
 
     protected QueryCondition getCriteriaQuery(DataFetchingEnvironment environment, Field field) {

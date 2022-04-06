@@ -230,6 +230,7 @@ public class GraphQLAvroSchemaBuilder {
                 .name(f.name())
                 .description(f.doc())
                 .type(createOutputType(ctx, f.schema()))
+                .dataFetcher(new AttributeFetcher(f.name()))
                 .build())
             .collect(Collectors.toList());
         return GraphQLObjectType.newObject()
@@ -260,6 +261,8 @@ public class GraphQLAvroSchemaBuilder {
                 .map(t -> GraphQLFieldDefinition.newFieldDefinition()
                     .name(t.getFullName())
                     .type(createOutputType(ctx, t))
+                    // TODO fix union
+                    .dataFetcher(new AttributeFetcher(t.getFullName()))
                     .build())
                 .collect(Collectors.toList()))
             .build();
