@@ -44,7 +44,7 @@ public class GraphQLExecutor {
                     GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
                     // GraphQLSchema graphQLSchema = graphQLSchemaBuilder.initHello();
                     String sdl = new SchemaPrinter().print(graphQLSchema);
-                    LOG.info("SDL: " + sdl);
+                    LOG.debug("SDL: " + sdl);
                     this.graphQL = GraphQL
                         .newGraphQL(graphQLSchema)
                         .instrumentation(getInstrumentation())

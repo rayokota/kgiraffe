@@ -27,6 +27,7 @@ import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.InputValueWithState;
 import graphql.schema.SelectedField;
+import io.hdocdb.store.HDocumentDB;
 import io.kgraph.kgraphql.KafkaGraphQLEngine;
 import io.kgraph.kgraphql.schema.util.DataFetchingEnvironmentBuilder;
 import io.vavr.control.Either;
@@ -66,18 +67,18 @@ public class GraphQLQueryFactory {
 
     public static final String DESC = "desc";
 
-    private final KafkaGraphQLEngine engine;
+    private final HDocumentDB docdb;
     private final String topic;
     private final Either<Type, ParsedSchema> keySchema;
     private final ParsedSchema valueSchema;
     private final GraphQLObjectType objectType;
 
-    public GraphQLQueryFactory(KafkaGraphQLEngine engine,
+    public GraphQLQueryFactory(HDocumentDB docdb,
                                String topic,
                                Either<Type, ParsedSchema> keySchema,
                                ParsedSchema valueSchema,
                                GraphQLObjectType objectType) {
-        this.engine = engine;
+        this.docdb = docdb;
         this.topic = topic;
         this.keySchema = keySchema;
         this.valueSchema = valueSchema;
@@ -105,7 +106,7 @@ public class GraphQLQueryFactory {
             offset = offsetValue.getValue().intValue();
         }
 
-        DocumentStore coll = engine.getCollection(topic);
+        DocumentStore coll = docdb.getCollection(topic);
         DocumentStream result = query == null || query.isEmpty() ? coll.find() : coll.find(query);
         return result;
     }

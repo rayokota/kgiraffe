@@ -111,7 +111,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         );
         SchemaRegistryClient schemaRegistry =
             new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
-        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, schemaRegistry, topics);
+        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(docdb, schemaRegistry, topics);
         executor = new GraphQLExecutor(config, schemaBuilder);
 
         initTopics(schemaRegistry);

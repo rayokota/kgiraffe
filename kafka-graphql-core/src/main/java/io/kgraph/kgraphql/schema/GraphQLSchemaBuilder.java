@@ -16,6 +16,7 @@ import graphql.schema.idl.RuntimeWiring;
 import graphql.schema.idl.SchemaGenerator;
 import graphql.schema.idl.SchemaParser;
 import graphql.schema.idl.TypeDefinitionRegistry;
+import io.hdocdb.store.HDocumentDB;
 import io.kgraph.kgraphql.KafkaGraphQLEngine;
 import io.kgraph.kgraphql.schema.SchemaContext.Mode;
 import io.vavr.control.Either;
@@ -59,7 +60,7 @@ public class GraphQLSchemaBuilder {
     // TODO
     public static final String TYPE_ATTR_NAME = "_type";
 
-    private final KafkaGraphQLEngine engine;
+    private final HDocumentDB docdb;
     private final SchemaRegistryClient schemaRegistry;
     private final List<String> topics;
 
@@ -71,10 +72,10 @@ public class GraphQLSchemaBuilder {
             .value("desc", "desc", "Descending")
             .build();
 
-    public GraphQLSchemaBuilder(KafkaGraphQLEngine engine,
+    public GraphQLSchemaBuilder(HDocumentDB docdb,
                                 SchemaRegistryClient schemaRegistry,
                                 List<String> topics) {
-        this.engine = engine;
+        this.docdb = docdb;
         this.schemaRegistry = schemaRegistry;
         this.topics = topics;
     }
@@ -153,7 +154,7 @@ public class GraphQLSchemaBuilder {
         GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
 
         GraphQLQueryFactory queryFactory =
-            new GraphQLQueryFactory(engine, topic, keySchema, valueSchema, objectType);
+            new GraphQLQueryFactory(docdb, topic, keySchema, valueSchema, objectType);
 
         return Stream.of(GraphQLFieldDefinition.newFieldDefinition()
             .name(topic)
