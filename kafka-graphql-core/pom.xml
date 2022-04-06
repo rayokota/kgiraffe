@@ -47,6 +47,10 @@
             <artifactId>hdocdb</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.ojai</groupId>
+            <artifactId>ojai</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
