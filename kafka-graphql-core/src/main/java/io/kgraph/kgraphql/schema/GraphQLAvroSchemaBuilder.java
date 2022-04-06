@@ -18,7 +18,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -26,6 +28,8 @@ import static io.kgraph.kgraphql.schema.GraphQLSchemaBuilder.orderByEnum;
 
 public class GraphQLAvroSchemaBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(GraphQLAvroSchemaBuilder.class);
+
+    private final Map<String, GraphQLObjectType> typeCache = new HashMap<>();
 
     public GraphQLInputType createInputType(SchemaContext ctx, Schema schema) {
         switch (schema.getType()) {
@@ -60,44 +64,47 @@ public class GraphQLAvroSchemaBuilder {
 
     private GraphQLInputObjectType createInputRecord(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
-        List<GraphQLInputObjectField> fields = schema.getFields().stream()
-            .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
-            .flatMap(f -> createInputField(ctx, schema, f))
-            .collect(Collectors.toList());
-        GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
-            .name(ctx.qualify(schema.getFullName()))
-            .description(schema.getDoc())
-            .fields(fields);
+        try {
+            List<GraphQLInputObjectField> fields = schema.getFields().stream()
+                .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
+                .flatMap(f -> createInputField(ctx, schema, f))
+                .collect(Collectors.toList());
+            GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
+                .name(ctx.qualify(schema.getFullName()))
+                .description(schema.getDoc())
+                .fields(fields);
 
-        if (ctx.isRoot()) {
-            if (!ctx.isOrderBy()) {
-                builder.field(GraphQLInputObjectField.newInputObjectField()
-                        .name(Logical.OR.symbol())
-                        .description("Logical operation for expressions")
-                        .type(new GraphQLList(new GraphQLTypeReference(name)))
-                        .build())
-                    .field(GraphQLInputObjectField.newInputObjectField()
-                        .name(Logical.AND.symbol())
-                        .description("Logical operation for expressions")
-                        .type(new GraphQLList(new GraphQLTypeReference(name)))
-                        .build());
+            if (ctx.isRoot()) {
+                if (ctx.isWhere()) {
+                    builder.field(GraphQLInputObjectField.newInputObjectField()
+                            .name(Logical.OR.symbol())
+                            .description("Logical operation for expressions")
+                            .type(new GraphQLList(new GraphQLTypeReference(name)))
+                            .build())
+                        .field(GraphQLInputObjectField.newInputObjectField()
+                            .name(Logical.AND.symbol())
+                            .description("Logical operation for expressions")
+                            .type(new GraphQLList(new GraphQLTypeReference(name)))
+                            .build());
+                }
+                // TODO key
             }
-            // TODO key
+
+            return builder.build();
+        } finally {
             ctx.setRoot(false);
         }
-
-        return builder.build();
     }
 
     private Stream<GraphQLInputObjectField> createInputField(SchemaContext ctx,
                                                              Schema schema,
                                                              Schema.Field field) {
         GraphQLInputType fieldType = createInputType(ctx, field.schema());
-        if (ctx.isOrderBy() || fieldType instanceof GraphQLInputObjectType) {
+        if (!ctx.isWhere() || fieldType instanceof GraphQLInputObjectType) {
             return Stream.of(GraphQLInputObjectField.newInputObjectField()
                 .name(field.name())
                 .description(field.doc())
-                .type(createInputType(ctx, field.schema()))
+                .type(fieldType)
                 .build());
         } else {
             String name = ctx.qualify(schema.getFullName());
@@ -224,20 +231,33 @@ public class GraphQLAvroSchemaBuilder {
     }
 
     private GraphQLObjectType createOutputRecord(SchemaContext ctx, Schema schema) {
-        List<GraphQLFieldDefinition> fields = schema.getFields().stream()
-            .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
-            .map(f -> GraphQLFieldDefinition.newFieldDefinition()
-                .name(f.name())
-                .description(f.doc())
-                .type(createOutputType(ctx, f.schema()))
-                .dataFetcher(new AttributeFetcher(f.name()))
-                .build())
-            .collect(Collectors.toList());
-        return GraphQLObjectType.newObject()
-            .name(ctx.qualify(schema.getFullName()))
-            .description(schema.getDoc())
-            .fields(fields)
-            .build();
+        String name = ctx.qualify(schema.getFullName());
+        try {
+            if (ctx.isRoot()) {
+                GraphQLObjectType type = typeCache.get(name);
+                if (type != null) {
+                    return type;
+                }
+            }
+            List<GraphQLFieldDefinition> fields = schema.getFields().stream()
+                .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
+                .map(f -> GraphQLFieldDefinition.newFieldDefinition()
+                    .name(f.name())
+                    .description(f.doc())
+                    .type(createOutputType(ctx, f.schema()))
+                    .dataFetcher(new AttributeFetcher(f.name()))
+                    .build())
+                .collect(Collectors.toList());
+            GraphQLObjectType type = GraphQLObjectType.newObject()
+                .name(name)
+                .description(schema.getDoc())
+                .fields(fields)
+                .build();
+            typeCache.put(name, type);
+            return type;
+        } finally {
+            ctx.setRoot(false);
+        }
     }
 
     private GraphQLEnumType createOutputEnum(SchemaContext ctx, Schema schema) {

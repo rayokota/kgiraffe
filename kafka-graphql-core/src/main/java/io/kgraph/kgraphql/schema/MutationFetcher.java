@@ -13,14 +13,20 @@ import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import java.util.Map;
 import java.util.UUID;
 
+import io.hdocdb.store.HDocumentCollection;
+import io.hdocdb.store.HDocumentDB;
 import io.kcache.Cache;
+import io.kcache.KafkaCache;
 import io.kgraph.kgraphql.KafkaGraphQLEngine;
 import io.vavr.control.Either;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.utils.Bytes;
+import org.ojai.Document;
 import org.ojai.Value.Type;
+import org.ojai.store.DocumentStore;
 
-import static io.kgraph.kgraphql.schema.GraphQLSchemaBuilder.KEY_OBJECT_NAME;
-import static io.kgraph.kgraphql.schema.GraphQLSchemaBuilder.VALUE_OBJECT_NAME;
+import static io.kgraph.kgraphql.schema.GraphQLSchemaBuilder.KEY_PARAM_NAME;
+import static io.kgraph.kgraphql.schema.GraphQLSchemaBuilder.VALUE_PARAM_NAME;
 
 public class MutationFetcher implements DataFetcher {
 
@@ -48,21 +54,24 @@ public class MutationFetcher implements DataFetcher {
     public Object get(DataFetchingEnvironment environment) {
         try {
             // TODO
-            Map<String, Object> key = environment.getArgument(KEY_OBJECT_NAME);
-            Map<String, Object> value = environment.getArgument(VALUE_OBJECT_NAME);
+            Map<String, Object> key = environment.getArgument(KEY_PARAM_NAME);
+            Map<String, Object> value = environment.getArgument(VALUE_PARAM_NAME);
 
             JsonNode json = MAPPER.valueToTree(value);
             Object valueObj = AvroSchemaUtils.toObject(json, (AvroSchema) valueSchema);
 
-            Bytes keyBytes = null;
+            Bytes keyBytes = Bytes.wrap(Bytes.EMPTY);
             Bytes valueBytes = Bytes.wrap(
                 new KafkaAvroSerializer(schemaRegistry).serialize(topic, valueObj));
-            Cache<Bytes, Bytes> cache = engine.getCache(topic);
-            UUID id = engine.assignId(keyBytes, valueBytes);
+            KafkaCache<Bytes, Bytes> cache = engine.getCache(topic);
             // TODO key
-            cache.put(null, valueBytes);
+            RecordMetadata metadata = cache.put(null, null, valueBytes).getRecordMetadata();
+            String id = metadata.topic() + "-" + metadata.partition() + "-" + metadata.offset();
 
-            return engine.getDocDB().get(topic).findById(id.toString());
+            HDocumentDB docdb = engine.getDocDB();
+            HDocumentCollection coll = docdb.get(topic);
+            Document doc = coll.findById(id);
+            return doc;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

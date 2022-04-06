@@ -63,8 +63,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
 
     private KafkaGraphQLConfig config;
     private GraphQLExecutor executor;
-    private Cache<Tuple2<Bytes, Bytes>, UUID> ids;
-    private Map<String, Cache<Bytes, Bytes>> caches;
+    private Map<String, KafkaCache<Bytes, Bytes>> caches;
     private HDocumentDB docdb;
     private final AtomicBoolean initialized;
 
@@ -116,7 +115,6 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
             new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
         GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, schemaRegistry, topics);
         executor = new GraphQLExecutor(config, schemaBuilder);
-        ids = new CaffeineCache<>(null);
 
         initTopics(schemaRegistry);
 
@@ -125,14 +123,6 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
             throw new IllegalStateException("Illegal state while initializing engine. Engine "
                 + "was already initialized");
         }
-    }
-
-    public UUID assignId(Bytes key, Bytes value) {
-        return ids.computeIfAbsent(new Tuple2<>(key, value), k -> UUID.randomUUID());
-    }
-
-    public UUID getId(Bytes key, Bytes value) {
-        return ids.get(new Tuple2<>(key, value));
     }
 
     private void initTopics(SchemaRegistryClient schemaRegistry) {
@@ -149,7 +139,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         configs.put(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, groupId);
         configs.put(KafkaCacheConfig.KAFKACACHE_CLIENT_ID_CONFIG, groupId + "-" + topic);
         configs.put(KafkaCacheConfig.KAFKACACHE_TOPIC_SKIP_VALIDATION_CONFIG, true);
-        Cache<Bytes, Bytes> cache = new KafkaCache<>(
+        KafkaCache<Bytes, Bytes> cache = new KafkaCache<>(
             new KafkaCacheConfig(configs),
             Serdes.Bytes(),
             Serdes.Bytes(),
@@ -174,6 +164,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
                                  TopicPartition tp, long offset, long timestamp) {
             try {
                 String topic = tp.topic();
+                String id = topic + "-" + tp.partition() + "-" + offset;
                 DocumentStore store = docdb.getCollection(topic);
                 GenericRecord record = (GenericRecord)
                     new KafkaAvroDeserializer(schemaRegistry).deserialize(topic, value.get());
@@ -183,8 +174,8 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
 
                 Document doc =
                     Json.newDocumentStream(new ByteArrayInputStream(valueBytes)).iterator().next();
-                doc.setId(getId(Bytes.wrap(keyBytes), Bytes.wrap(valueBytes)).toString());
-                store.insert(doc);
+                doc.setId(id);
+                store.insertOrReplace(doc);
                 store.flush();
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -217,7 +208,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         return docdb;
     }
 
-    public Cache<Bytes, Bytes> getCache(String topic) {
+    public KafkaCache<Bytes, Bytes> getCache(String topic) {
         return caches.get(topic);
     }
 

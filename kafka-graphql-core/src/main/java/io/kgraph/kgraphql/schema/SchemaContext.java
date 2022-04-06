@@ -1,7 +1,5 @@
 package io.kgraph.kgraphql.schema;
 
-import java.util.Objects;
-
 public class SchemaContext {
     private final String topic;
     private final Mode mode;
@@ -22,8 +20,12 @@ public class SchemaContext {
         return mode;
     }
 
+    public boolean isWhere() {
+        return mode == Mode.QUERY_WHERE;
+    }
+
     public boolean isOrderBy() {
-        return mode == Mode.ORDER_BY;
+        return mode == Mode.QUERY_ORDER_BY;
     }
 
     public boolean isRoot() {
@@ -37,11 +39,17 @@ public class SchemaContext {
     public String qualify(String name) {
         String suffix;
         switch (mode) {
-            case INPUT:
+            case QUERY_WHERE:
                 suffix = "_criteria";
                 break;
-            case ORDER_BY:
+            case QUERY_ORDER_BY:
                 suffix = "_order";
+                break;
+            case MUTATION:
+                suffix = "_insert";
+                break;
+            case SUBSCRIPTION:
+                suffix = "_sub";
                 break;
             case OUTPUT:
             default:
@@ -56,8 +64,10 @@ public class SchemaContext {
     }
 
     public enum Mode {
-        INPUT,
-        ORDER_BY,
+        QUERY_WHERE,
+        QUERY_ORDER_BY,
+        MUTATION,
+        SUBSCRIPTION,
         OUTPUT
     }
 }
