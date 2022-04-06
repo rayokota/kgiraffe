@@ -17,9 +17,12 @@ import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.GraphQLTypeReference;
+import io.kgraph.kgraphql.schema.SchemaContext.Mode;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
 import io.vavr.control.Either;
+import org.apache.avro.Schema;
+import org.everit.json.schema.ObjectSchema;
 import org.ojai.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
+import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -55,6 +59,7 @@ public class GraphQLSchemaBuilder {
     public static final String ORDER_BY_PARAM_NAME = "order_by";
     public static final String WHERE_PARAM_NAME = "where";
 
+    // TODO
     public static final String KEY_ATTR_NAME = "_key";
     // TODO
     public static final String TYPE_ATTR_NAME = "_type";
@@ -62,14 +67,7 @@ public class GraphQLSchemaBuilder {
     private final SchemaRegistryClient schemaRegistry;
     private final List<String> topics;
 
-    private final Map<String, GraphQLImplementingType> entityCache = new HashMap<>();
-    private final Map<String, GraphQLType> typeCache = new HashMap<>();
-    private final Map<Tuple3<String, Either<Value.Type, ParsedSchema>, ParsedSchema>, GraphQLArgument> whereArgumentsMap
-        = new HashMap<>();
-    private final Map<ParsedSchema, GraphQLInputType> whereAttributesMap = new HashMap<>();
-    private final Map<ParsedSchema, GraphQLArgument> orderByArgumentsMap = new HashMap<>();
-
-    private static final GraphQLEnumType orderByDirectionEnum =
+    public static final GraphQLEnumType orderByEnum =
         GraphQLEnumType.newEnum()
             .name("order_by_enum")
             .description("Specifies the direction (ascending/descending) for sorting a field")
@@ -138,7 +136,7 @@ public class GraphQLSchemaBuilder {
             .name(QUERY_ROOT)
             .description("GraphQL schema for all Kafka schemas");
         queryType.fields(topics.stream()
-            .map(t -> getQueryFieldDefinition(codeRegistry, t))
+            .flatMap(t -> getQueryFieldDefinition(codeRegistry, t))
             .collect(Collectors.toList()));
 
         codeRegistry.build();
@@ -146,29 +144,45 @@ public class GraphQLSchemaBuilder {
         return queryType.build();
     }
 
-    private GraphQLFieldDefinition getQueryFieldDefinition(
+    private Stream<GraphQLFieldDefinition> getQueryFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
         // TODO handle primitive key schemas
         Either<Value.Type, ParsedSchema> keySchema = getKeySchema(topic);
         ParsedSchema valueSchema = getValueSchema(topic);
 
-        GraphQLImplementingType implementingType = getImplementingType(codeRegistry, keySchema, valueSchema);
+        if (!isObject(valueSchema)) {
+            return Stream.empty();
+        }
+
+        GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
 
         GraphQLQueryFactory queryFactory = GraphQLQueryFactory.builder()
             .withTopic(topic)
             .withSchemas(keySchema, valueSchema)
-            .withImplementingType(implementingType)
+            .withImplementingType(objectType)
             .build();
 
-        return GraphQLFieldDefinition.newFieldDefinition()
+        return Stream.of(GraphQLFieldDefinition.newFieldDefinition()
             .name(topic)
-            .type(new GraphQLList(implementingType))
+            .type(new GraphQLList(objectType))
             .dataFetcher(new EntityFetcher(queryFactory))
             .argument(getWhereArgument(topic, keySchema, valueSchema))
-            .argument(getLimitArgument(topic, keySchema, valueSchema))
-            .argument(getOffsetArgument(topic, keySchema, valueSchema))
+            .argument(getLimitArgument())
+            .argument(getOffsetArgument())
             .argument(getOrderByArgument(topic, keySchema, valueSchema))
-            .build();
+            .build());
+    }
+
+    private boolean isObject(ParsedSchema schema) {
+        switch (schema.schemaType()) {
+            case "AVRO":
+                return ((org.apache.avro.Schema)schema.rawSchema()).getType() == Schema.Type.RECORD;
+            case "JSON":
+                return schema.rawSchema() instanceof ObjectSchema;
+            case "PROTOBUF":
+            default:
+                return true;
+        }
     }
 
     private Either<Value.Type, ParsedSchema> getKeySchema(String topic) {
@@ -199,43 +213,9 @@ public class GraphQLSchemaBuilder {
     private GraphQLArgument getWhereArgument(String topic,
                                              Either<Value.Type, ParsedSchema> keySchema,
                                              ParsedSchema valueSchema) {
-        return whereArgumentsMap.computeIfAbsent(new Tuple3<>(topic, keySchema, valueSchema),
-            k -> computeWhereArgument(topic, keySchema, valueSchema));
-    }
-
-    private GraphQLArgument computeWhereArgument(String topic,
-                                                 Either<Value.Type, ParsedSchema> keySchema,
-                                                 ParsedSchema valueSchema) {
-        String typeName = topic + "_criteria";
-
-        GraphQLInputObjectType whereInputObject = GraphQLInputObjectType.newInputObject()
-            .name(typeName)
-            .description("Where logical AND specification of the provided list of criteria expressions")
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(Logical.OR.symbol())
-                .description("Logical operation for expressions")
-                .type(new GraphQLList(new GraphQLTypeReference(typeName)))
-                .build()
-            )
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(Logical.AND.symbol())
-                .description("Logical operation for expressions")
-                .type(new GraphQLList(new GraphQLTypeReference(typeName)))
-                .build()
-            )
-            // TODO key
-            /*
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(KEY_ATTR_NAME)
-                .description("Kafka key criteria")
-
-             */
-            .fields(entityType.getAllAttributes().values().stream()
-                .filter(this::isNotIgnored)
-                .flatMap(attr -> getWhereInputField(entityType, attr))
-                .collect(Collectors.toList())
-            )
-            .build();
+        GraphQLInputObjectType whereInputObject =
+            (GraphQLInputObjectType) new GraphQLAvroSchemaBuilder().createInputType(
+                new SchemaContext(topic, Mode.INPUT), ((AvroSchema)valueSchema).rawSchema());
 
         return GraphQLArgument.newArgument()
             .name(WHERE_PARAM_NAME)
@@ -245,122 +225,7 @@ public class GraphQLSchemaBuilder {
 
     }
 
-    private Stream<GraphQLInputObjectField> getWhereInputField(
-        AtlasEntityType entityType, AtlasAttribute attribute) {
-        return getWhereAttributeType(entityType, attribute)
-            .filter(Objects::nonNull)
-            .map(type -> GraphQLInputObjectField.newInputObjectField()
-                .name(attribute.getName())
-                .description(attribute.getAttributeDef().getDescription())
-                .type(type)
-                .build());
-    }
-
-    private Stream<GraphQLInputType> getWhereAttributeType(
-        AtlasEntityType entityType, AtlasAttribute attribute) {
-        String typeName = entityType.getTypeName() + "_" + attribute.getName() + "_criteria";
-
-        if (whereAttributesMap.containsKey(typeName)) {
-            return Stream.of(whereAttributesMap.get(typeName));
-        }
-
-        AtlasType type = attribute.getAttributeType();
-        if (type instanceof AtlasArrayType || type instanceof AtlasMapType) {
-            // ignore non-primitives
-            return Stream.empty();
-        }
-        GraphQLType attributeType = getBasicAttributeType(type);
-        if (attributeType == null) {
-            return Stream.empty();
-        }
-
-        GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
-            .name(typeName)
-            .description("Criteria expression specification of "
-                + attribute.getName() + " attribute in entity " + entityType.getTypeName())
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(Logical.OR.symbol())
-                .description("Logical OR criteria expression")
-                .type(new GraphQLList(new GraphQLTypeReference(typeName)))
-                .build()
-            )
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(Logical.AND.symbol())
-                .description("Logical AND criteria expression")
-                .type(new GraphQLList(new GraphQLTypeReference(typeName)))
-                .build()
-            )
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.EQ.symbol())
-                .description("Equals criteria")
-                .type((GraphQLInputType) attributeType)
-                .build()
-            )
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.LTE.symbol())
-                .description("Less than or Equals criteria")
-                .type((GraphQLInputType) attributeType)
-                .build()
-            )
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.GTE.symbol())
-                .description("Greater or Equals criteria")
-                .type((GraphQLInputType) attributeType)
-                .build()
-            )
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.GT.symbol())
-                .description("Greater Than criteria")
-                .type((GraphQLInputType) attributeType)
-                .build()
-            )
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.LT.symbol())
-                .description("Less Than criteria")
-                .type((GraphQLInputType) attributeType)
-                .build()
-            );
-        // TODO Atlas does not support IN well in SearchProcessor.toInMemoryPredicate
-
-        if (type instanceof AtlasStringType
-            || type instanceof AtlasEnumType) {
-            builder.field(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.STARTS_WITH.symbol())
-                .description("Starts with criteria")
-                .type((GraphQLInputType) attributeType)
-                .build()
-            );
-        } else if (type instanceof AtlasDateType) {
-            builder.field(GraphQLInputObjectField.newInputObjectField()
-                    .name(Criteria.BETWEEN.symbol())
-                    .description("Between criteria")
-                    .type(betweenObject)
-                    .build()
-                )
-                .field(GraphQLInputObjectField.newInputObjectField()
-                    .name(Criteria.SINCE.symbol())
-                    .description("Since criteria")
-                    .type(sinceEnum)
-                    .build()
-                );
-        }
-
-        GraphQLInputType answer = builder.build();
-
-        whereAttributesMap.putIfAbsent(typeName, answer);
-
-        return Stream.of(answer);
-    }
-
-    private GraphQLArgument getTagsArgument(AtlasEntityType entityType) {
-        return GraphQLArgument.newArgument()
-            .name(TAGS_PARAM_NAME)
-            .description("Limit the result set to entities with the given tag")
-            .type(new GraphQLList(Scalars.GraphQLString))
-            .build();
-    }
-
-    private GraphQLArgument getLimitArgument(AtlasEntityType entityType) {
+    private GraphQLArgument getLimitArgument() {
         return GraphQLArgument.newArgument()
             .name(LIMIT_PARAM_NAME)
             .description("Limit the result set to the given number")
@@ -368,7 +233,7 @@ public class GraphQLSchemaBuilder {
             .build();
     }
 
-    private GraphQLArgument getOffsetArgument(AtlasEntityType entityType) {
+    private GraphQLArgument getOffsetArgument() {
         return GraphQLArgument.newArgument()
             .name(OFFSET_PARAM_NAME)
             .description("Start offset for the result set")
@@ -376,23 +241,14 @@ public class GraphQLSchemaBuilder {
             .build();
     }
 
-    private GraphQLArgument getOrderByArgument(AtlasEntityType entityType) {
-        return orderByArgumentsMap.computeIfAbsent(entityType.getTypeName(),
-            k -> computeOrderByArgument(entityType));
-    }
+    private GraphQLArgument getOrderByArgument(String topic,
+                                               Either<Value.Type, ParsedSchema> keySchema,
+                                               ParsedSchema valueSchema) {
+        String typeName = topic + "_order";
 
-    private GraphQLArgument computeOrderByArgument(AtlasEntityType entityType) {
-        String typeName = entityType.getTypeName() + "_order";
-
-        GraphQLInputObjectType orderByInputObject = GraphQLInputObjectType.newInputObject()
-            .name(typeName)
-            .description("Order by attribute")
-            .fields(entityType.getAllAttributes().values().stream()
-                .filter(this::isNotIgnored)
-                .map(attr -> getOrderByInputField(entityType, attr))
-                .collect(Collectors.toList())
-            )
-            .build();
+        GraphQLInputObjectType orderByInputObject =
+            (GraphQLInputObjectType) new GraphQLAvroSchemaBuilder().createInputType(
+                new SchemaContext(topic, Mode.ORDER_BY), ((AvroSchema)valueSchema).rawSchema());
 
         return GraphQLArgument.newArgument()
             .name(ORDER_BY_PARAM_NAME)
@@ -402,264 +258,12 @@ public class GraphQLSchemaBuilder {
 
     }
 
-    private GraphQLInputObjectField getOrderByInputField(
-        AtlasEntityType entityType, AtlasAttribute attribute) {
-        return GraphQLInputObjectField.newInputObjectField()
-            .name(attribute.getName())
-            .description(attribute.getAttributeDef().getDescription())
-            .type(orderByDirectionEnum)
-            .build();
+    private GraphQLObjectType getObjectType(String topic,
+                                            Either<Value.Type, ParsedSchema> keySchema,
+                                            ParsedSchema valueSchema) {
+        GraphQLObjectType objectType =
+            (GraphQLObjectType) new GraphQLAvroSchemaBuilder().createOutputType(
+                new SchemaContext(topic, Mode.OUTPUT), ((AvroSchema) valueSchema).rawSchema());
+        return objectType;
     }
-
-    private GraphQLArgument getDeletedArgument(AtlasEntityType entityType) {
-        return GraphQLArgument.newArgument()
-            .name(DELETED_PARAM_NAME)
-            .description("Whether to include deleted entities")
-            .type(Scalars.GraphQLBoolean)
-            .build();
-    }
-
-    private GraphQLImplementingType getImplementingType(
-        GraphQLCodeRegistry.Builder codeRegistry, AtlasEntityType entityType, boolean isSuperType) {
-        return entityCache.computeIfAbsent(
-            entityType.getTypeName(), k ->
-                computeImplementingType(codeRegistry, entityType, isSuperType));
-    }
-
-    private GraphQLImplementingType computeImplementingType(
-        GraphQLCodeRegistry.Builder codeRegistry, AtlasEntityType entityType, boolean isSuperType) {
-        String typeName = entityType.getTypeName();
-
-        GraphQLTypeReference[] interfaces = entityType.getAllSuperTypes()
-            .stream()
-            .filter(this::isNotIgnored)
-            .map(GraphQLTypeReference::new)
-            .toArray(GraphQLTypeReference[]::new);
-
-        List<GraphQLFieldDefinition> attrFields = entityType.getAllAttributes().values()
-            .stream()
-            .filter(this::isNotIgnored)
-            .flatMap(attr -> getObjectField(codeRegistry, entityType, attr))
-            .collect(Collectors.toList());
-
-        List<GraphQLFieldDefinition> relAttrFields = entityType.getRelationshipAttributes().entrySet()
-            .stream()
-            .filter(e -> !e.getKey().startsWith("__"))
-            .flatMap(e -> e.getValue().values().stream())
-            .flatMap(attr -> getObjectField(codeRegistry, entityType, attr))
-            .collect(Collectors.toCollection(ArrayList::new));
-
-
-        if (isSuperType) {
-            GraphQLInterfaceType.Builder builder = GraphQLInterfaceType.newInterface()
-                .name(typeName)
-                .description(entityType.getEntityDef().getDescription())
-                .fields(attrFields)
-                .fields(relAttrFields)
-                .field(GraphQLFieldDefinition.newFieldDefinition()
-                    .name(STATUS_ATTR_NAME)
-                    .description("Status of the entity")
-                    .type(statusEnum)
-                    .dataFetcher(new AttributeFetcher(
-                        typeRegistry, graph, entityRetriever, entityType, STATUS_ATTR_NAME))
-                    .build())
-                .field(GraphQLFieldDefinition.newFieldDefinition()
-                    .name(TAGS_ATTR_NAME)
-                    .description("Tags for the entity")
-                    .type(new GraphQLList(Scalars.GraphQLString))
-                    .dataFetcher(new AttributeFetcher(
-                        typeRegistry, graph, entityRetriever, entityType, TAGS_ATTR_NAME))
-                    .build())
-                .typeResolver(new EntityResolver());
-            for (GraphQLTypeReference type : interfaces) {
-                builder.withInterface(type);
-            }
-            return builder.build();
-        } else {
-            return GraphQLObjectType.newObject()
-                .name(typeName)
-                .description(entityType.getEntityDef().getDescription())
-                .fields(attrFields)
-                .fields(relAttrFields)
-                .field(GraphQLFieldDefinition.newFieldDefinition()
-                    .name(STATUS_ATTR_NAME)
-                    .description("Status of the entity")
-                    .type(statusEnum)
-                    .dataFetcher(new AttributeFetcher(
-                        typeRegistry, graph, entityRetriever, entityType, STATUS_ATTR_NAME))
-                    .build())
-                .field(GraphQLFieldDefinition.newFieldDefinition()
-                    .name(TAGS_ATTR_NAME)
-                    .description("Tags for the entity")
-                    .type(new GraphQLList(Scalars.GraphQLString))
-                    .dataFetcher(new AttributeFetcher(
-                        typeRegistry, graph, entityRetriever, entityType, TAGS_ATTR_NAME))
-                    .build())
-                .withInterfaces(interfaces)
-                .build();
-        }
-    }
-
-    private Stream<GraphQLFieldDefinition> getObjectField(
-        GraphQLCodeRegistry.Builder codeRegistry,
-        AtlasEntityType entityType,
-        AtlasAttribute attribute) {
-        return getAttributeType(entityType, attribute)
-            .filter(type -> type instanceof GraphQLOutputType)
-            .map(type -> GraphQLFieldDefinition.newFieldDefinition()
-                .name(attribute.getName())
-                .description(getAttributeDescription(attribute))
-                .type((GraphQLOutputType) type)
-                .dataFetcher(new AttributeFetcher(
-                    typeRegistry, graph, entityRetriever, entityType, attribute.getName()))
-                //.arguments(arguments)
-                .build());
-    }
-
-    private GraphQLType getBasicAttributeType(AtlasType type) {
-        if (type instanceof AtlasStringType) {
-            return Scalars.GraphQLString;
-        } else if (type instanceof AtlasByteType) {
-            return ExtendedScalars.GraphQLByte;
-        } else if (type instanceof AtlasIntType) {
-            return Scalars.GraphQLInt;
-        } else if (type instanceof AtlasShortType) {
-            return ExtendedScalars.GraphQLShort;
-        } else if (type instanceof AtlasFloatType || type instanceof AtlasDoubleType) {
-            return Scalars.GraphQLFloat;
-        } else if (type instanceof AtlasLongType) {
-            return ExtendedScalars.GraphQLLong;
-        } else if (type instanceof AtlasBooleanType) {
-            return Scalars.GraphQLBoolean;
-        } else if (type instanceof AtlasBigDecimalType) {
-            return ExtendedScalars.GraphQLBigDecimal;
-        } else if (type instanceof AtlasBigIntegerType) {
-            return ExtendedScalars.GraphQLBigInteger;
-        } else if (type instanceof AtlasDateType) {
-            return JavaScalars.GraphQLDate;
-        } else if (type instanceof AtlasEnumType) {
-            return getTypeFromJavaType(type);
-        } else if (type instanceof AtlasArrayType) {
-            return getTypeFromJavaType(type);
-        } else if (type instanceof AtlasMapType) {
-            return getTypeFromJavaType(type);
-        }
-
-        throw new UnsupportedOperationException(
-            "Class could not be mapped to GraphQL: '" + type.getClass().getTypeName() + "'");
-    }
-
-    private Stream<GraphQLType> getAttributeType(
-        AtlasEntityType entityType, AtlasAttribute attribute) {
-        String typeName = entityType.getTypeName();
-        String relationshipName = attribute.getRelationshipName();
-        if (relationshipName == null) {
-            try {
-                GraphQLType type = getBasicAttributeType(attribute.getAttributeType());
-                return type != null ? Stream.of(type) : Stream.empty();
-            } catch (UnsupportedOperationException e) {
-                //fall through to the exception below
-                //which is more useful because it also contains the declaring member
-            }
-        } else {
-            AtlasRelationshipType relationshipType =
-                typeRegistry.getRelationshipTypeByName(relationshipName);
-            AtlasRelationshipDef relationshipDef = relationshipType.getRelationshipDef();
-            AtlasRelationshipEndDef thisRel;
-            AtlasRelationshipEndDef otherRel;
-
-            if (attribute.getRelationshipEdgeDirection() == AtlasRelationshipEdgeDirection.OUT) {
-                thisRel = relationshipDef.getEndDef1();
-                otherRel = relationshipDef.getEndDef2();
-            } else {
-                thisRel = relationshipDef.getEndDef2();
-                otherRel = relationshipDef.getEndDef1();
-            }
-
-            if (!isNotIgnored(otherRel.getType())) {
-                return Stream.empty();
-            }
-
-            switch (thisRel.getCardinality()) {
-                case SINGLE:
-                    return Stream.of(new GraphQLTypeReference(otherRel.getType()));
-                case LIST:
-                case SET:
-                    return Stream.of(new GraphQLList(new GraphQLTypeReference(otherRel.getType())));
-                default:
-                    throw new IllegalArgumentException();
-            }
-        }
-
-        throw new UnsupportedOperationException(
-            "Attribute could not be mapped to GraphQL: field '" + attribute.getName()
-                + "' of entity '" + typeName + "'");
-    }
-
-    private String getAttributeDescription(AtlasAttribute attribute) {
-        String relationshipName = attribute.getRelationshipName();
-        if (relationshipName == null) {
-            return attribute.getAttributeDef().getDescription();
-        } else {
-            AtlasRelationshipType relationshipType =
-                typeRegistry.getRelationshipTypeByName(relationshipName);
-            AtlasRelationshipDef relationshipDef = relationshipType.getRelationshipDef();
-            AtlasRelationshipEndDef thisRel;
-
-            if (attribute.getRelationshipEdgeDirection() == AtlasRelationshipEdgeDirection.OUT) {
-                thisRel = relationshipDef.getEndDef1();
-            } else {
-                thisRel = relationshipDef.getEndDef2();
-            }
-
-            return thisRel.getDescription();
-        }
-    }
-
-    private boolean isNotIgnored(AtlasEntityType entityType) {
-        return isNotIgnored(entityType.getTypeName());
-    }
-
-    private boolean isNotIgnored(String typeName) {
-        return ModelConstants.hasValidPrefix(typeName);
-    }
-
-    private boolean isNotIgnored(AtlasAttribute attribute) {
-        // Ignore internal attributes
-        return !attribute.getName().startsWith("__");
-    }
-
-    private GraphQLType getTypeFromJavaType(AtlasType type) {
-        String typeName = type.getTypeName();
-        if (type instanceof AtlasEnumType) {
-            AtlasEnumType enumType = (AtlasEnumType) type;
-            if (typeCache.containsKey(typeName)) {
-                return typeCache.get(typeName);
-            }
-
-            GraphQLEnumType.Builder enumBuilder = GraphQLEnumType.newEnum().name(typeName);
-            for (AtlasEnumElementDef elementDef : enumType.getEnumDef().getElementDefs()) {
-                enumBuilder.value(elementDef.getValue(), elementDef.getOrdinal());
-            }
-            GraphQLType answer = enumBuilder.build();
-
-            typeCache.put(typeName, answer);
-
-            return answer;
-        } else if (type instanceof AtlasArrayType) {
-            AtlasArrayType arrayType = (AtlasArrayType) type;
-            try {
-                return GraphQLList.list(getBasicAttributeType(arrayType.getElementType()));
-            } catch (UnsupportedOperationException e) {
-                // Lists of entity types not supported
-                return null;
-            }
-        } else if (type instanceof AtlasMapType) {
-            return ExtendedScalars.Object;
-        }
-
-        throw new UnsupportedOperationException(
-            "Class could not be mapped to GraphQL: '" + type.getClass().getTypeName() + "'");
-    }
-
 }

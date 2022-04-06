@@ -28,12 +28,12 @@
             <artifactId>kafka-clients</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.kcache</groupId>
-            <artifactId>kcache</artifactId>
+            <groupId>info.picocli</groupId>
+            <artifactId>picocli</artifactId>
         </dependency>
         <dependency>
             <groupId>io.kcache</groupId>
-            <artifactId>kcache-rocksdb</artifactId>
+            <artifactId>kcache</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

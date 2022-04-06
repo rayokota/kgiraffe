@@ -36,21 +36,17 @@ class PredicateFilter implements Comparable<PredicateFilter> {
          */
         EQ("_eq"),
         /**
-         * beginning of string matches, case sensitive
+         * not equal
          */
-        STARTS_WITH("_starts_with"),
+        NEQ("_neq"),
         /**
          * in condition
          */
         IN("_in"),
         /**
-         * between condition
+         * not in condition
          */
-        BETWEEN("_between"),
-        /**
-         * since condition
-         */
-        SINCE("_since");
+        NIN("_nin");
 
         private static final EnumHashBiMap<Criteria, String> lookup =
             EnumHashBiMap.create(Criteria.class);

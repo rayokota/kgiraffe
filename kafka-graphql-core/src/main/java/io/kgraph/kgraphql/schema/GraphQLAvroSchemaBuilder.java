@@ -1,66 +1,172 @@
 package io.kgraph.kgraphql.schema;
 
+import graphql.Scalars;
+import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLEnumType;
 import graphql.schema.GraphQLEnumValueDefinition;
+import graphql.schema.GraphQLFieldDefinition;
 import graphql.schema.GraphQLInputObjectField;
 import graphql.schema.GraphQLInputObjectType;
 import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLList;
-import org.apache.avro.AvroRuntimeException;
+import graphql.schema.GraphQLObjectType;
+import graphql.schema.GraphQLOutputType;
+import graphql.schema.GraphQLTypeReference;
+import io.kgraph.kgraphql.schema.PredicateFilter.Criteria;
 import org.apache.avro.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static io.kgraph.kgraphql.schema.GraphQLSchemaBuilder.orderByEnum;
 
 public class GraphQLAvroSchemaBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(GraphQLAvroSchemaBuilder.class);
 
-    private GraphQLInputType createInputType(SchemaContext ctx, Schema schema) {
+    public GraphQLInputType createInputType(SchemaContext ctx, Schema schema) {
         switch (schema.getType()) {
             case RECORD:
                 return createInputRecord(ctx, schema);
             case ENUM:
-                return createInputEnum(ctx, schema);
+                return ctx.isOrderBy() ? orderByEnum : createInputEnum(ctx, schema);
             case ARRAY:
-                return createInputArray(ctx, schema);
+                return ctx.isOrderBy() ? orderByEnum : new GraphQLList(createInputType(ctx, schema));
             case MAP:
-                return createInputMap(ctx, schema);
+                return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
             case UNION:
                 return createInputUnion(ctx, schema);
             case FIXED:
-                return createInputFixed(ctx, schema);
+            case STRING:
+            case BYTES:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLString;
+            case INT:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLInt;
+            case LONG:
+                return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.GraphQLLong;
+            case FLOAT:
+            case DOUBLE:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLFloat;
+            case BOOLEAN:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
+            case NULL:
             default:
-                return createInputPrimitive(ctx, schema);
+                throw new IllegalArgumentException("Illegal type " + schema.getType());
         }
     }
 
     private GraphQLInputObjectType createInputRecord(SchemaContext ctx, Schema schema) {
+        String name = ctx.qualify(schema.getFullName());
         List<GraphQLInputObjectField> fields = schema.getFields().stream()
-            .map(f -> createInputField(ctx, schema, f))
+            .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
+            .flatMap(f -> createInputField(ctx, schema, f))
             .collect(Collectors.toList());
-        return GraphQLInputObjectType.newInputObject()
+        GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
             .name(ctx.qualify(schema.getFullName()))
             .description(schema.getDoc())
-            .fields(fields)
-            .build();
+            .fields(fields);
+
+        if (ctx.isRoot()) {
+            if (!ctx.isOrderBy()) {
+                builder.field(GraphQLInputObjectField.newInputObjectField()
+                        .name(Logical.OR.symbol())
+                        .description("Logical operation for expressions")
+                        .type(new GraphQLList(new GraphQLTypeReference(name)))
+                        .build())
+                    .field(GraphQLInputObjectField.newInputObjectField()
+                        .name(Logical.AND.symbol())
+                        .description("Logical operation for expressions")
+                        .type(new GraphQLList(new GraphQLTypeReference(name)))
+                        .build());
+            }
+            // TODO key
+            ctx.setRoot(false);
+        }
+
+        return builder.build();
     }
 
-    private GraphQLInputObjectField createInputField(SchemaContext ctx,
-                                                     Schema schema,
-                                                     Schema.Field schemaField) {
-        return GraphQLInputObjectField.newInputObjectField()
-            .name(ctx.qualify(schema.getFullName() + "_" + schemaField.name()))
-            .description(schemaField.doc())
-            .type(createInputType(ctx, schemaField.schema()))
-            .build();
+    private Stream<GraphQLInputObjectField> createInputField(SchemaContext ctx,
+                                                             Schema schema,
+                                                             Schema.Field field) {
+        GraphQLInputType fieldType = createInputType(ctx, field.schema());
+        if (ctx.isOrderBy() || fieldType instanceof GraphQLInputObjectType) {
+            return Stream.of(GraphQLInputObjectField.newInputObjectField()
+                .name(field.name())
+                .description(field.doc())
+                .type(createInputType(ctx, field.schema()))
+                .build());
+        } else {
+            String name = ctx.qualify(schema.getFullName());
+            List<GraphQLInputObjectField> fields = new ArrayList<>();
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Logical.OR.symbol())
+                .description("Logical OR criteria expression")
+                .type(new GraphQLList(new GraphQLTypeReference(name)))
+                .build()
+            );
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Logical.AND.symbol())
+                .description("Logical AND criteria expression")
+                .type(new GraphQLList(new GraphQLTypeReference(name)))
+                .build()
+            );
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Criteria.EQ.symbol())
+                .description("Equals criteria")
+                .type(fieldType)
+                .build()
+            );
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Criteria.NEQ.symbol())
+                .description("Not equals criteria")
+                .type(fieldType)
+                .build()
+            );
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Criteria.LTE.symbol())
+                .description("Less than or equals criteria")
+                .type(fieldType)
+                .build()
+            );
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Criteria.GTE.symbol())
+                .description("Greater or equals criteria")
+                .type(fieldType)
+                .build()
+            );
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Criteria.GT.symbol())
+                .description("Greater than criteria")
+                .type(fieldType)
+                .build()
+            );
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Criteria.LT.symbol())
+                .description("Less than criteria")
+                .type(fieldType)
+                .build()
+            );
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Criteria.IN.symbol())
+                .description("In criteria")
+                .type(new GraphQLList(fieldType))
+                .build()
+            );
+            fields.add(GraphQLInputObjectField.newInputObjectField()
+                .name(Criteria.NIN.symbol())
+                .description("Not in criteria")
+                .type(new GraphQLList(fieldType))
+                .build()
+            );
+            return fields.stream();
+        }
     }
 
-    private GraphQLEnumType createInputEnum(SchemaContext ctx,
-                                       Schema schema) {
+    private GraphQLEnumType createInputEnum(SchemaContext ctx, Schema schema) {
         return GraphQLEnumType.newEnum()
             .name(ctx.qualify(schema.getFullName()))
             .description(schema.getDoc())
@@ -73,299 +179,90 @@ public class GraphQLAvroSchemaBuilder {
             .build();
     }
 
-    private GraphQLList createInputArray(SchemaContext ctx,
-                                         Schema schema) {
-        return new GraphQLList(createInputType(ctx, schema));
-    }
-
-    private GraphQLInputObjectType createInputMap(SchemaContext ctx,
-                                                  Schema schema) {
-        return GraphQLInputObjectField.newInputObjectField()
-            .name(ctx.qualify(schema.getFullName() + "_" + schemaField.name()))
-            .description(schemaField.doc())
-            .type(createInputType(ctx, schemaField.schema()))
+    private GraphQLInputObjectType createInputUnion(SchemaContext ctx, Schema schema) {
+        return GraphQLInputObjectType.newInputObject()
+            .name(ctx.qualify(schema.getFullName() + "_union_" + ctx.incrementNameIndex()))
+            .fields(schema.getTypes().stream()
+                .filter(t -> !t.getType().equals(Schema.Type.NULL))
+                .map(t -> GraphQLInputObjectField.newInputObjectField()
+                    .name(t.getFullName())
+                    .type(createInputType(ctx, t))
+                    .build())
+                .collect(Collectors.toList()))
             .build();
-        String qualifiedName = ctx.getQualifiedName(id,
-            schema.getFullName() + "<string," + schema.getValueType() + ">");
-        AtlasEntity entity = ctx.getEntity(qualifiedName);
-        if (entity != null) {
-            return entity;
-        }
-        entity = new AtlasEntity(SchemaAtlasTypes.SR_MAP.getName());
-
-        SchemaAtlasHook.setDefaultAttrs(ctx, entity, qualifiedName, id, "");
-
-        AtlasEntity type = createType(ctx, id, schema.getValueType());
-        entity.setRelationshipAttribute("valueType", AtlasTypeUtil.toAtlasRelatedObjectId(type));
-        type.setRelationshipAttribute("mapValue", AtlasTypeUtil.toAtlasRelatedObjectId(entity));
-
-        ctx.createOrUpdate(entity);
-        return entity;
     }
 
-    private AtlasEntity createUnion(SchemaContext ctx,
-                                    int id,
-                                    Schema schema) {
-        // Use an index counter as we are not using a scope to calculate unique names
-        String qualifiedName = ctx.getQualifiedName(id,
-            schema.getFullName() + ctx.incrementNameIndex());
-        AtlasEntity entity = ctx.getEntity(qualifiedName);
-        if (entity != null) {
-            return entity;
-        }
-        entity = new AtlasEntity(SchemaAtlasTypes.SR_COMBINED.getName());
-
-        SchemaAtlasHook.setDefaultAttrs(ctx, entity, qualifiedName, id, "");
-        entity.setAttribute("kind", "oneof");
-
-        List<AtlasEntity> types = schema.getTypes().stream()
-            .map(s -> createType(ctx, id, s))
-            .collect(Collectors.toList());
-        entity.setRelationshipAttribute("types", AtlasTypeUtil.toAtlasRelatedObjectIds(types));
-        for (AtlasEntity type : types) {
-            type.setRelationshipAttribute("combined", AtlasTypeUtil.toAtlasRelatedObjectId(entity));
-        }
-
-        ctx.createOrUpdate(entity);
-        return entity;
-    }
-
-    private AtlasEntity createFixed(SchemaContext ctx,
-                                    int id,
-                                    Schema schema) {
-        String qualifiedName = ctx.getQualifiedName(id, schema.getFullName());
-        AtlasEntity entity = ctx.getEntity(qualifiedName);
-        if (entity != null) {
-            return entity;
-        }
-        entity = new AtlasEntity(SchemaAtlasTypes.SR_FIXED.getName());
-
-        SchemaAtlasHook.setDefaultAttrs(ctx, entity, qualifiedName, id, schema.getName());
-        entity.setAttribute("namespace", getNamespace(schema));
-        entity.setAttribute("doc", schema.getDoc());
-        entity.setAttribute("aliases", getAliases(schema));
-        entity.setAttribute("size", schema.getFixedSize());
-
-        ctx.createOrUpdate(entity);
-        return entity;
-    }
-
-    private AtlasEntity createPrimitive(SchemaContext ctx,
-                                        int id,
-                                        Schema schema) {
-        String qualifiedName = ctx.getQualifiedName(id, schema.getFullName());
-        AtlasEntity entity = ctx.getEntity(qualifiedName);
-        if (entity != null) {
-            return entity;
-        }
-        entity = new AtlasEntity(SchemaAtlasTypes.SR_PRIMITIVE.getName());
-
-        SchemaAtlasHook.setDefaultAttrs(ctx, entity, qualifiedName, id, "");
-        entity.setAttribute("type", schema.getType().getName());
-
-        ctx.createOrUpdate(entity);
-        return entity;
-    }
-
-    public void deleteSchema(SchemaContext ctx,
-                             int id,
-                             Schema schema,
-                             boolean purge) {
-        String qualifiedName = ctx.getQualifiedName(id);
-        AtlasObjectId entityId = new AtlasObjectId(
-            SchemaAtlasTypes.SR_SCHEMA.getName(), ATTR_QUALIFIED_NAME, qualifiedName);
-
-        deleteType(ctx, id, schema, purge);
-
-        if (purge) {
-            ctx.purge(entityId);
-        } else {
-            ctx.delete(entityId);
-        }
-    }
-
-    private void deleteType(SchemaContext ctx,
-                            int id,
-                            Schema schema,
-                            boolean purge) {
+    public GraphQLOutputType createOutputType(SchemaContext ctx, Schema schema) {
         switch (schema.getType()) {
             case RECORD:
-                deleteRecord(ctx, id, schema, purge);
-                break;
+                return createOutputRecord(ctx, schema);
             case ENUM:
-                deleteEnum(ctx, id, schema, purge);
-                break;
+                return createOutputEnum(ctx, schema);
             case ARRAY:
-                deleteArray(ctx, id, schema, purge);
-                break;
+                return new GraphQLList(createInputType(ctx, schema));
             case MAP:
-                deleteMap(ctx, id, schema, purge);
-                break;
+                return ExtendedScalars.Json;
             case UNION:
-                deleteUnion(ctx, id, schema, purge);
-                break;
+                return createOutputUnion(ctx, schema);
             case FIXED:
-                deleteFixed(ctx, id, schema, purge);
-                break;
+            case STRING:
+            case BYTES:
+                return Scalars.GraphQLString;
+            case INT:
+                return Scalars.GraphQLInt;
+            case LONG:
+                return ExtendedScalars.GraphQLLong;
+            case FLOAT:
+            case DOUBLE:
+                return Scalars.GraphQLFloat;
+            case BOOLEAN:
+                return Scalars.GraphQLBoolean;
+            case NULL:
             default:
-                deletePrimitive(ctx, id, schema, purge);
-                break;
+                throw new IllegalArgumentException("Illegal type " + schema.getType());
         }
     }
 
-    private void deleteRecord(SchemaContext ctx,
-                              int id,
-                              Schema schema,
-                              boolean purge) {
-        String qualifiedName = ctx.getQualifiedName(id, schema.getFullName());
-        if (ctx.isDeleted(qualifiedName)) {
-            return;
-        }
-        AtlasObjectId entityId = new AtlasObjectId(
-            SchemaAtlasTypes.SR_RECORD.getName(), ATTR_QUALIFIED_NAME, qualifiedName);
-        ctx.addDeleted(qualifiedName);
-
-        schema.getFields().forEach(f -> deleteField(ctx, id, schema, f, purge));
-
-        if (purge) {
-            ctx.purge(entityId);
-        } else {
-            ctx.delete(entityId);
-        }
+    private GraphQLObjectType createOutputRecord(SchemaContext ctx, Schema schema) {
+        List<GraphQLFieldDefinition> fields = schema.getFields().stream()
+            .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
+            .map(f -> GraphQLFieldDefinition.newFieldDefinition()
+                .name(f.name())
+                .description(f.doc())
+                .type(createOutputType(ctx, f.schema()))
+                .build())
+            .collect(Collectors.toList());
+        return GraphQLObjectType.newObject()
+            .name(ctx.qualify(schema.getFullName()))
+            .description(schema.getDoc())
+            .fields(fields)
+            .build();
     }
 
-    private void deleteField(SchemaContext ctx,
-                             int id,
-                             Schema schema,
-                             Schema.Field schemaField,
-                             boolean purge) {
-        String qualifiedName =
-            ctx.getQualifiedName(id, schema.getFullName() + "." + schemaField.name());
-        AtlasObjectId entityId = new AtlasObjectId(
-            SchemaAtlasTypes.SR_FIELD.getName(), ATTR_QUALIFIED_NAME, qualifiedName);
-
-        deleteType(ctx, id, schemaField.schema(), purge);
-
-        if (purge) {
-            ctx.purge(entityId);
-        } else {
-            ctx.delete(entityId);
-        }
+    private GraphQLEnumType createOutputEnum(SchemaContext ctx, Schema schema) {
+        return GraphQLEnumType.newEnum()
+            .name(ctx.qualify(schema.getFullName()))
+            .description(schema.getDoc())
+            .values(schema.getEnumSymbols().stream()
+                .map(v -> GraphQLEnumValueDefinition.newEnumValueDefinition()
+                    .name(v)
+                    .description(v)
+                    .build())
+                .collect(Collectors.toList()))
+            .build();
     }
 
-    private void deleteEnum(SchemaContext ctx,
-                            int id,
-                            Schema schema,
-                            boolean purge) {
-        String qualifiedName = ctx.getQualifiedName(id, schema.getFullName());
-        AtlasObjectId entityId = new AtlasObjectId(
-            SchemaAtlasTypes.SR_ENUM.getName(), ATTR_QUALIFIED_NAME, qualifiedName);
-
-        if (purge) {
-            ctx.purge(entityId);
-        } else {
-            ctx.delete(entityId);
-        }
+    private GraphQLObjectType createOutputUnion(SchemaContext ctx, Schema schema) {
+        return GraphQLObjectType.newObject()
+            .name(ctx.qualify(schema.getFullName() + "_union_" + ctx.incrementNameIndex()))
+            .fields(schema.getTypes().stream()
+                .filter(t -> !t.getType().equals(Schema.Type.NULL))
+                .map(t -> GraphQLFieldDefinition.newFieldDefinition()
+                    .name(t.getFullName())
+                    .type(createOutputType(ctx, t))
+                    .build())
+                .collect(Collectors.toList()))
+            .build();
     }
 
-    private void deleteArray(SchemaContext ctx,
-                             int id,
-                             Schema schema,
-                             boolean purge) {
-        String qualifiedName = ctx.getQualifiedName(id,
-            schema.getFullName() + "<" + schema.getElementType() + ">");
-        AtlasObjectId entityId = new AtlasObjectId(
-            SchemaAtlasTypes.SR_ARRAY.getName(), ATTR_QUALIFIED_NAME, qualifiedName);
-
-        deleteType(ctx, id, schema.getElementType(), purge);
-
-        if (purge) {
-            ctx.purge(entityId);
-        } else {
-            ctx.delete(entityId);
-        }
-    }
-
-    private void deleteMap(SchemaContext ctx,
-                           int id,
-                           Schema schema,
-                           boolean purge) {
-        String qualifiedName = ctx.getQualifiedName(id,
-            schema.getFullName() + "<string," + schema.getValueType() + ">");
-        AtlasObjectId entityId = new AtlasObjectId(
-            SchemaAtlasTypes.SR_MAP.getName(), ATTR_QUALIFIED_NAME, qualifiedName);
-
-        deleteType(ctx, id, schema.getValueType(), purge);
-
-        if (purge) {
-            ctx.purge(entityId);
-        } else {
-            ctx.delete(entityId);
-        }
-    }
-
-    private void deleteUnion(SchemaContext ctx,
-                             int id,
-                             Schema schema,
-                             boolean purge) {
-        // Use an index counter as we are not using a scope to calculate unique names
-        String qualifiedName = ctx.getQualifiedName(id,
-            schema.getFullName() + ctx.incrementNameIndex());
-        AtlasObjectId entityId = new AtlasObjectId(
-            SchemaAtlasTypes.SR_COMBINED.getName(), ATTR_QUALIFIED_NAME, qualifiedName);
-
-        schema.getTypes().forEach(s -> deleteType(ctx, id, s, purge));
-
-        if (purge) {
-            ctx.purge(entityId);
-        } else {
-            ctx.delete(entityId);
-        }
-    }
-
-    private void deleteFixed(SchemaContext ctx,
-                             int id,
-                             Schema schema,
-                             boolean purge) {
-        String qualifiedName = ctx.getQualifiedName(id, schema.getFullName());
-        AtlasObjectId entityId = new AtlasObjectId(
-            SchemaAtlasTypes.SR_FIXED.getName(), ATTR_QUALIFIED_NAME, qualifiedName);
-
-        if (purge) {
-            ctx.purge(entityId);
-        } else {
-            ctx.delete(entityId);
-        }
-    }
-
-    private void deletePrimitive(SchemaContext ctx,
-                                 int id,
-                                 Schema schema,
-                                 boolean purge) {
-        String qualifiedName = ctx.getQualifiedName(id, schema.getFullName());
-        AtlasObjectId entityId = new AtlasObjectId(
-            SchemaAtlasTypes.SR_PRIMITIVE.getName(), ATTR_QUALIFIED_NAME, qualifiedName);
-
-        if (purge) {
-            ctx.purge(entityId);
-        } else {
-            ctx.delete(entityId);
-        }
-    }
-
-    private String getNamespace(Schema schema) {
-        try {
-            return schema.getNamespace();
-        } catch (AvroRuntimeException e) {
-            return "";
-        }
-    }
-
-    private Set<String> getAliases(Schema schema) {
-        try {
-            return schema.getAliases();
-        } catch (AvroRuntimeException e) {
-            return Collections.emptySet();
-        }
-    }
 }

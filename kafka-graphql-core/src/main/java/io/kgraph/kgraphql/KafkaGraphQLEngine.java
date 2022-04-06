@@ -17,35 +17,53 @@
 package io.kgraph.kgraphql;
 
 import graphql.GraphQL;
+import io.hdocdb.store.HDocumentDB;
+import io.hdocdb.store.InMemoryHDocumentDB;
 import io.kcache.Cache;
+import io.kcache.CacheUpdateHandler;
+import io.kcache.KafkaCache;
+import io.kcache.KafkaCacheConfig;
+import io.kcache.caffeine.CaffeineCache;
 import io.kgraph.kgraphql.schema.GraphQLExecutor;
 import io.kgraph.kgraphql.schema.GraphQLSchemaBuilder;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.common.Configurable;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Utils;
+import org.ojai.Document;
+import org.ojai.json.Json;
+import org.ojai.store.DocumentStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.confluent.kafka.schemaregistry.SchemaProvider;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
+import io.confluent.kafka.schemaregistry.avro.AvroSchemaUtils;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
 
 public class KafkaGraphQLEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaGraphQLEngine.class);
 
     private KafkaGraphQLConfig config;
     private GraphQLExecutor executor;
-    private Cache<Long, Long> cache;
-    private final AtomicBoolean initialized = new AtomicBoolean();
+    private Map<String, Cache<byte[], byte[]>> caches;
+    private HDocumentDB docdb;
+    private final AtomicBoolean initialized;
 
     private static KafkaGraphQLEngine INSTANCE;
 
@@ -68,6 +86,13 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
     }
 
     private KafkaGraphQLEngine() {
+        try {
+            caches = new HashMap<>();
+            docdb = new InMemoryHDocumentDB();
+            initialized = new AtomicBoolean();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void configure(Map<String, ?> configs) {
@@ -93,6 +118,50 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         if (!isInitialized) {
             throw new IllegalStateException("Illegal state while initializing engine. Engine "
                 + "was already initialized");
+        }
+    }
+
+    private void initTopics() {
+        for (String topic : config.getTopics()) {
+            initTopic(topic);
+        }
+    }
+
+    private void initTopic(String topic) {
+        Map<String, Object> configs = new HashMap<>(config.originals());
+        String groupId = (String)
+            configs.getOrDefault(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, "kafka-graphql-1");
+        configs.put(KafkaCacheConfig.KAFKACACHE_TOPIC_CONFIG, topic);
+        configs.put(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, groupId);
+        configs.put(KafkaCacheConfig.KAFKACACHE_CLIENT_ID_CONFIG, groupId + "-" + topic);
+        configs.put(KafkaCacheConfig.KAFKACACHE_TOPIC_SKIP_VALIDATION_CONFIG, true);
+        Cache<byte[], byte[]> cache = new KafkaCache<>(
+            new KafkaCacheConfig(configs),
+            Serdes.ByteArray(),
+            Serdes.ByteArray(),
+            new UpdateHandler(),
+            new CaffeineCache<>(null)
+        );
+        caches.put(topic, cache);
+
+        docdb.createCollection(topic);
+    }
+
+    class UpdateHandler implements CacheUpdateHandler<byte[], byte[]> {
+        public void handleUpdate(byte[] key, byte[] value, byte[] oldValue,
+                                 TopicPartition tp, long offset, long timestamp) {
+            try {
+                String topic = tp.topic();
+                DocumentStore store = docdb.getCollection(topic);
+                GenericRecord record = (GenericRecord)
+                    new KafkaAvroDeserializer().deserialize(topic, value);
+                byte[] json = AvroSchemaUtils.toJson(record);
+                Document doc =
+                    Json.newDocumentStream(new ByteArrayInputStream(json)).iterator().next();
+                store.insert(doc);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

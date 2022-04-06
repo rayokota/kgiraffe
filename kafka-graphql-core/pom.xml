@@ -24,11 +24,15 @@
         </dependency>
         <dependency>
             <groupId>io.confluent</groupId>
-            <artifactId>kafka-json-schema-provider</artifactId>
+            <artifactId>kafka-avro-serializer</artifactId>
         </dependency>
         <dependency>
             <groupId>io.confluent</groupId>
-            <artifactId>kafka-protobuf-provider</artifactId>
+            <artifactId>kafka-json-schema-serializer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-protobuf-serializer</artifactId>
         </dependency>
         <dependency>
             <groupId>io.kcache</groupId>
@@ -36,11 +40,7 @@
         </dependency>
         <dependency>
             <groupId>io.kcache</groupId>
-            <artifactId>kcache-bdbje</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.kcache</groupId>
-            <artifactId>kcache-rocksdb</artifactId>
+            <artifactId>kcache-caffeine</artifactId>
         </dependency>
         <dependency>
             <groupId>io.hdocdb</groupId>
