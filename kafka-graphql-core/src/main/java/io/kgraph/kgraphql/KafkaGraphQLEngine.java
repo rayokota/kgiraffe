@@ -111,7 +111,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         );
         SchemaRegistryClient schemaRegistry =
             new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
-        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(schemaRegistry, topics);
+        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, schemaRegistry, topics);
         executor = new GraphQLExecutor(config, schemaBuilder);
 
         boolean isInitialized = initialized.compareAndSet(false, true);
@@ -142,6 +142,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
             new UpdateHandler(),
             new CaffeineCache<>(null)
         );
+        cache.init();
         caches.put(topic, cache);
 
         docdb.createCollection(topic);
@@ -190,11 +191,19 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         return executor.getGraphQL();
     }
 
+    public DocumentStore getCollection(String name) {
+        return docdb.getCollection(name);
+    }
+
     @Override
     public void close() throws IOException {
-        if (cache != null) {
-            cache.close();
-        }
+        caches.forEach((key, value) -> {
+            try {
+                value.close();
+            } catch (IOException e) {
+                LOG.warn("Could not close cache for " + key);
+            }
+        });
     }
 
     @SuppressWarnings("unchecked")

@@ -1,38 +1,33 @@
 package io.kgraph.kgraphql.schema;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
 import graphql.Scalars;
-import graphql.scalars.ExtendedScalars;
+import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLCodeRegistry;
 import graphql.schema.GraphQLEnumType;
 import graphql.schema.GraphQLFieldDefinition;
-import graphql.schema.GraphQLImplementingType;
-import graphql.schema.GraphQLInputObjectField;
 import graphql.schema.GraphQLInputObjectType;
-import graphql.schema.GraphQLInputType;
-import graphql.schema.GraphQLInterfaceType;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
-import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
-import graphql.schema.GraphQLType;
-import graphql.schema.GraphQLTypeReference;
+import graphql.schema.idl.RuntimeWiring;
+import graphql.schema.idl.SchemaGenerator;
+import graphql.schema.idl.SchemaParser;
+import graphql.schema.idl.TypeDefinitionRegistry;
+import io.kgraph.kgraphql.KafkaGraphQLEngine;
 import io.kgraph.kgraphql.schema.SchemaContext.Mode;
-import io.vavr.Tuple2;
-import io.vavr.Tuple3;
 import io.vavr.control.Either;
 import org.apache.avro.Schema;
 import org.everit.json.schema.ObjectSchema;
-import org.ojai.Value;
+import org.ojai.Value.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.net.URL;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,7 +45,7 @@ import static graphql.schema.idl.TypeRuntimeWiring.newTypeWiring;
  */
 public class GraphQLSchemaBuilder {
 
-    private static final Logger log = LoggerFactory.getLogger(GraphQLSchemaBuilder.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GraphQLSchemaBuilder.class);
 
     public static final String QUERY_ROOT = "query_root";
 
@@ -64,6 +59,7 @@ public class GraphQLSchemaBuilder {
     // TODO
     public static final String TYPE_ATTR_NAME = "_type";
 
+    private final KafkaGraphQLEngine engine;
     private final SchemaRegistryClient schemaRegistry;
     private final List<String> topics;
 
@@ -75,14 +71,15 @@ public class GraphQLSchemaBuilder {
             .value("desc", "desc", "Descending")
             .build();
 
-    public GraphQLSchemaBuilder(SchemaRegistryClient schemaRegistry,
+    public GraphQLSchemaBuilder(KafkaGraphQLEngine engine,
+                                SchemaRegistryClient schemaRegistry,
                                 List<String> topics) {
+        this.engine = engine;
         this.schemaRegistry = schemaRegistry;
         this.topics = topics;
     }
 
     // TODO remove
-    /*
     public GraphQLSchema initHello() {
         try {
             URL url = Resources.getResource("schema.graphql");
@@ -116,7 +113,6 @@ public class GraphQLSchemaBuilder {
     public DataFetcher getEchoDataFetcher() {
         return environment -> environment.getArgument("toEcho");
     }
-    */
 
 
     /**
@@ -147,7 +143,7 @@ public class GraphQLSchemaBuilder {
     private Stream<GraphQLFieldDefinition> getQueryFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
         // TODO handle primitive key schemas
-        Either<Value.Type, ParsedSchema> keySchema = getKeySchema(topic);
+        Either<Type, ParsedSchema> keySchema = getKeySchema(topic);
         ParsedSchema valueSchema = getValueSchema(topic);
 
         if (!isObject(valueSchema)) {
@@ -156,11 +152,8 @@ public class GraphQLSchemaBuilder {
 
         GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
 
-        GraphQLQueryFactory queryFactory = GraphQLQueryFactory.builder()
-            .withTopic(topic)
-            .withSchemas(keySchema, valueSchema)
-            .withImplementingType(objectType)
-            .build();
+        GraphQLQueryFactory queryFactory =
+            new GraphQLQueryFactory(engine, topic, keySchema, valueSchema, objectType);
 
         return Stream.of(GraphQLFieldDefinition.newFieldDefinition()
             .name(topic)
@@ -176,7 +169,7 @@ public class GraphQLSchemaBuilder {
     private boolean isObject(ParsedSchema schema) {
         switch (schema.schemaType()) {
             case "AVRO":
-                return ((org.apache.avro.Schema)schema.rawSchema()).getType() == Schema.Type.RECORD;
+                return ((org.apache.avro.Schema) schema.rawSchema()).getType() == Schema.Type.RECORD;
             case "JSON":
                 return schema.rawSchema() instanceof ObjectSchema;
             case "PROTOBUF":
@@ -185,11 +178,11 @@ public class GraphQLSchemaBuilder {
         }
     }
 
-    private Either<Value.Type, ParsedSchema> getKeySchema(String topic) {
+    private Either<Type, ParsedSchema> getKeySchema(String topic) {
         Optional<ParsedSchema> keySchema = getLatestSchema(topic + "-key");
         // TODO other primitive keys
-        return keySchema.<Either<Value.Type, ParsedSchema>>map(Either::right)
-            .orElseGet(() -> Either.left(Value.Type.STRING));
+        return keySchema.<Either<Type, ParsedSchema>>map(Either::right)
+            .orElseGet(() -> Either.left(Type.STRING));
     }
 
     private ParsedSchema getValueSchema(String topic) {
@@ -211,11 +204,11 @@ public class GraphQLSchemaBuilder {
     }
 
     private GraphQLArgument getWhereArgument(String topic,
-                                             Either<Value.Type, ParsedSchema> keySchema,
+                                             Either<Type, ParsedSchema> keySchema,
                                              ParsedSchema valueSchema) {
         GraphQLInputObjectType whereInputObject =
             (GraphQLInputObjectType) new GraphQLAvroSchemaBuilder().createInputType(
-                new SchemaContext(topic, Mode.INPUT), ((AvroSchema)valueSchema).rawSchema());
+                new SchemaContext(topic, Mode.INPUT), ((AvroSchema) valueSchema).rawSchema());
 
         return GraphQLArgument.newArgument()
             .name(WHERE_PARAM_NAME)
@@ -242,13 +235,13 @@ public class GraphQLSchemaBuilder {
     }
 
     private GraphQLArgument getOrderByArgument(String topic,
-                                               Either<Value.Type, ParsedSchema> keySchema,
+                                               Either<Type, ParsedSchema> keySchema,
                                                ParsedSchema valueSchema) {
         String typeName = topic + "_order";
 
         GraphQLInputObjectType orderByInputObject =
             (GraphQLInputObjectType) new GraphQLAvroSchemaBuilder().createInputType(
-                new SchemaContext(topic, Mode.ORDER_BY), ((AvroSchema)valueSchema).rawSchema());
+                new SchemaContext(topic, Mode.ORDER_BY), ((AvroSchema) valueSchema).rawSchema());
 
         return GraphQLArgument.newArgument()
             .name(ORDER_BY_PARAM_NAME)
@@ -259,7 +252,7 @@ public class GraphQLSchemaBuilder {
     }
 
     private GraphQLObjectType getObjectType(String topic,
-                                            Either<Value.Type, ParsedSchema> keySchema,
+                                            Either<Type, ParsedSchema> keySchema,
                                             ParsedSchema valueSchema) {
         GraphQLObjectType objectType =
             (GraphQLObjectType) new GraphQLAvroSchemaBuilder().createOutputType(

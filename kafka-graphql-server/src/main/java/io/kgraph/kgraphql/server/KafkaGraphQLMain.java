@@ -39,34 +39,40 @@ public class KafkaGraphQLMain extends AbstractVerticle {
 
     @Override
     public void start(Promise<Void> startPromise) throws Exception {
-        KafkaGraphQLEngine engine = KafkaGraphQLEngine.getInstance();
+        try {
+            KafkaGraphQLEngine engine = KafkaGraphQLEngine.getInstance();
 
-        Router router = Router.router(vertx);
-        GraphQL graphQL = engine.getGraphQL();
-        router.route().handler(LoggerHandler.create());
-        router.route().handler(BodyHandler.create());
-        router.route("/graphql").handler(GraphQLHandler.create(engine.getGraphQL()));
+            Router router = Router.router(vertx);
+            GraphQL graphQL = engine.getGraphQL();
+            router.route().handler(LoggerHandler.create());
+            router.route().handler(BodyHandler.create());
+            router.route("/graphql").handler(GraphQLHandler.create(graphQL));
 
-        GraphiQLHandlerOptions options = new GraphiQLHandlerOptions().setEnabled(true);
-        router.route("/graphiql/*").handler(GraphiQLHandler.create(options));
+            GraphiQLHandlerOptions options = new GraphiQLHandlerOptions().setEnabled(true);
+            router.route("/graphiql/*").handler(GraphiQLHandler.create(options));
 
-        // Create the HTTP server
-        vertx.createHttpServer()
-            // Handle every request using the router
-            .requestHandler(router)
-            // Start listening
-            .listen(listener.getPort(), ar -> {
-                if (ar.succeeded()) {
-                    LOG.info("Server started, listening on " + listener.getPort());
-                    LOG.info("Kafka GraphQL is at your service...");
-                    startPromise.complete();
-                } else {
-                    LOG.info("Could not start server " + ar.cause().getLocalizedMessage());
-                    startPromise.fail(ar.cause());
-                    LOG.error("Server died unexpectedly: ", ar.cause());
-                    System.exit(1);
-                }
-            });
+            // Create the HTTP server
+            vertx.createHttpServer()
+                // Handle every request using the router
+                .requestHandler(router)
+                // Start listening
+                .listen(listener.getPort(), ar -> {
+                    if (ar.succeeded()) {
+                        LOG.info("Server started, listening on " + listener.getPort());
+                        LOG.info("Kafka GraphQL is at your service...");
+                        startPromise.complete();
+                    } else {
+                        LOG.info("Could not start server " + ar.cause().getLocalizedMessage());
+                        startPromise.fail(ar.cause());
+                        LOG.error("Server died unexpectedly: ", ar.cause());
+                        System.exit(1);
+                    }
+                });
+        } catch (Exception e) {
+            LOG.error("Could not start server", e);
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     private boolean isTls() {

@@ -19,7 +19,7 @@ import java.util.function.Function;
 
 public class JavaScalars {
 
-    static final Logger log = LoggerFactory.getLogger(JavaScalars.class);
+    private static final Logger LOG = LoggerFactory.getLogger(JavaScalars.class);
 
     public static final GraphQLScalarType GraphQLDate;
 

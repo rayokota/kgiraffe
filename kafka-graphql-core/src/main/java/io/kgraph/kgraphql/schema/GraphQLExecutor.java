@@ -8,8 +8,11 @@ import graphql.analysis.MaxQueryDepthInstrumentation;
 import graphql.execution.instrumentation.ChainedInstrumentation;
 import graphql.execution.instrumentation.Instrumentation;
 import graphql.schema.GraphQLSchema;
+import graphql.schema.idl.SchemaPrinter;
 import io.kgraph.kgraphql.KafkaGraphQLConfig;
 import io.kgraph.kgraphql.schema.timeout.MaxQueryDurationInstrumentation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -17,6 +20,8 @@ import java.util.Map;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 
 public class GraphQLExecutor {
+
+    private final static Logger LOG = LoggerFactory.getLogger(GraphQLExecutor.class);
 
     private volatile GraphQL graphQL;
     private final GraphQLSchemaBuilder graphQLSchemaBuilder;
@@ -36,7 +41,10 @@ public class GraphQLExecutor {
         if (graphQL == null) {
             synchronized (this) {
                 if (graphQL == null) {
-                    GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
+                    //GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
+                    GraphQLSchema graphQLSchema = graphQLSchemaBuilder.initHello();
+                    String sdl = new SchemaPrinter().print(graphQLSchema);
+                    LOG.info("SDL: " + sdl);
                     this.graphQL = GraphQL
                         .newGraphQL(graphQLSchema)
                         .instrumentation(getInstrumentation())
