@@ -195,20 +195,13 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     public void sync() {
-        // TODO
-        /*
-        CompletableFuture<Void> commitsFuture = CompletableFuture.runAsync(() -> commits.sync());
-        CompletableFuture<Void> timestampsFuture = CompletableFuture.runAsync(() ->
-            timestamps.sync()).thenRunAsync(() -> transactionManager.init());
-        CompletableFuture<Void> leasesFuture = CompletableFuture.runAsync(() -> leases.sync());
-        CompletableFuture<Void> authFuture = CompletableFuture.runAsync(() -> auth.sync());
-        CompletableFuture<Void> authUsersFuture = CompletableFuture.runAsync(() -> authUsers.sync());
-        CompletableFuture<Void> authRolesFuture = CompletableFuture.runAsync(() -> authRoles.sync());
-        CompletableFuture<Void> kvFuture = CompletableFuture.runAsync(() -> cache.sync());
-        CompletableFuture.allOf(commitsFuture, timestampsFuture, leasesFuture,
-            authFuture, authUsersFuture, authRolesFuture, kvFuture).join();
-
-         */
+        caches.forEach((key, value) -> {
+            try {
+                value.sync();
+            } catch (Exception e) {
+                LOG.warn("Could not sync cache for " + key);
+            }
+        });
     }
 
     public HDocumentDB getDocDB() {

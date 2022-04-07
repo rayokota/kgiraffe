@@ -78,45 +78,6 @@ public class GraphQLSchemaBuilder {
         this.avroBuilder = new GraphQLAvroSchemaBuilder();
     }
 
-    // TODO remove
-    /*
-    public GraphQLSchema initHello() {
-        try {
-            URL url = Resources.getResource("schema.graphql");
-            String sdl = Resources.toString(url, Charsets.UTF_8);
-            return buildSchema(sdl);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private GraphQLSchema buildSchema(String sdl) {
-        TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(sdl);
-        RuntimeWiring runtimeWiring = b:euildWiring();
-        SchemaGenerator schemaGenerator = new SchemaGenerator();
-        return schemaGenerator.makeExecutableSchema(typeRegistry, runtimeWiring);
-    }
-
-    private RuntimeWiring buildWiring() {
-        return RuntimeWiring.newRuntimeWiring()
-            .type(newTypeWiring("Query")
-                .dataFetcher("hello", getHelloWorldDataFetcher())
-                .dataFetcher("echo", getEchoDataFetcher())
-                .build())
-            .build();
-
-    }
-    public DataFetcher getHelloWorldDataFetcher() {
-        return environment -> "world";
-    }
-
-    public DataFetcher getEchoDataFetcher() {
-        return environment -> environment.getArgument("toEcho");
-    }
-
-     */
-
-
     /**
      * @return A freshly built {@link graphql.schema.GraphQLSchema}
      */
@@ -321,7 +282,7 @@ public class GraphQLSchemaBuilder {
             .name(SUBSCRIPTION_ROOT)
             .description("Subscriptions for Kafka topics");
         subType.fields(topics.stream()
-            .flatMap(t -> getSubscriptionFieldDefinition(codeRegistry, t))
+            .flatMap(t -> getQueryFieldStreamDefinition(codeRegistry, t))
             .collect(Collectors.toList()));
 
         codeRegistry.build();
@@ -329,7 +290,7 @@ public class GraphQLSchemaBuilder {
         return subType.build();
     }
 
-    private Stream<GraphQLFieldDefinition> getSubscriptionFieldDefinition(
+    private Stream<GraphQLFieldDefinition> getQueryFieldStreamDefinition(
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
         // TODO handle primitive key schemas
         Either<Type, ParsedSchema> keySchema = getKeySchema(topic);

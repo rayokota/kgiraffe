@@ -34,13 +34,8 @@ public class KGiraffeMain extends AbstractVerticle {
     public KGiraffeMain(KGiraffeConfig config)
         throws URISyntaxException {
         this.config = config;
+        // TODO
         this.listener = new URI("http://0.0.0.0:8765");
-        /*
-        this.listener = elector.getListeners().isEmpty()
-            ? new URI("http://0.0.0.0:2379")
-            : elector.getListeners().get(0);
-
-         */
     }
 
     @Override
@@ -62,7 +57,6 @@ public class KGiraffeMain extends AbstractVerticle {
                 // See https://github.com/vert-x3/vertx-web/issues/1415
                 .setKeepAlive(5000L);
             router.route("/graphql")
-                //.handler(GraphQLWSHandler.create(graphQL))
                 .handler(ApolloWSHandler.create(graphQL, apolloWSOptions))
                 .handler(GraphQLHandler.create(graphQL, graphQLOptions));
 
@@ -76,7 +70,6 @@ public class KGiraffeMain extends AbstractVerticle {
 
             // Create the HTTP server
             HttpServerOptions httpServerOptions = new HttpServerOptions()
-                //.addWebSocketSubProtocol("graphql-transport-ws");
                 .addWebSocketSubProtocol("graphql-ws")
                 .setTcpKeepAlive(true);
             Single<HttpServer> single = vertx.createHttpServer(httpServerOptions)
@@ -88,10 +81,15 @@ public class KGiraffeMain extends AbstractVerticle {
 
             single.subscribe(
                 server -> {
-                    LOG.info("Server started, listening on " + listener.getPort());
+                    LOG.info("Server started, listening on {}", listener.getPort());
                     LOG.info("GraphQL:     http://localhost:{}/graphql", listener.getPort());
                     LOG.info("GraphQL-WS:  ws://localhost:{}/graphql", listener.getPort());
                     LOG.info("GraphiQL:    http://localhost:{}/playground", listener.getPort());
+                    LOG.info("     /)/)   ");
+                    LOG.info("    ( ..\\   ");
+                    LOG.info("    /'-._)  ");
+                    LOG.info("   /#/      ");
+                    LOG.info("  /#/       ");
                     LOG.info("KGiraffe is at your service...");
                 },
                 failure -> {
@@ -104,10 +102,6 @@ public class KGiraffeMain extends AbstractVerticle {
             e.printStackTrace();
             throw e;
         }
-    }
-
-    private boolean isTls() {
-        return listener.getScheme().equalsIgnoreCase("https");
     }
 
     public static void main(String[] args) {

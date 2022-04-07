@@ -299,5 +299,4 @@ public class GraphQLAvroSchemaBuilder {
                 .collect(Collectors.toList()))
             .build();
     }
-
 }

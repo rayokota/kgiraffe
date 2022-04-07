@@ -13,18 +13,6 @@
 
 KGiraffe is a ...
 
-## Maven
-
-Releases of KGiraffe are deployed to Maven Central.
-
-```xml
-<dependency>
-    <groupId>io.kgraph</groupId>
-    <artifactId>kgiraffe-core</artifactId>
-    <version>0.0.1</version>
-</dependency>
-```
-
 ## Getting Started
 
 To run KGiraffe, download a [release](https://github.com/rayokota/kgiraffe/releases), unpack it, 
