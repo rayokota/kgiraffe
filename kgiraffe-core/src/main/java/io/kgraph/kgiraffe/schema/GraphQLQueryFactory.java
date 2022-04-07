@@ -28,7 +28,9 @@ import graphql.schema.GraphQLType;
 import graphql.schema.InputValueWithState;
 import io.hdocdb.store.HQueryCondition;
 import io.kgraph.kgiraffe.KGiraffeEngine;
+import io.kgraph.kgiraffe.schema.PredicateFilter.Criteria;
 import io.kgraph.kgiraffe.schema.util.DataFetchingEnvironmentBuilder;
+import io.kgraph.kgiraffe.schema.util.GraphQLSupport;
 import io.vavr.control.Either;
 import org.ojai.DocumentStream;
 import org.ojai.Value.Type;
@@ -37,10 +39,17 @@ import org.ojai.store.QueryCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 
@@ -101,26 +110,20 @@ public class GraphQLQueryFactory {
     }
 
     public HQueryCondition getCriteriaQuery(DataFetchingEnvironment environment, Field field) {
-        return null;
-
-        /*
         // Build predicates from query arguments
-        List<FilterCriteria> predicates = getFieldPredicates(field, environment);
+        List<HQueryCondition> predicates = getFieldPredicates(field, environment);
 
         return getCompoundPredicate(predicates, Logical.AND);
-
-         */
     }
 
     protected String getOrderByPath(DataFetchingEnvironment environment, Field field) {
         return null;
     }
 
-    /*
-    protected List<FilterCriteria> getFieldPredicates(Field field,
-                                                      DataFetchingEnvironment environment) {
+    protected List<HQueryCondition> getFieldPredicates(Field field,
+                                                       DataFetchingEnvironment environment) {
 
-        List<FilterCriteria> predicates = new ArrayList<>();
+        List<HQueryCondition> predicates = new ArrayList<>();
 
         field.getArguments().stream()
             .map(it -> getPredicate(field, environment, it))
@@ -130,25 +133,20 @@ public class GraphQLQueryFactory {
         return predicates;
     }
 
-     */
-
     protected Optional<Argument> getArgument(Field selectedField, String argumentName) {
         return selectedField.getArguments().stream()
             .filter(it -> it.getName().equals(argumentName))
             .findFirst();
     }
 
-    /*
-    protected FilterCriteria getPredicate(Field field, DataFetchingEnvironment environment,
-                                          Argument argument) {
+    protected HQueryCondition getPredicate(Field field, DataFetchingEnvironment environment,
+                                           Argument argument) {
         if (!GraphQLSupport.isWhereArgument(argument)) {
             return null;
         }
 
         return getWherePredicate(argumentEnvironment(environment, argument), argument);
     }
-
-     */
 
     @SuppressWarnings("unchecked")
     private <R extends Value<?>> R getValue(Argument argument, DataFetchingEnvironment environment) {
@@ -173,13 +171,12 @@ public class GraphQLQueryFactory {
         return env.getVariables().get(variableReference.getName());
     }
 
-    /*
-    protected FilterCriteria getWherePredicate(DataFetchingEnvironment environment,
-                                               Argument argument) {
+    protected HQueryCondition getWherePredicate(DataFetchingEnvironment environment,
+                                                Argument argument) {
         ObjectValue whereValue = getValue(argument, environment);
 
         if (whereValue.getChildren().isEmpty()) {
-            return new FilterCriteria();
+            return new HQueryCondition();
         }
 
         Logical logical = extractLogical(argument);
@@ -196,17 +193,17 @@ public class GraphQLQueryFactory {
         return getArgumentPredicate(predicateDataFetchingEnvironment, predicateArgument);
     }
 
-    protected FilterCriteria getArgumentPredicate(
+    protected HQueryCondition getArgumentPredicate(
         DataFetchingEnvironment environment, Argument argument) {
         ObjectValue whereValue = getValue(argument, environment);
 
         if (whereValue.getChildren().isEmpty()) {
-            return new FilterCriteria();
+            return new HQueryCondition();
         }
 
         Logical logical = extractLogical(argument);
 
-        List<FilterCriteria> predicates = new ArrayList<>();
+        List<HQueryCondition> predicates = new ArrayList<>();
 
         whereValue.getObjectFields().stream()
             .filter(it -> Logical.symbols().contains(it.getName()))
@@ -238,7 +235,7 @@ public class GraphQLQueryFactory {
     }
 
 
-    protected FilterCriteria getObjectFieldPredicate(DataFetchingEnvironment environment,
+    protected HQueryCondition getObjectFieldPredicate(DataFetchingEnvironment environment,
                                                      Logical logical,
                                                      ObjectField objectField,
                                                      Argument argument,
@@ -250,17 +247,17 @@ public class GraphQLQueryFactory {
             argument);
     }
 
-    protected FilterCriteria getArgumentsPredicate(DataFetchingEnvironment environment,
+    protected HQueryCondition getArgumentsPredicate(DataFetchingEnvironment environment,
                                                    Argument argument) {
         ArrayValue whereValue = getValue(argument, environment);
 
         if (whereValue.getValues().isEmpty()) {
-            return new FilterCriteria();
+            return new HQueryCondition();
         }
 
         Logical logical = extractLogical(argument);
 
-        List<FilterCriteria> predicates = new ArrayList<>();
+        List<HQueryCondition> predicates = new ArrayList<>();
 
         List<Map<String, Object>> arguments = environment.getArgument(logical.symbol());
         List<ObjectValue> values = whereValue.getValues()
@@ -310,8 +307,6 @@ public class GraphQLQueryFactory {
         return getCompoundPredicate(predicates, logical);
     }
 
-     */
-
     private Map<String, Object> getFieldArguments(DataFetchingEnvironment environment,
                                                   ObjectField field, Argument argument) {
         Map<String, Object> arguments;
@@ -337,16 +332,15 @@ public class GraphQLQueryFactory {
             .orElse(Logical.AND);
     }
 
-    /*
-    private FilterCriteria getLogicalPredicates(String fieldName,
-                                                ObjectField objectField,
-                                                DataFetchingEnvironment environment,
-                                                Argument argument) {
+    private HQueryCondition getLogicalPredicates(String fieldName,
+                                                 ObjectField objectField,
+                                                 DataFetchingEnvironment environment,
+                                                 Argument argument) {
         ArrayValue value = (ArrayValue) objectField.getValue();
 
         Logical logical = extractLogical(argument);
 
-        List<FilterCriteria> predicates = new ArrayList<>();
+        List<HQueryCondition> predicates = new ArrayList<>();
 
         value.getValues()
             .stream()
@@ -366,8 +360,10 @@ public class GraphQLQueryFactory {
         return getCompoundPredicate(predicates, logical);
     }
 
-    private FilterCriteria getLogicalPredicate(String fieldName, ObjectField objectField,
-                                               DataFetchingEnvironment environment, Argument argument) {
+    private HQueryCondition getLogicalPredicate(String fieldName,
+                                                ObjectField objectField,
+                                                DataFetchingEnvironment environment,
+                                                Argument argument) {
         ObjectValue expressionValue;
 
         if (objectField.getValue() instanceof ObjectValue) {
@@ -377,12 +373,12 @@ public class GraphQLQueryFactory {
         }
 
         if (expressionValue.getChildren().isEmpty()) {
-            return new FilterCriteria();
+            return new HQueryCondition();
         }
 
         Logical logical = extractLogical(argument);
 
-        List<FilterCriteria> predicates = new ArrayList<>();
+        List<HQueryCondition> predicates = new ArrayList<>();
 
         // Let's parse logical expressions, i.e. AND, OR
         expressionValue.getObjectFields().stream()
@@ -413,7 +409,6 @@ public class GraphQLQueryFactory {
                 new Field(fieldName));
             Map<String, Object> args = new LinkedHashMap<>();
             Argument arg = new Argument(logical.symbol(), expressionValue);
-            boolean isOptional = false;
 
             if (Logical.symbols().contains(argument.getName())) {
                 args.put(logical.symbol(), environment.getArgument(argument.getName()));
@@ -433,7 +428,7 @@ public class GraphQLQueryFactory {
                 argumentEnvironment(environment, argument),
                 new Argument(it.getName(), it.getValue())))
             .sorted()
-            .map(it -> it.toFilterCriteria(environment))
+            .map(it -> it.toQueryCondition(environment))
             .filter(Objects::nonNull)
             .forEach(predicates::add);
 
@@ -441,27 +436,32 @@ public class GraphQLQueryFactory {
 
     }
 
-    private FilterCriteria getCompoundPredicate(List<FilterCriteria> predicates, Logical logical) {
+    private HQueryCondition getCompoundPredicate(List<HQueryCondition> predicates, Logical logical) {
         if (predicates.isEmpty()) {
-            return new FilterCriteria();
+            return new HQueryCondition();
         }
 
         if (predicates.size() == 1) {
             return predicates.get(0);
         }
 
-        FilterCriteria criteria = new FilterCriteria();
+        HQueryCondition criteria = new HQueryCondition();
         switch (logical) {
             case OR:
-                criteria.setCondition(Condition.OR);
+                criteria.or();
                 break;
             case AND:
-                criteria.setCondition(Condition.AND);
+                criteria.and();
                 break;
             default:
                 throw new IllegalArgumentException();
         }
-        criteria.setCriterion(predicates);
+        for (HQueryCondition predicate : predicates) {
+            if (!predicate.isEmpty()) {
+                criteria.condition(predicate);
+            }
+        }
+        criteria.close();
         return criteria;
     }
 
@@ -484,8 +484,6 @@ public class GraphQLQueryFactory {
 
         return new PredicateFilter(objectField.getName(), filterValue, option);
     }
-
-     */
 
     protected DataFetchingEnvironment argumentEnvironment(DataFetchingEnvironment environment,
                                                           Map<String, Object> arguments) {

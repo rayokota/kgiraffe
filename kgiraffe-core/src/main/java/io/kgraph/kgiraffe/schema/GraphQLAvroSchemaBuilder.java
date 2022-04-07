@@ -74,7 +74,7 @@ public class GraphQLAvroSchemaBuilder {
             }
             List<GraphQLInputObjectField> fields = schema.getFields().stream()
                 .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
-                .flatMap(f -> createInputField(ctx, schema, f))
+                .map(f -> createInputField(ctx, schema, f))
                 .collect(Collectors.toList());
             GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
                 .name(ctx.qualify(schema.getFullName()))
@@ -106,81 +106,73 @@ public class GraphQLAvroSchemaBuilder {
         }
     }
 
-    private Stream<GraphQLInputObjectField> createInputField(SchemaContext ctx,
-                                                             Schema schema,
-                                                             Schema.Field field) {
+    private GraphQLInputObjectField createInputField(SchemaContext ctx,
+                                                     Schema schema,
+                                                     Schema.Field field) {
         GraphQLInputType fieldType = createInputType(ctx, field.schema());
-        if (!ctx.isWhere() || fieldType instanceof GraphQLInputObjectType) {
-            return Stream.of(GraphQLInputObjectField.newInputObjectField()
-                .name(field.name())
-                .description(field.doc())
-                .type(fieldType)
-                .build());
-        } else {
-            String name = ctx.qualify(schema.getFullName());
-            List<GraphQLInputObjectField> fields = new ArrayList<>();
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Logical.OR.symbol())
-                .description("Logical OR criteria expression")
-                .type(new GraphQLList(new GraphQLTypeReference(name)))
-                .build()
-            );
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Logical.AND.symbol())
-                .description("Logical AND criteria expression")
-                .type(new GraphQLList(new GraphQLTypeReference(name)))
-                .build()
-            );
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.EQ.symbol())
-                .description("Equals criteria")
-                .type(fieldType)
-                .build()
-            );
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.NEQ.symbol())
-                .description("Not equals criteria")
-                .type(fieldType)
-                .build()
-            );
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.LTE.symbol())
-                .description("Less than or equals criteria")
-                .type(fieldType)
-                .build()
-            );
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.GTE.symbol())
-                .description("Greater or equals criteria")
-                .type(fieldType)
-                .build()
-            );
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.GT.symbol())
-                .description("Greater than criteria")
-                .type(fieldType)
-                .build()
-            );
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.LT.symbol())
-                .description("Less than criteria")
-                .type(fieldType)
-                .build()
-            );
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.IN.symbol())
-                .description("In criteria")
-                .type(new GraphQLList(fieldType))
-                .build()
-            );
-            fields.add(GraphQLInputObjectField.newInputObjectField()
-                .name(Criteria.NIN.symbol())
-                .description("Not in criteria")
-                .type(new GraphQLList(fieldType))
-                .build()
-            );
-            return fields.stream();
+        if (ctx.isWhere() && !(fieldType instanceof GraphQLInputObjectType)) {
+            String recordName = ctx.qualify(schema.getFullName());
+            fieldType = GraphQLInputObjectType.newInputObject()
+                .name(ctx.qualify(schema.getFullName() + "_" + field.name()))
+                .description("Criteria expression specification of "
+                    + field.name() + " attribute in entity " + schema.getFullName())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Logical.OR.symbol())
+                    .description("Logical OR criteria expression")
+                    .type(new GraphQLList(new GraphQLTypeReference(recordName)))
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Logical.AND.symbol())
+                    .description("Logical AND criteria expression")
+                    .type(new GraphQLList(new GraphQLTypeReference(recordName)))
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Criteria.EQ.symbol())
+                    .description("Equals criteria")
+                    .type(fieldType)
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Criteria.NEQ.symbol())
+                    .description("Not equals criteria")
+                    .type(fieldType)
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Criteria.LTE.symbol())
+                    .description("Less than or equals criteria")
+                    .type(fieldType)
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Criteria.GTE.symbol())
+                    .description("Greater or equals criteria")
+                    .type(fieldType)
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Criteria.GT.symbol())
+                    .description("Greater than criteria")
+                    .type(fieldType)
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Criteria.LT.symbol())
+                    .description("Less than criteria")
+                    .type(fieldType)
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Criteria.IN.symbol())
+                    .description("In criteria")
+                    .type(new GraphQLList(fieldType))
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Criteria.NIN.symbol())
+                    .description("Not in criteria")
+                    .type(new GraphQLList(fieldType))
+                    .build())
+                .build();
         }
+        return GraphQLInputObjectField.newInputObjectField()
+            .name(field.name())
+            .description(field.doc())
+            .type(fieldType)
+            .build();
     }
 
     private GraphQLEnumType createInputEnum(SchemaContext ctx, Schema schema) {

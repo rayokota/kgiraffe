@@ -15,8 +15,6 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 
 public class SubscriptionFetcher implements DataFetcher {
 
-    private final static ObjectMapper MAPPER = new ObjectMapper();
-
     private final KGiraffeEngine engine;
     private final SchemaRegistryClient schemaRegistry;
     private final String topic;

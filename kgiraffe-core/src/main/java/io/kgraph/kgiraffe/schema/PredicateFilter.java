@@ -1,9 +1,16 @@
 package io.kgraph.kgiraffe.schema;
 
 import com.google.common.collect.EnumHashBiMap;
+import graphql.schema.DataFetchingEnvironment;
+import io.hdocdb.HValue;
+import io.hdocdb.store.HQueryCondition;
+import org.ojai.Value;
+import org.ojai.store.QueryCondition;
+import org.ojai.store.QueryCondition.Op;
 
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -106,61 +113,37 @@ class PredicateFilter implements Comparable<PredicateFilter> {
         return this.getField().compareTo(o.getField());
     }
 
-    // TODO
-    /*
-  @SuppressWarnings("unchecked")
-  public FilterCriteria toFilterCriteria(DataFetchingEnvironment environment) {
-    FilterCriteria attrCriteria = new FilterCriteria();
-    attrCriteria.setAttributeName(field);
-    switch (criteria) {
-      case LT:
-        attrCriteria.setOperator(Operator.LT);
-        break;
-      case GT:
-        attrCriteria.setOperator(Operator.GT);
-        break;
-      case LTE:
-        attrCriteria.setOperator(Operator.LTE);
-        break;
-      case GTE:
-        attrCriteria.setOperator(Operator.GTE);
-        break;
-      case EQ:
-        attrCriteria.setOperator(Operator.EQ);
-        break;
-      case STARTS_WITH:
-        attrCriteria.setOperator(Operator.STARTS_WITH);
-        break;
-      case IN:
-        attrCriteria.setOperator(Operator.IN);
-        break;
-      case BETWEEN:
-        attrCriteria.setOperator(Operator.TIME_RANGE);
-        Map<String, Object> map = (Map<String, Object>) typedValue;
-        Date start = (Date) map.get("start");
-        Date end = (Date) map.get("end");
-        attrCriteria.setAttributeValue(start.getTime() + "," + end.getTime());
-        break;
-      case SINCE:
-        attrCriteria.setOperator(Operator.TIME_RANGE);
-        attrCriteria.setAttributeValue(typedValue.toString().toUpperCase(Locale.ROOT));
-        break;
+    @SuppressWarnings("unchecked")
+    public HQueryCondition toQueryCondition(DataFetchingEnvironment environment) {
+        HQueryCondition attrCriteria = new HQueryCondition();
+        switch (criteria) {
+            case LT:
+                attrCriteria.is(field, Op.LESS, HValue.initFromObject(typedValue));
+                break;
+            case GT:
+                attrCriteria.is(field, Op.GREATER, HValue.initFromObject(typedValue));
+                break;
+            case LTE:
+                attrCriteria.is(field, Op.LESS_OR_EQUAL, HValue.initFromObject(typedValue));
+                break;
+            case GTE:
+                attrCriteria.is(field, Op.GREATER_OR_EQUAL, HValue.initFromObject(typedValue));
+                break;
+            case EQ:
+                attrCriteria.is(field, Op.EQUAL, HValue.initFromObject(typedValue));
+                break;
+            case NEQ:
+                attrCriteria.is(field, Op.NOT_EQUAL, HValue.initFromObject(typedValue));
+                break;
+            case IN:
+                attrCriteria.in(field, HValue.initFromList((List) typedValue));
+                break;
+            case NIN:
+                attrCriteria.notIn(field, HValue.initFromList((List) typedValue));
+                break;
+        }
+        return attrCriteria.close();
     }
-
-    if (attrCriteria.getAttributeValue() == null) {
-      String value = getValueAsString();
-      if (ATTR_QUALIFIED_NAME.equals(field)) {
-        GraphQLContext context = environment.getGraphQlContext();
-        String tenant = context.get(GraphQLSchemaBuilder.TENANT);
-        value = QualifiedNameGenerator.ensureEntityTenantPrefix(tenant, null, value);
-      }
-      attrCriteria.setAttributeValue(value);
-    }
-
-    return attrCriteria;
-  }
-
-     */
 
     private String getValueAsString() {
         return getValueAsString(typedValue);
