@@ -2,13 +2,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.kgraph</groupId>
-    <artifactId>kafka-graphql-parent</artifactId>
+    <artifactId>kgiraffe-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>kafka-graphql</name>
+    <name>kgiraffe</name>
     <description>GraphQL for Kafka</description>
-    <url>https://github.com/rayokota/kafka-graphql</url>
+    <url>https://github.com/rayokota/kgiraffe</url>
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
@@ -24,15 +24,15 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com:rayokota/kafka-graphql.git</connection>
-        <developerConnection>scm:git:git@github.com:rayokota/kafka-graphql.git</developerConnection>
-        <url>git@github.com:rayokota/kafka-graphql.git</url>
+        <connection>scm:git:git://github.com:rayokota/kgiraffe.git</connection>
+        <developerConnection>scm:git:git@github.com:rayokota/kgiraffe.git</developerConnection>
+        <url>git@github.com:rayokota/kgiraffe.git</url>
         <tag>HEAD</tag>
     </scm>
 
     <modules>
-        <module>kafka-graphql-core</module>
-        <module>kafka-graphql-server</module>
+        <module>kgiraffe-core</module>
+        <module>kgiraffe-server</module>
     </modules>
 
     <properties>
@@ -69,12 +69,12 @@
         <dependencies>
             <dependency>
                 <groupId>io.kgraph</groupId>
-                <artifactId>kafka-graphql-core</artifactId>
+                <artifactId>kgiraffe-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.kgraph</groupId>
-                <artifactId>kafka-graphql-server</artifactId>
+                <artifactId>kgiraffe-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
