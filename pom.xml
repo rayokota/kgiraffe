@@ -50,7 +50,7 @@
         <mockito.version>4.4.0</mockito.version>
         <ojai.version>1.1</ojai.version>
         <picocli-version>4.6.3</picocli-version>
-        <rxjava.version>3.0.0</rxjava.version>
+        <rxjava.version>3.1.4</rxjava.version>
         <scala.version>2.13.8</scala.version>
         <sl4j.version>1.7.36</sl4j.version>
         <schema.registry.version>7.0.1</schema.registry.version>
