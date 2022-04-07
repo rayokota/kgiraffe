@@ -28,6 +28,7 @@ import graphql.schema.GraphQLType;
 import graphql.schema.InputValueWithState;
 import graphql.schema.SelectedField;
 import io.hdocdb.store.HDocumentDB;
+import io.hdocdb.store.HQueryCondition;
 import io.kgraph.kgraphql.KafkaGraphQLEngine;
 import io.kgraph.kgraphql.schema.util.DataFetchingEnvironmentBuilder;
 import io.vavr.control.Either;
@@ -111,7 +112,7 @@ public class GraphQLQueryFactory {
         return result;
     }
 
-    protected QueryCondition getCriteriaQuery(DataFetchingEnvironment environment, Field field) {
+    public HQueryCondition getCriteriaQuery(DataFetchingEnvironment environment, Field field) {
         return null;
 
         /*

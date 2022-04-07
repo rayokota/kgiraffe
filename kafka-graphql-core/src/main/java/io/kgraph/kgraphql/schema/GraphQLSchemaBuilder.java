@@ -49,6 +49,7 @@ public class GraphQLSchemaBuilder {
 
     public static final String QUERY_ROOT = "query_root";
     public static final String MUTATION_ROOT = "mutation_root";
+    public static final String SUBSCRIPTION_ROOT = "subscription_root";
 
     public static final String LIMIT_PARAM_NAME = "limit";
     public static final String OFFSET_PARAM_NAME = "offset";
@@ -86,6 +87,7 @@ public class GraphQLSchemaBuilder {
     }
 
     // TODO remove
+    /*
     public GraphQLSchema initHello() {
         try {
             URL url = Resources.getResource("schema.graphql");
@@ -98,7 +100,7 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLSchema buildSchema(String sdl) {
         TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(sdl);
-        RuntimeWiring runtimeWiring = buildWiring();
+        RuntimeWiring runtimeWiring = b:euildWiring();
         SchemaGenerator schemaGenerator = new SchemaGenerator();
         return schemaGenerator.makeExecutableSchema(typeRegistry, runtimeWiring);
     }
@@ -120,6 +122,8 @@ public class GraphQLSchemaBuilder {
         return environment -> environment.getArgument("toEcho");
     }
 
+     */
+
 
     /**
      * @return A freshly built {@link graphql.schema.GraphQLSchema}
@@ -127,7 +131,8 @@ public class GraphQLSchemaBuilder {
     public GraphQLSchema getGraphQLSchema() {
         GraphQLSchema.Builder schema = GraphQLSchema.newSchema()
             .query(getQueryType())
-            .mutation(getMutationType());
+            .mutation(getMutationType())
+            .subscription(getSubscriptionType());
         return schema.build();
     }
 
@@ -137,7 +142,7 @@ public class GraphQLSchemaBuilder {
 
         GraphQLObjectType.Builder queryType = GraphQLObjectType.newObject()
             .name(QUERY_ROOT)
-            .description("GraphQL schema for all Kafka schemas");
+            .description("Queries for Kafka topics");
         queryType.fields(topics.stream()
             .flatMap(t -> getQueryFieldDefinition(codeRegistry, t))
             .collect(Collectors.toList()));
@@ -270,7 +275,7 @@ public class GraphQLSchemaBuilder {
 
         GraphQLObjectType.Builder mutationType = GraphQLObjectType.newObject()
             .name(MUTATION_ROOT)
-            .description("GraphQL schema for producing using Kafka schemas");
+            .description("Mutations for Kafka topics");
         mutationType.fields(topics.stream()
             .flatMap(t -> getMutationFieldDefinition(codeRegistry, t))
             .collect(Collectors.toList()));
@@ -316,4 +321,43 @@ public class GraphQLSchemaBuilder {
             .build();
     }
 
+    private GraphQLObjectType getSubscriptionType() {
+        // TODO use this instead of deprecated dataFetcher/typeResolver methods
+        GraphQLCodeRegistry.Builder codeRegistry = GraphQLCodeRegistry.newCodeRegistry();
+
+        GraphQLObjectType.Builder subType = GraphQLObjectType.newObject()
+            .name(SUBSCRIPTION_ROOT)
+            .description("Subscriptions for Kafka topics");
+        subType.fields(topics.stream()
+            .flatMap(t -> getSubscriptionFieldDefinition(codeRegistry, t))
+            .collect(Collectors.toList()));
+
+        codeRegistry.build();
+
+        return subType.build();
+    }
+
+    private Stream<GraphQLFieldDefinition> getSubscriptionFieldDefinition(
+        GraphQLCodeRegistry.Builder codeRegistry, String topic) {
+        // TODO handle primitive key schemas
+        Either<Type, ParsedSchema> keySchema = getKeySchema(topic);
+        ParsedSchema valueSchema = getValueSchema(topic);
+
+        if (!isObject(valueSchema)) {
+            return Stream.empty();
+        }
+
+        GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
+
+        GraphQLQueryFactory queryFactory =
+            new GraphQLQueryFactory(engine, topic, keySchema, valueSchema, objectType);
+
+        return Stream.of(GraphQLFieldDefinition.newFieldDefinition()
+            .name(topic)
+            .type(new GraphQLList(objectType))
+            .dataFetcher(new SubscriptionFetcher(engine, schemaRegistry, topic,
+                keySchema, valueSchema, queryFactory))
+            .argument(getWhereArgument(topic, keySchema, valueSchema))
+            .build());
+    }
 }

@@ -17,16 +17,19 @@
 package io.kgraph.kgraphql;
 
 import graphql.GraphQL;
+import io.hdocdb.HDocument;
+import io.hdocdb.store.HDocumentCollection;
 import io.hdocdb.store.HDocumentDB;
 import io.hdocdb.store.InMemoryHDocumentDB;
-import io.kcache.Cache;
 import io.kcache.CacheUpdateHandler;
 import io.kcache.KafkaCache;
 import io.kcache.KafkaCacheConfig;
 import io.kcache.caffeine.CaffeineCache;
 import io.kgraph.kgraphql.schema.GraphQLExecutor;
 import io.kgraph.kgraphql.schema.GraphQLSchemaBuilder;
-import io.vavr.Tuple2;
+import io.kgraph.kgraphql.util.KryoCodec;
+import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.rxjava3.core.eventbus.EventBus;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
@@ -62,6 +65,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaGraphQLEngine.class);
 
     private KafkaGraphQLConfig config;
+    private EventBus eventBus;
     private GraphQLExecutor executor;
     private Map<String, KafkaCache<Bytes, Bytes>> caches;
     private HDocumentDB docdb;
@@ -105,7 +109,9 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         this.config = config;
     }
 
-    public void init() {
+    public void init(EventBus eventBus) {
+        this.eventBus = eventBus.registerCodec(new KryoCodec<Document>());
+
         List<String> urls = config.getSchemaRegistryUrls();
         List<String> topics = config.getTopics();
         List<SchemaProvider> providers = Arrays.asList(
@@ -114,7 +120,7 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
         SchemaRegistryClient schemaRegistry =
             new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
         GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, schemaRegistry, topics);
-        executor = new GraphQLExecutor(config, schemaBuilder);
+        this.executor = new GraphQLExecutor(config, schemaBuilder);
 
         initTopics(schemaRegistry);
 
@@ -165,18 +171,22 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
             try {
                 String topic = tp.topic();
                 String id = topic + "-" + tp.partition() + "-" + offset;
-                DocumentStore store = docdb.getCollection(topic);
+                HDocumentCollection coll = docdb.getCollection(topic);
                 GenericRecord record = (GenericRecord)
                     new KafkaAvroDeserializer(schemaRegistry).deserialize(topic, value.get());
                 // TODO
                 byte[] keyBytes = null;
                 byte[] valueBytes = AvroSchemaUtils.toJson(record);
 
-                Document doc =
-                    Json.newDocumentStream(new ByteArrayInputStream(valueBytes)).iterator().next();
+                Document doc = Json.newDocumentStream(
+                    new ByteArrayInputStream(valueBytes)).iterator().next();
                 doc.setId(id);
-                store.insertOrReplace(doc);
-                store.flush();
+                coll.insertOrReplace(doc);
+                coll.flush();
+                doc = coll.findById(id);
+
+                DeliveryOptions options = new DeliveryOptions().setCodecName("kryo");
+                eventBus.publish(topic, doc, options);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -210,6 +220,10 @@ public class KafkaGraphQLEngine implements Configurable, Closeable {
 
     public KafkaCache<Bytes, Bytes> getCache(String topic) {
         return caches.get(topic);
+    }
+
+    public EventBus getEventBus() {
+        return eventBus;
     }
 
     public GraphQL getGraphQL() {

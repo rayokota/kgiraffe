@@ -3,20 +3,29 @@ package io.kgraph.kgraphql.server;
 import graphql.GraphQL;
 import io.kgraph.kgraphql.KafkaGraphQLConfig;
 import io.kgraph.kgraphql.KafkaGraphQLEngine;
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.LoggerHandler;
-import io.vertx.ext.web.handler.graphql.GraphQLHandler;
-import io.vertx.ext.web.handler.graphql.GraphiQLHandler;
+import io.reactivex.rxjava3.core.Single;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.ext.web.handler.graphql.GraphQLHandlerOptions;
 import io.vertx.ext.web.handler.graphql.GraphiQLHandlerOptions;
+import io.vertx.rxjava3.core.AbstractVerticle;
+import io.vertx.rxjava3.core.Promise;
+import io.vertx.rxjava3.core.http.HttpServer;
+import io.vertx.rxjava3.ext.web.handler.BodyHandler;
+import io.vertx.rxjava3.ext.web.handler.LoggerHandler;
+import io.vertx.rxjava3.ext.web.handler.graphql.GraphQLHandler;
+import io.vertx.rxjava3.ext.web.handler.graphql.GraphiQLHandler;
+import io.vertx.rxjava3.ext.web.handler.graphql.ws.GraphQLWSHandler;
+import io.vertx.rxjava3.core.Vertx;
+import io.vertx.rxjava3.ext.web.Router;
+import io.vertx.rxjava3.ext.web.handler.CorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+
+import static io.vertx.core.http.HttpMethod.GET;
+import static io.vertx.core.http.HttpMethod.POST;
 
 public class KafkaGraphQLMain extends AbstractVerticle {
 
@@ -38,7 +47,7 @@ public class KafkaGraphQLMain extends AbstractVerticle {
     }
 
     @Override
-    public void start(Promise<Void> startPromise) throws Exception {
+    public void start() throws Exception {
         try {
             KafkaGraphQLEngine engine = KafkaGraphQLEngine.getInstance();
 
@@ -46,27 +55,36 @@ public class KafkaGraphQLMain extends AbstractVerticle {
             GraphQL graphQL = engine.getGraphQL();
             router.route().handler(LoggerHandler.create());
             router.route().handler(BodyHandler.create());
-            router.route("/graphql").handler(GraphQLHandler.create(graphQL));
+            GraphQLHandlerOptions graphQLOptions = new GraphQLHandlerOptions()
+                .setRequestBatchingEnabled(true)
+                .setRequestMultipartEnabled(true);
+            router.route("/graphql")
+                .handler(GraphQLWSHandler.create(graphQL))
+                .handler(GraphQLHandler.create(graphQL, graphQLOptions));
 
-            GraphiQLHandlerOptions options = new GraphiQLHandlerOptions().setEnabled(true);
-            router.route("/graphiql/*").handler(GraphiQLHandler.create(options));
+            GraphiQLHandlerOptions graphiQLOptions = new GraphiQLHandlerOptions()
+                .setEnabled(true);
+            router.route("/graphiql/*")
+                .handler(GraphiQLHandler.create(graphiQLOptions));
 
             // Create the HTTP server
-            vertx.createHttpServer()
+            HttpServerOptions httpServerOptions = new HttpServerOptions()
+                .addWebSocketSubProtocol("graphql-transport-ws");
+            Single<HttpServer> single = vertx.createHttpServer(httpServerOptions)
                 // Handle every request using the router
                 .requestHandler(router)
                 // Start listening
-                .listen(listener.getPort(), ar -> {
-                    if (ar.succeeded()) {
-                        LOG.info("Server started, listening on " + listener.getPort());
-                        LOG.info("Kafka GraphQL is at your service...");
-                        startPromise.complete();
-                    } else {
-                        LOG.info("Could not start server " + ar.cause().getLocalizedMessage());
-                        startPromise.fail(ar.cause());
-                        LOG.error("Server died unexpectedly: ", ar.cause());
-                        System.exit(1);
-                    }
+                .rxListen(listener.getPort());
+
+            single.subscribe(
+                server -> {
+                    LOG.info("Server started, listening on " + listener.getPort());
+                    LOG.info("Kafka GraphQL is at your service...");
+                },
+                failure -> {
+                    LOG.info("Could not start server " + failure);
+                    LOG.error("Server died unexpectedly: ", failure);
+                    System.exit(1);
                 });
         } catch (Exception e) {
             LOG.error("Could not start server", e);
@@ -89,7 +107,7 @@ public class KafkaGraphQLMain extends AbstractVerticle {
             KafkaGraphQLEngine engine = KafkaGraphQLEngine.getInstance();
             engine.configure(config);
             Vertx vertx = Vertx.vertx();
-            engine.init();
+            engine.init(vertx.eventBus());
             vertx.deployVerticle(new KafkaGraphQLMain(config));
         } catch (Exception e) {
             LOG.error("Server died unexpectedly: ", e);

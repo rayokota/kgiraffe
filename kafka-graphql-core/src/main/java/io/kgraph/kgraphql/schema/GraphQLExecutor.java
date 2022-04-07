@@ -5,6 +5,7 @@ import graphql.ExecutionResult;
 import graphql.GraphQL;
 import graphql.analysis.MaxQueryComplexityInstrumentation;
 import graphql.analysis.MaxQueryDepthInstrumentation;
+import graphql.execution.SubscriptionExecutionStrategy;
 import graphql.execution.instrumentation.ChainedInstrumentation;
 import graphql.execution.instrumentation.Instrumentation;
 import graphql.schema.GraphQLSchema;
@@ -42,11 +43,11 @@ public class GraphQLExecutor {
             synchronized (this) {
                 if (graphQL == null) {
                     GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
-                    // GraphQLSchema graphQLSchema = graphQLSchemaBuilder.initHello();
                     String sdl = new SchemaPrinter().print(graphQLSchema);
                     LOG.debug("SDL: " + sdl);
                     this.graphQL = GraphQL
                         .newGraphQL(graphQLSchema)
+                        .subscriptionExecutionStrategy(new SubscriptionExecutionStrategy())
                         .instrumentation(getInstrumentation())
                         .build();
                 }

@@ -19,7 +19,7 @@ import io.kgraph.kgraphql.KafkaGraphQLConfig;
 import io.kgraph.kgraphql.KafkaGraphQLEngine;
 import io.kgraph.kgraphql.server.KafkaGraphQLMain;
 import io.kgraph.kgraphql.utils.ClusterTestHarness;
-import io.vertx.core.Vertx;
+import io.vertx.rxjava3.core.Vertx;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
@@ -78,7 +78,7 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
             KafkaGraphQLConfig config = new KafkaGraphQLConfig(props);
             KafkaGraphQLEngine engine = KafkaGraphQLEngine.getInstance();
             engine.configure(config);
-            engine.init();
+            engine.init(vertx.eventBus());
         } catch (Exception e) {
             LOG.error("Server died unexpectedly: ", e);
             System.exit(1);

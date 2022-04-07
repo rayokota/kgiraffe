@@ -11,6 +11,7 @@ import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
+import graphql.schema.GraphQLType;
 import graphql.schema.GraphQLTypeReference;
 import io.kgraph.kgraphql.schema.PredicateFilter.Criteria;
 import org.apache.avro.Schema;
@@ -29,7 +30,7 @@ import static io.kgraph.kgraphql.schema.GraphQLSchemaBuilder.orderByEnum;
 public class GraphQLAvroSchemaBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(GraphQLAvroSchemaBuilder.class);
 
-    private final Map<String, GraphQLObjectType> typeCache = new HashMap<>();
+    private final Map<String, GraphQLType> typeCache = new HashMap<>();
 
     public GraphQLInputType createInputType(SchemaContext ctx, Schema schema) {
         switch (schema.getType()) {
@@ -65,6 +66,12 @@ public class GraphQLAvroSchemaBuilder {
     private GraphQLInputObjectType createInputRecord(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
         try {
+            if (ctx.isRoot()) {
+                GraphQLInputObjectType type = (GraphQLInputObjectType) typeCache.get(name);
+                if (type != null) {
+                    return type;
+                }
+            }
             List<GraphQLInputObjectField> fields = schema.getFields().stream()
                 .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
                 .flatMap(f -> createInputField(ctx, schema, f))
@@ -89,8 +96,11 @@ public class GraphQLAvroSchemaBuilder {
                 }
                 // TODO key
             }
-
-            return builder.build();
+            GraphQLInputObjectType type = builder.build();
+            if (ctx.isRoot()) {
+                typeCache.put(name, type);
+            }
+            return type;
         } finally {
             ctx.setRoot(false);
         }
@@ -234,7 +244,7 @@ public class GraphQLAvroSchemaBuilder {
         String name = ctx.qualify(schema.getFullName());
         try {
             if (ctx.isRoot()) {
-                GraphQLObjectType type = typeCache.get(name);
+                GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
                 if (type != null) {
                     return type;
                 }
@@ -253,7 +263,9 @@ public class GraphQLAvroSchemaBuilder {
                 .description(schema.getDoc())
                 .fields(fields)
                 .build();
-            typeCache.put(name, type);
+            if (ctx.isRoot()) {
+                typeCache.put(name, type);
+            }
             return type;
         } finally {
             ctx.setRoot(false);
