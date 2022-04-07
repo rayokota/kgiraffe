@@ -18,19 +18,12 @@ import org.ojai.Value.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchema;
-import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-
-import static graphql.schema.idl.TypeRuntimeWiring.newTypeWiring;
 
 /**
  * A wrapper for the {@link graphql.schema.GraphQLSchema.Builder}.
@@ -50,6 +43,7 @@ public class GraphQLSchemaBuilder {
 
     // TODO
     public static final String KEY_ATTR_NAME = "_key";
+    // TODO remove _value
     public static final String VALUE_ATTR_NAME = "_value";
     public static final String TOPIC_ATTR_NAME = "_topic";
     public static final String PARTITION_ATTR_NAME = "_partition";
@@ -59,7 +53,6 @@ public class GraphQLSchemaBuilder {
     public static final String TYPE_ATTR_NAME = "_type";
 
     private final KGiraffeEngine engine;
-    private final SchemaRegistryClient schemaRegistry;
     private final List<String> topics;
     private final GraphQLAvroSchemaBuilder avroBuilder;
 
@@ -67,15 +60,13 @@ public class GraphQLSchemaBuilder {
         GraphQLEnumType.newEnum()
             .name("order_by_enum")
             .description("Specifies the direction (ascending/descending) for sorting a field")
-            .value(OrderByDirection.ASC.symbol(), OrderByDirection.ASC.symbol(), "Ascending")
-            .value(OrderByDirection.DESC.symbol(), OrderByDirection.DESC.symbol(), "Descending")
+            .value(OrderBy.ASC.symbol(), OrderBy.ASC.symbol(), "Ascending")
+            .value(OrderBy.DESC.symbol(), OrderBy.DESC.symbol(), "Descending")
             .build();
 
     public GraphQLSchemaBuilder(KGiraffeEngine engine,
-                                SchemaRegistryClient schemaRegistry,
                                 List<String> topics) {
         this.engine = engine;
-        this.schemaRegistry = schemaRegistry;
         this.topics = topics;
         this.avroBuilder = new GraphQLAvroSchemaBuilder();
     }
@@ -110,8 +101,8 @@ public class GraphQLSchemaBuilder {
     private Stream<GraphQLFieldDefinition> getQueryFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
         // TODO handle primitive key schemas
-        Either<Type, ParsedSchema> keySchema = getKeySchema(topic);
-        ParsedSchema valueSchema = getValueSchema(topic);
+        Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
+        ParsedSchema valueSchema = engine.getValueSchema(topic);
 
         if (!isObject(valueSchema)) {
             return Stream.empty();
@@ -145,37 +136,14 @@ public class GraphQLSchemaBuilder {
         }
     }
 
-    private Either<Type, ParsedSchema> getKeySchema(String topic) {
-        Optional<ParsedSchema> keySchema = getLatestSchema(topic + "-key");
-        // TODO other primitive keys
-        return keySchema.<Either<Type, ParsedSchema>>map(Either::right)
-            .orElseGet(() -> Either.left(Type.STRING));
-    }
-
-    private ParsedSchema getValueSchema(String topic) {
-        return getLatestSchema(topic + "-value").get();
-    }
-
-    private Optional<ParsedSchema> getLatestSchema(String subject) {
-        try {
-            SchemaMetadata schemaMetadata = schemaRegistry.getLatestSchemaMetadata(subject);
-            Optional<ParsedSchema> optSchema =
-                schemaRegistry.parseSchema(
-                    schemaMetadata.getSchemaType(),
-                    schemaMetadata.getSchema(),
-                    schemaMetadata.getReferences());
-            return optSchema;
-        } catch (IOException | RestClientException e) {
-            return Optional.empty();
-        }
-    }
-
     private GraphQLArgument getWhereArgument(String topic,
                                              Either<Type, ParsedSchema> keySchema,
                                              ParsedSchema valueSchema) {
+        SchemaContext ctx =
+            new SchemaContext(topic, keySchema, valueSchema, Mode.QUERY_WHERE, false);
         GraphQLInputObjectType whereInputObject =
             (GraphQLInputObjectType) avroBuilder.createInputType(
-                new SchemaContext(topic, Mode.QUERY_WHERE), ((AvroSchema) valueSchema).rawSchema());
+                ctx, ((AvroSchema) valueSchema).rawSchema());
 
         return GraphQLArgument.newArgument()
             .name(WHERE_PARAM_NAME)
@@ -203,9 +171,11 @@ public class GraphQLSchemaBuilder {
     private GraphQLArgument getOrderByArgument(String topic,
                                                Either<Type, ParsedSchema> keySchema,
                                                ParsedSchema valueSchema) {
+        SchemaContext ctx =
+            new SchemaContext(topic, keySchema, valueSchema, Mode.QUERY_ORDER_BY, false);
         GraphQLInputObjectType orderByInputObject =
             (GraphQLInputObjectType) avroBuilder.createInputType(
-                new SchemaContext(topic, Mode.QUERY_ORDER_BY), ((AvroSchema) valueSchema).rawSchema());
+                ctx, ((AvroSchema) valueSchema).rawSchema());
 
         return GraphQLArgument.newArgument()
             .name(ORDER_BY_PARAM_NAME)
@@ -218,9 +188,11 @@ public class GraphQLSchemaBuilder {
     private GraphQLObjectType getObjectType(String topic,
                                             Either<Type, ParsedSchema> keySchema,
                                             ParsedSchema valueSchema) {
+        SchemaContext ctx =
+            new SchemaContext(topic, keySchema, valueSchema, Mode.OUTPUT, false);
         GraphQLObjectType objectType =
             (GraphQLObjectType) avroBuilder.createOutputType(
-                new SchemaContext(topic, Mode.OUTPUT), ((AvroSchema) valueSchema).rawSchema());
+                ctx, ((AvroSchema) valueSchema).rawSchema());
         return objectType;
     }
 
@@ -243,8 +215,8 @@ public class GraphQLSchemaBuilder {
     private Stream<GraphQLFieldDefinition> getMutationFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
         // TODO handle primitive key schemas
-        Either<Type, ParsedSchema> keySchema = getKeySchema(topic);
-        ParsedSchema valueSchema = getValueSchema(topic);
+        Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
+        ParsedSchema valueSchema = engine.getValueSchema(topic);
 
         if (!isObject(valueSchema)) {
             return Stream.empty();
@@ -255,9 +227,10 @@ public class GraphQLSchemaBuilder {
         return Stream.of(GraphQLFieldDefinition.newFieldDefinition()
             .name(topic)
             .type(objectType)
-            .dataFetcher(new MutationFetcher(engine, schemaRegistry, topic, keySchema, valueSchema))
+            .dataFetcher(new MutationFetcher(engine, topic, keySchema, valueSchema))
             // TODO
             //.argument(getKeyArgument(topic, keySchema, valueSchema))
+            // TODO remove _value
             .argument(getValueArgument(topic, keySchema, valueSchema))
             .build());
     }
@@ -265,9 +238,11 @@ public class GraphQLSchemaBuilder {
     private GraphQLArgument getValueArgument(String topic,
                                              Either<Type, ParsedSchema> keySchema,
                                              ParsedSchema valueSchema) {
+        SchemaContext ctx =
+            new SchemaContext(topic, keySchema, valueSchema, Mode.MUTATION, false);
         GraphQLInputObjectType valueInputObject =
             (GraphQLInputObjectType) avroBuilder.createInputType(
-                new SchemaContext(topic, Mode.MUTATION), ((AvroSchema) valueSchema).rawSchema());
+                ctx, ((AvroSchema) valueSchema).rawSchema());
 
         return GraphQLArgument.newArgument()
             .name(VALUE_ATTR_NAME)
@@ -295,8 +270,8 @@ public class GraphQLSchemaBuilder {
     private Stream<GraphQLFieldDefinition> getQueryFieldStreamDefinition(
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
         // TODO handle primitive key schemas
-        Either<Type, ParsedSchema> keySchema = getKeySchema(topic);
-        ParsedSchema valueSchema = getValueSchema(topic);
+        Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
+        ParsedSchema valueSchema = engine.getValueSchema(topic);
 
         if (!isObject(valueSchema)) {
             return Stream.empty();
@@ -310,7 +285,7 @@ public class GraphQLSchemaBuilder {
         return Stream.of(GraphQLFieldDefinition.newFieldDefinition()
             .name(topic)
             .type(objectType)
-            .dataFetcher(new SubscriptionFetcher(engine, schemaRegistry, topic,
+            .dataFetcher(new SubscriptionFetcher(engine, topic,
                 keySchema, valueSchema, queryFactory))
             .argument(getWhereArgument(topic, keySchema, valueSchema))
             .build());

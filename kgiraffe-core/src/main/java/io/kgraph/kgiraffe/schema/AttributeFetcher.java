@@ -21,11 +21,6 @@ public class AttributeFetcher implements DataFetcher {
     public Object get(DataFetchingEnvironment env) {
         Document entity = env.getSource();
         String attrName = env.getField().getName();
-        if (attrName.equals(KEY_ATTR_NAME)) {
-            // TODO
-            return null;
-        }
-
         Value value = entity.getValue(attrName);
         return value != null ? value.getObject() : null;
     }

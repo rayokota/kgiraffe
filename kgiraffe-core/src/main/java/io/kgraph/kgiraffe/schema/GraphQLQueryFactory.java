@@ -108,9 +108,9 @@ public class GraphQLQueryFactory {
             result = Iterables.limit(result, limit);
         }
 
-        Tuple2<String, OrderByDirection> orderBy = getOrderBy(env, env.getField());
+        Tuple2<String, OrderBy> orderBy = getOrderBy(env, env.getField());
         if (orderBy != null) {
-            Comparator<Document> cmp = orderBy._2 == OrderByDirection.ASC
+            Comparator<Document> cmp = orderBy._2 == OrderBy.ASC
                 ? Comparator.comparing(doc -> (HValue) doc.getValue(orderBy._1),
                 Comparator.nullsFirst(Comparator.naturalOrder()))
                 : Comparator.comparing(doc -> (HValue) doc.getValue(orderBy._1),
@@ -129,9 +129,9 @@ public class GraphQLQueryFactory {
         return getCompoundPredicate(predicates, Logical.AND);
     }
 
-    protected Tuple2<String, OrderByDirection> getOrderBy(DataFetchingEnvironment env, Field field) {
+    protected Tuple2<String, OrderBy> getOrderBy(DataFetchingEnvironment env, Field field) {
         String orderByPath = null;
-        OrderByDirection orderByDirection = null;
+        OrderBy orderByDirection = null;
         Optional<Argument> orderByArg = getArgument(field, ORDER_BY_PARAM_NAME);
         if (orderByArg.isPresent()) {
             ObjectValue objectValue = getValue(orderByArg.get(), env);
@@ -146,7 +146,7 @@ public class GraphQLQueryFactory {
                     }
                     Value value = objectField.getValue();
                     if (value instanceof EnumValue) {
-                        orderByDirection = OrderByDirection.get(((EnumValue) value).getName());
+                        orderByDirection = OrderBy.get(((EnumValue) value).getName());
                         break;
                     } else {
                         objectValue = (ObjectValue) value;

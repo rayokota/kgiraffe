@@ -27,6 +27,7 @@ import io.kcache.caffeine.CaffeineCache;
 import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
 import io.kgraph.kgiraffe.util.KryoCodec;
+import io.vavr.control.Either;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.rxjava3.core.eventbus.EventBus;
 import org.apache.avro.generic.GenericRecord;
@@ -37,7 +38,6 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.common.utils.Utils;
 import org.ojai.Document;
 import org.ojai.json.Json;
-import org.ojai.types.ODate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,16 +48,22 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
+import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaUtils;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import org.ojai.Value.Type;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PARTITION_ATTR_NAME;
@@ -69,7 +75,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
 
     private KGiraffeConfig config;
     private EventBus eventBus;
+    private SchemaRegistryClient schemaRegistry;
     private GraphQLExecutor executor;
+    private Map<String, Either<Type, ParsedSchema>> keySchemas = new HashMap<>();
+    private Map<String, ParsedSchema> valueSchemas = new HashMap<>();
     private Map<String, KafkaCache<Bytes, Bytes>> caches;
     private HDocumentDB docdb;
     private final AtomicBoolean initialized;
@@ -120,12 +129,12 @@ public class KGiraffeEngine implements Configurable, Closeable {
         List<SchemaProvider> providers = Arrays.asList(
             new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
         );
-        SchemaRegistryClient schemaRegistry =
+        this.schemaRegistry =
             new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
-        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, schemaRegistry, topics);
+        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, topics);
         this.executor = new GraphQLExecutor(config, schemaBuilder);
 
-        initTopics(schemaRegistry);
+        initCaches();
 
         boolean isInitialized = initialized.compareAndSet(false, true);
         if (!isInitialized) {
@@ -134,13 +143,48 @@ public class KGiraffeEngine implements Configurable, Closeable {
         }
     }
 
-    private void initTopics(SchemaRegistryClient schemaRegistry) {
-        for (String topic : config.getTopics()) {
-            initTopic(schemaRegistry, topic);
+    public SchemaRegistryClient getSchemaRegistry() {
+        return schemaRegistry;
+    }
+
+    public Either<Type, ParsedSchema> getKeySchema(String topic) {
+        return keySchemas.computeIfAbsent(topic, t -> {
+            Optional<ParsedSchema> schema = getLatestSchema(t + "-key");
+            // TODO other primitive keys
+            return schema.<Either<Type, ParsedSchema>>map(Either::right)
+                .orElseGet(() -> Either.left(Type.NULL));
+        });
+    }
+
+    public ParsedSchema getValueSchema(String topic) {
+        return valueSchemas.computeIfAbsent(topic, t -> {
+            Optional<ParsedSchema> schema = getLatestSchema(t + "-value");
+            // TODO check if this works
+            return schema.orElse(new AvroSchema("\"null\""));
+        });
+    }
+
+    private Optional<ParsedSchema> getLatestSchema(String subject) {
+        try {
+            SchemaMetadata schemaMetadata = schemaRegistry.getLatestSchemaMetadata(subject);
+            Optional<ParsedSchema> optSchema =
+                schemaRegistry.parseSchema(
+                    schemaMetadata.getSchemaType(),
+                    schemaMetadata.getSchema(),
+                    schemaMetadata.getReferences());
+            return optSchema;
+        } catch (IOException | RestClientException e) {
+            return Optional.empty();
         }
     }
 
-    private void initTopic(SchemaRegistryClient schemaRegistry, String topic) {
+    private void initCaches() {
+        for (String topic : config.getTopics()) {
+            initCache(topic);
+        }
+    }
+
+    private void initCache(String topic) {
         Map<String, Object> configs = new HashMap<>(config.originals());
         String groupId = (String)
             configs.getOrDefault(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, "kgiraffe-1");

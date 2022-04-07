@@ -4,21 +4,21 @@ import com.google.common.collect.EnumHashBiMap;
 
 import java.util.Set;
 
-public enum OrderByDirection {
+public enum OrderBy {
     ASC("asc"), DESC("desc");
 
-    private static final EnumHashBiMap<OrderByDirection, String> lookup =
-        EnumHashBiMap.create(OrderByDirection.class);
+    private static final EnumHashBiMap<OrderBy, String> lookup =
+        EnumHashBiMap.create(OrderBy.class);
 
     static {
-        for (OrderByDirection type : OrderByDirection.values()) {
+        for (OrderBy type : OrderBy.values()) {
             lookup.put(type, type.symbol());
         }
     }
 
     private final String symbol;
 
-    OrderByDirection(String symbol) {
+    OrderBy(String symbol) {
         this.symbol = symbol;
     }
 
@@ -26,7 +26,7 @@ public enum OrderByDirection {
         return symbol;
     }
 
-    public static OrderByDirection get(String symbol) {
+    public static OrderBy get(String symbol) {
         return lookup.inverse().get(symbol);
     }
 

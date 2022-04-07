@@ -16,20 +16,17 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 public class SubscriptionFetcher implements DataFetcher {
 
     private final KGiraffeEngine engine;
-    private final SchemaRegistryClient schemaRegistry;
     private final String topic;
     private final Either<Type, ParsedSchema> keySchema;
     private final ParsedSchema valueSchema;
     private final GraphQLQueryFactory queryFactory;
 
     public SubscriptionFetcher(KGiraffeEngine engine,
-                               SchemaRegistryClient schemaRegistry,
                                String topic,
                                Either<Type, ParsedSchema> keySchema,
                                ParsedSchema valueSchema,
                                GraphQLQueryFactory queryFactory) {
         this.engine = engine;
-        this.schemaRegistry = schemaRegistry;
         this.topic = topic;
         this.keySchema = keySchema;
         this.valueSchema = valueSchema;

@@ -30,18 +30,15 @@ public class MutationFetcher implements DataFetcher {
     private final static ObjectMapper MAPPER = new ObjectMapper();
 
     private final KGiraffeEngine engine;
-    private final SchemaRegistryClient schemaRegistry;
     private final String topic;
     private final Either<Type, ParsedSchema> keySchema;
     private final ParsedSchema valueSchema;
 
     public MutationFetcher(KGiraffeEngine engine,
-                           SchemaRegistryClient schemaRegistry,
                            String topic,
                            Either<Type, ParsedSchema> keySchema,
                            ParsedSchema valueSchema) {
         this.engine = engine;
-        this.schemaRegistry = schemaRegistry;
         this.topic = topic;
         this.keySchema = keySchema;
         this.valueSchema = valueSchema;
@@ -52,6 +49,7 @@ public class MutationFetcher implements DataFetcher {
         try {
             // TODO
             Map<String, Object> key = env.getArgument(KEY_ATTR_NAME);
+            // TODO remove _value
             Map<String, Object> value = env.getArgument(VALUE_ATTR_NAME);
 
             JsonNode json = MAPPER.valueToTree(value);
@@ -59,7 +57,7 @@ public class MutationFetcher implements DataFetcher {
 
             Bytes keyBytes = Bytes.wrap(Bytes.EMPTY);
             Bytes valueBytes = Bytes.wrap(
-                new KafkaAvroSerializer(schemaRegistry).serialize(topic, valueObj));
+                new KafkaAvroSerializer(engine.getSchemaRegistry()).serialize(topic, valueObj));
             KafkaCache<Bytes, Bytes> cache = engine.getCache(topic);
             // TODO key
             RecordMetadata metadata = cache.put(null, null, valueBytes).getRecordMetadata();

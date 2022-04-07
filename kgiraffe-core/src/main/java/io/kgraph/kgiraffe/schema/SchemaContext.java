@@ -1,19 +1,50 @@
 package io.kgraph.kgiraffe.schema;
 
+import io.confluent.kafka.schemaregistry.ParsedSchema;
+
+import io.vavr.control.Either;
+import org.ojai.Value.Type;
+
 public class SchemaContext {
     private final String topic;
+    private final Either<Type, ParsedSchema> keySchema;
+    private final ParsedSchema valueSchema;
     private final Mode mode;
+    private final boolean key;
     private boolean root;
     private int nameIndex = 0;
 
-    public SchemaContext(String topic, Mode mode) {
+    public SchemaContext(String topic,
+                         Either<Type, ParsedSchema> keySchema,
+                         ParsedSchema valueSchema,
+                         Mode mode,
+                         boolean key) {
         this.topic = topic;
+        this.keySchema = keySchema;
+        this.valueSchema = valueSchema;
         this.mode = mode;
+        this.key = key;
         this.root = true;
+    }
+
+    public SchemaContext copy(boolean key) {
+        return new SchemaContext(topic, keySchema, valueSchema, mode, key);
     }
 
     public String topic() {
         return topic;
+    }
+
+    public Either<Type, ParsedSchema> keySchema() {
+        return keySchema;
+    }
+
+    public ParsedSchema valueSchema() {
+        return valueSchema;
+    }
+
+    public boolean isKey() {
+        return key;
     }
 
     public Mode mode() {
