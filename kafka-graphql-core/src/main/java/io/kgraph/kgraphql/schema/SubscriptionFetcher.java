@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
+import io.hdocdb.HDocument;
 import io.hdocdb.store.HDocumentCollection;
 import io.hdocdb.store.HDocumentDB;
 import io.hdocdb.store.HQueryCondition;
@@ -59,10 +60,11 @@ public class SubscriptionFetcher implements DataFetcher {
     public Object get(DataFetchingEnvironment env) {
         try {
             HQueryCondition query = queryFactory.getCriteriaQuery(env, env.getField());
-            Flowable<Message<Object>> publisher = engine.getEventBus()
+            Flowable<Document> publisher = engine.getEventBus()
                 .consumer(topic)
                 .toFlowable()
-                .filter(m -> query == null || query.isEmpty() || query.evaluate((Document) m.body()));
+                .map(m -> (Document) m.body())
+                .filter(doc -> query == null || query.isEmpty() || query.evaluate(doc));
             return publisher;
         } catch (Exception e) {
             throw new RuntimeException(e);

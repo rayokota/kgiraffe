@@ -5,6 +5,7 @@ import io.kgraph.kgraphql.KafkaGraphQLConfig;
 import io.kgraph.kgraphql.KafkaGraphQLEngine;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.core.http.HttpServerOptions;
+import io.vertx.ext.web.handler.graphql.ApolloWSOptions;
 import io.vertx.ext.web.handler.graphql.GraphQLHandlerOptions;
 import io.vertx.ext.web.handler.graphql.GraphiQLHandlerOptions;
 import io.vertx.rxjava3.core.AbstractVerticle;
@@ -12,6 +13,8 @@ import io.vertx.rxjava3.core.Promise;
 import io.vertx.rxjava3.core.http.HttpServer;
 import io.vertx.rxjava3.ext.web.handler.BodyHandler;
 import io.vertx.rxjava3.ext.web.handler.LoggerHandler;
+import io.vertx.rxjava3.ext.web.handler.StaticHandler;
+import io.vertx.rxjava3.ext.web.handler.graphql.ApolloWSHandler;
 import io.vertx.rxjava3.ext.web.handler.graphql.GraphQLHandler;
 import io.vertx.rxjava3.ext.web.handler.graphql.GraphiQLHandler;
 import io.vertx.rxjava3.ext.web.handler.graphql.ws.GraphQLWSHandler;
@@ -58,9 +61,19 @@ public class KafkaGraphQLMain extends AbstractVerticle {
             GraphQLHandlerOptions graphQLOptions = new GraphQLHandlerOptions()
                 .setRequestBatchingEnabled(true)
                 .setRequestMultipartEnabled(true);
+            ApolloWSOptions apolloWSOptions = new ApolloWSOptions()
+                // GraphQL Playground has a hard-coded timeout of 20000ms
+                // See https://github.com/graphql/graphql-playground/issues/1247
+                // Also, GraphiQL in vertx-web does not support Apollo WS
+                // See https://github.com/vert-x3/vertx-web/issues/1415
+                .setKeepAlive(5000L);
             router.route("/graphql")
-                .handler(GraphQLWSHandler.create(graphQL))
+                //.handler(GraphQLWSHandler.create(graphQL))
+                .handler(ApolloWSHandler.create(graphQL, apolloWSOptions))
                 .handler(GraphQLHandler.create(graphQL, graphQLOptions));
+
+            router.route("/playground/*")
+                .handler(StaticHandler.create("playground"));
 
             GraphiQLHandlerOptions graphiQLOptions = new GraphiQLHandlerOptions()
                 .setEnabled(true);
@@ -69,16 +82,22 @@ public class KafkaGraphQLMain extends AbstractVerticle {
 
             // Create the HTTP server
             HttpServerOptions httpServerOptions = new HttpServerOptions()
-                .addWebSocketSubProtocol("graphql-transport-ws");
+                //.addWebSocketSubProtocol("graphql-transport-ws");
+                .addWebSocketSubProtocol("graphql-ws")
+                .setTcpKeepAlive(true);
             Single<HttpServer> single = vertx.createHttpServer(httpServerOptions)
                 // Handle every request using the router
                 .requestHandler(router)
+                .exceptionHandler(it -> LOG.error("Server error", it))
                 // Start listening
                 .rxListen(listener.getPort());
 
             single.subscribe(
                 server -> {
                     LOG.info("Server started, listening on " + listener.getPort());
+                    LOG.info("GraphQL:     http://localhost:{}/graphql", listener.getPort());
+                    LOG.info("GraphQL-WS:  ws://localhost:{}/graphql", listener.getPort());
+                    LOG.info("GraphiQL:    http://localhost:{}/playground", listener.getPort());
                     LOG.info("Kafka GraphQL is at your service...");
                 },
                 failure -> {

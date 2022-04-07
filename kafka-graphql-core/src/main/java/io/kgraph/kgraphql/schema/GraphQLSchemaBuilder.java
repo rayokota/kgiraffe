@@ -354,7 +354,7 @@ public class GraphQLSchemaBuilder {
 
         return Stream.of(GraphQLFieldDefinition.newFieldDefinition()
             .name(topic)
-            .type(new GraphQLList(objectType))
+            .type(objectType)
             .dataFetcher(new SubscriptionFetcher(engine, schemaRegistry, topic,
                 keySchema, valueSchema, queryFactory))
             .argument(getWhereArgument(topic, keySchema, valueSchema))

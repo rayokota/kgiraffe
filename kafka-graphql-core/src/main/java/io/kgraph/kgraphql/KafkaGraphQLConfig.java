@@ -53,17 +53,17 @@ public class KafkaGraphQLConfig extends KafkaCacheConfig {
     public static final String TOPICS_DOC = "Comma-separated list of topics.";
 
     public static final String GRAPHQL_MAX_COMPLEXITY_CONFIG = "graphql.max.complexity";
-    public static final int GRAPHQL_MAX_COMPLEXITY_DEFAULT = 200;
+    public static final int GRAPHQL_MAX_COMPLEXITY_DEFAULT = Integer.MAX_VALUE;
     public static final String GRAPHQL_MAX_COMPLEXITY_DOC =
         "The maximum complexity of the fields for a GraphQL query.";
 
     public static final String GRAPHQL_MAX_DEPTH_CONFIG = "graphql.max.depth";
-    public static final int GRAPHQL_MAX_DEPTH_DEFAULT = 20;
+    public static final int GRAPHQL_MAX_DEPTH_DEFAULT = Integer.MAX_VALUE;
     public static final String GRAPHQL_MAX_DEPTH_DOC =
         "The maximum depth for a GraphQL query.";
 
     public static final String GRAPHQL_TIMEOUT_MS_CONFIG = "graphql.timeout.ms";
-    public static final int GRAPHQL_TIMEOUT_MS_DEFAULT = 30000;
+    public static final int GRAPHQL_TIMEOUT_MS_DEFAULT = Integer.MAX_VALUE;
     public static final String GRAPHQL_TIMEOUT_MS_DOC =
         "The timeout in ms for a GraphQL query.";
 
