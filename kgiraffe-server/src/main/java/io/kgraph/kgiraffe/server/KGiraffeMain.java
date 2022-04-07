@@ -45,7 +45,6 @@ public class KGiraffeMain extends AbstractVerticle {
 
             Router router = Router.router(vertx);
             GraphQL graphQL = engine.getGraphQL();
-            router.route().handler(LoggerHandler.create());
             router.route().handler(BodyHandler.create());
             GraphQLHandlerOptions graphQLOptions = new GraphQLHandlerOptions()
                 .setRequestBatchingEnabled(true)
