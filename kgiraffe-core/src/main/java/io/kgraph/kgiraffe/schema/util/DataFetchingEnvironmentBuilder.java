@@ -10,8 +10,8 @@ import graphql.schema.DataFetchingEnvironmentImpl;
 public class DataFetchingEnvironmentBuilder {
 
     public static DataFetchingEnvironmentImpl.Builder newDataFetchingEnvironment(
-        DataFetchingEnvironment environment) {
-        return DataFetchingEnvironmentImpl.newDataFetchingEnvironment(environment);
+        DataFetchingEnvironment env) {
+        return DataFetchingEnvironmentImpl.newDataFetchingEnvironment(env);
     }
 
     public static DataFetchingEnvironmentImpl.Builder newDataFetchingEnvironment() {

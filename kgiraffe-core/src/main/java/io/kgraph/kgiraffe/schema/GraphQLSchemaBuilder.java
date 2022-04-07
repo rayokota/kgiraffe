@@ -65,8 +65,8 @@ public class GraphQLSchemaBuilder {
         GraphQLEnumType.newEnum()
             .name("order_by_enum")
             .description("Specifies the direction (ascending/descending) for sorting a field")
-            .value("asc", "asc", "Ascending")
-            .value("desc", "desc", "Descending")
+            .value(OrderByDirection.ASC.symbol(), OrderByDirection.ASC.symbol(), "Ascending")
+            .value(OrderByDirection.DESC.symbol(), OrderByDirection.DESC.symbol(), "Descending")
             .build();
 
     public GraphQLSchemaBuilder(KGiraffeEngine engine,

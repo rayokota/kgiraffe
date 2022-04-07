@@ -84,9 +84,10 @@ public class KGiraffeMain extends AbstractVerticle {
                     LOG.info("GraphQL:     http://localhost:{}/graphql", listener.getPort());
                     LOG.info("GraphQL-WS:  ws://localhost:{}/graphql", listener.getPort());
                     LOG.info("GraphiQL:    http://localhost:{}/playground", listener.getPort());
-                    LOG.info("     /)/)   ");
-                    LOG.info("    ( ..\\   ");
-                    LOG.info("    /'-._)  ");
+                    LOG.info("      /)/)  ");
+                    LOG.info("     ( ..\\  ");
+                    LOG.info("     /'-._) ");
+                    LOG.info("    /#/     ");
                     LOG.info("   /#/      ");
                     LOG.info("  /#/       ");
                     LOG.info("KGiraffe is at your service...");

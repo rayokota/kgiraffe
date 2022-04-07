@@ -17,9 +17,9 @@ public class AttributeFetcher implements DataFetcher {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Object get(DataFetchingEnvironment environment) {
-        Document entity = environment.getSource();
-        String attrName = environment.getField().getName();
+    public Object get(DataFetchingEnvironment env) {
+        Document entity = env.getSource();
+        String attrName = env.getField().getName();
         if (attrName.equals(KEY_ATTR_NAME)) {
             // TODO
             return null;

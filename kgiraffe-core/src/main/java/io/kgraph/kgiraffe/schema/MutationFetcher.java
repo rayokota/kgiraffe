@@ -48,11 +48,11 @@ public class MutationFetcher implements DataFetcher {
     }
 
     @Override
-    public Object get(DataFetchingEnvironment environment) {
+    public Object get(DataFetchingEnvironment env) {
         try {
             // TODO
-            Map<String, Object> key = environment.getArgument(KEY_PARAM_NAME);
-            Map<String, Object> value = environment.getArgument(VALUE_PARAM_NAME);
+            Map<String, Object> key = env.getArgument(KEY_PARAM_NAME);
+            Map<String, Object> value = env.getArgument(VALUE_PARAM_NAME);
 
             JsonNode json = MAPPER.valueToTree(value);
             Object valueObj = AvroSchemaUtils.toObject(json, (AvroSchema) valueSchema);

@@ -12,7 +12,7 @@ public class EntityFetcher implements DataFetcher {
     }
 
     @Override
-    public Object get(DataFetchingEnvironment environment) {
-        return queryFactory.queryResult(environment);
+    public Object get(DataFetchingEnvironment env) {
+        return queryFactory.queryResult(env);
     }
 }

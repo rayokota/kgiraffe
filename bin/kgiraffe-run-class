@@ -79,7 +79,7 @@ fi
 
 # Generic jvm settings you want to add
 if [ -z "$KGIRAFFE_OPTS" ]; then
-  KGIRAFFE_OPTS=""
+  KGIRAFFE_OPTS="--add-opens java.base/java.nio=ALL-UNNAMED"
 fi
 
 # Which java to use

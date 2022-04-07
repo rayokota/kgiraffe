@@ -1,5 +1,6 @@
 package io.kgraph.kgiraffe.schema;
 
+import com.google.common.collect.Iterables;
 import graphql.GraphQLContext;
 import graphql.GraphQLException;
 import graphql.execution.ValuesResolver;
@@ -26,13 +27,16 @@ import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.InputValueWithState;
+import io.hdocdb.HValue;
 import io.hdocdb.store.HQueryCondition;
+import io.kcache.utils.Streams;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.schema.PredicateFilter.Criteria;
 import io.kgraph.kgiraffe.schema.util.DataFetchingEnvironmentBuilder;
 import io.kgraph.kgiraffe.schema.util.GraphQLSupport;
+import io.vavr.Tuple2;
 import io.vavr.control.Either;
-import org.ojai.DocumentStream;
+import org.ojai.Document;
 import org.ojai.Value.Type;
 import org.ojai.store.DocumentStore;
 import org.ojai.store.QueryCondition;
@@ -43,6 +47,7 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +55,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 
@@ -58,12 +64,11 @@ import static graphql.introspection.Introspection.TypeMetaFieldDef;
 import static graphql.introspection.Introspection.TypeNameMetaFieldDef;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.LIMIT_PARAM_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_PARAM_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.ORDER_BY_PARAM_NAME;
 
 public class GraphQLQueryFactory {
 
     private final static Logger LOG = LoggerFactory.getLogger(GraphQLQueryFactory.class);
-
-    public static final String DESC = "desc";
 
     private final KGiraffeEngine engine;
     private final String topic;
@@ -83,50 +88,84 @@ public class GraphQLQueryFactory {
         this.objectType = objectType;
     }
 
-    public DocumentStream queryResult(DataFetchingEnvironment env) {
+    public Iterable<Document> queryResult(DataFetchingEnvironment env) {
         GraphQLContext context = env.getGraphQlContext();
-
         QueryCondition query = getCriteriaQuery(env, env.getField());
+        DocumentStore coll = engine.getDocDB().getCollection(topic);
+        Iterable<Document> result = query == null || query.isEmpty() ? coll.find() : coll.find(query);
 
-        String orderByPath = getOrderByPath(env, env.getField());
-
-        int limit = 0;
-        Optional<Argument> limitArg = getArgument(env.getField(), LIMIT_PARAM_NAME);
-        if (limitArg.isPresent()) {
-            IntValue limitValue = getValue(limitArg.get(), env);
-            limit = limitValue.getValue().intValue();
-        }
-
-        int offset = 0;
         Optional<Argument> offsetArg = getArgument(env.getField(), OFFSET_PARAM_NAME);
         if (offsetArg.isPresent()) {
             IntValue offsetValue = getValue(offsetArg.get(), env);
-            offset = offsetValue.getValue().intValue();
+            int offset = offsetValue.getValue().intValue();
+            result = Iterables.skip(result, offset);
         }
 
-        DocumentStore coll = engine.getDocDB().getCollection(topic);
-        DocumentStream result = query == null || query.isEmpty() ? coll.find() : coll.find(query);
+        Optional<Argument> limitArg = getArgument(env.getField(), LIMIT_PARAM_NAME);
+        if (limitArg.isPresent()) {
+            IntValue limitValue = getValue(limitArg.get(), env);
+            int limit = limitValue.getValue().intValue();
+            result = Iterables.limit(result, limit);
+        }
+
+        Tuple2<String, OrderByDirection> orderBy = getOrderBy(env, env.getField());
+        if (orderBy != null) {
+            Comparator<Document> cmp = orderBy._2 == OrderByDirection.ASC
+                ? Comparator.comparing(doc -> (HValue) doc.getValue(orderBy._1),
+                Comparator.nullsFirst(Comparator.naturalOrder()))
+                : Comparator.comparing(doc -> (HValue) doc.getValue(orderBy._1),
+                Comparator.nullsFirst(Comparator.reverseOrder()));
+            Stream<Document> stream = Streams.streamOf(result).sorted(cmp);
+            result = stream::iterator;
+        }
+
         return result;
     }
 
-    public HQueryCondition getCriteriaQuery(DataFetchingEnvironment environment, Field field) {
+    public HQueryCondition getCriteriaQuery(DataFetchingEnvironment env, Field field) {
         // Build predicates from query arguments
-        List<HQueryCondition> predicates = getFieldPredicates(field, environment);
+        List<HQueryCondition> predicates = getFieldPredicates(field, env);
 
         return getCompoundPredicate(predicates, Logical.AND);
     }
 
-    protected String getOrderByPath(DataFetchingEnvironment environment, Field field) {
-        return null;
+    protected Tuple2<String, OrderByDirection> getOrderBy(DataFetchingEnvironment env, Field field) {
+        String orderByPath = null;
+        OrderByDirection orderByDirection = null;
+        Optional<Argument> orderByArg = getArgument(field, ORDER_BY_PARAM_NAME);
+        if (orderByArg.isPresent()) {
+            ObjectValue objectValue = getValue(orderByArg.get(), env);
+            while (objectValue != null) {
+                if (objectValue.getObjectFields().size() > 0) {
+                    // Only use the first attr set for this object
+                    ObjectField objectField = objectValue.getObjectFields().get(0);
+                    if (orderByPath == null) {
+                        orderByPath = objectField.getName();
+                    } else {
+                        orderByPath += "." + objectField.getName();
+                    }
+                    Value value = objectField.getValue();
+                    if (value instanceof EnumValue) {
+                        orderByDirection = OrderByDirection.get(((EnumValue) value).getName());
+                        break;
+                    } else {
+                        objectValue = (ObjectValue) value;
+                    }
+                }
+            }
+        }
+        return orderByPath != null && orderByDirection != null
+            ? new Tuple2<>(orderByPath, orderByDirection)
+            : null;
     }
 
     protected List<HQueryCondition> getFieldPredicates(Field field,
-                                                       DataFetchingEnvironment environment) {
+                                                       DataFetchingEnvironment env) {
 
         List<HQueryCondition> predicates = new ArrayList<>();
 
         field.getArguments().stream()
-            .map(it -> getPredicate(field, environment, it))
+            .map(it -> getPredicate(field, env, it))
             .filter(Objects::nonNull)
             .forEach(predicates::add);
 
@@ -139,23 +178,23 @@ public class GraphQLQueryFactory {
             .findFirst();
     }
 
-    protected HQueryCondition getPredicate(Field field, DataFetchingEnvironment environment,
+    protected HQueryCondition getPredicate(Field field, DataFetchingEnvironment env,
                                            Argument argument) {
         if (!GraphQLSupport.isWhereArgument(argument)) {
             return null;
         }
 
-        return getWherePredicate(argumentEnvironment(environment, argument), argument);
+        return getWherePredicate(argumentEnvironment(env, argument), argument);
     }
 
     @SuppressWarnings("unchecked")
-    private <R extends Value<?>> R getValue(Argument argument, DataFetchingEnvironment environment) {
+    private <R extends Value<?>> R getValue(Argument argument, DataFetchingEnvironment env) {
         Value<?> value = argument.getValue();
 
         if (value instanceof VariableReference) {
-            Object variableValue = getVariableReferenceValue((VariableReference) value, environment);
+            Object variableValue = getVariableReferenceValue((VariableReference) value, env);
 
-            GraphQLArgument graphQLArgument = environment.getExecutionStepInfo()
+            GraphQLArgument graphQLArgument = env.getExecutionStepInfo()
                 .getFieldDefinition()
                 .getArgument(argument.getName());
 
@@ -171,9 +210,9 @@ public class GraphQLQueryFactory {
         return env.getVariables().get(variableReference.getName());
     }
 
-    protected HQueryCondition getWherePredicate(DataFetchingEnvironment environment,
+    protected HQueryCondition getWherePredicate(DataFetchingEnvironment env,
                                                 Argument argument) {
-        ObjectValue whereValue = getValue(argument, environment);
+        ObjectValue whereValue = getValue(argument, env);
 
         if (whereValue.getChildren().isEmpty()) {
             return new HQueryCondition();
@@ -182,10 +221,10 @@ public class GraphQLQueryFactory {
         Logical logical = extractLogical(argument);
 
         Map<String, Object> predicateArguments = new LinkedHashMap<>();
-        predicateArguments.put(logical.symbol(), environment.getArguments());
+        predicateArguments.put(logical.symbol(), env.getArguments());
 
         DataFetchingEnvironment predicateDataFetchingEnvironment = DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(
-                environment)
+                env)
             .arguments(predicateArguments)
             .build();
         Argument predicateArgument = new Argument(logical.symbol(), whereValue);
@@ -194,8 +233,8 @@ public class GraphQLQueryFactory {
     }
 
     protected HQueryCondition getArgumentPredicate(
-        DataFetchingEnvironment environment, Argument argument) {
-        ObjectValue whereValue = getValue(argument, environment);
+        DataFetchingEnvironment env, Argument argument) {
+        ObjectValue whereValue = getValue(argument, env);
 
         if (whereValue.getChildren().isEmpty()) {
             return new HQueryCondition();
@@ -208,14 +247,14 @@ public class GraphQLQueryFactory {
         whereValue.getObjectFields().stream()
             .filter(it -> Logical.symbols().contains(it.getName()))
             .map(it -> {
-                Map<String, Object> arguments = getFieldArguments(environment, it, argument);
+                Map<String, Object> arguments = getFieldArguments(env, it, argument);
 
                 if (it.getValue() instanceof ArrayValue) {
-                    return getArgumentsPredicate(argumentEnvironment(environment, arguments),
+                    return getArgumentsPredicate(argumentEnvironment(env, arguments),
                         new Argument(it.getName(), it.getValue()));
                 }
 
-                return getArgumentPredicate(argumentEnvironment(environment, arguments),
+                return getArgumentPredicate(argumentEnvironment(env, arguments),
                     new Argument(it.getName(), it.getValue()));
             })
             .forEach(predicates::add);
@@ -223,10 +262,10 @@ public class GraphQLQueryFactory {
         whereValue.getObjectFields().stream()
             .filter(it -> !Logical.symbols().contains(it.getName()))
             .map(it -> {
-                Map<String, Object> args = getFieldArguments(environment, it, argument);
+                Map<String, Object> args = getFieldArguments(env, it, argument);
                 Argument arg = new Argument(it.getName(), it.getValue());
 
-                return getObjectFieldPredicate(environment, logical, it, arg, args);
+                return getObjectFieldPredicate(env, logical, it, arg, args);
             })
             .filter(Objects::nonNull)
             .forEach(predicates::add);
@@ -235,21 +274,21 @@ public class GraphQLQueryFactory {
     }
 
 
-    protected HQueryCondition getObjectFieldPredicate(DataFetchingEnvironment environment,
-                                                     Logical logical,
-                                                     ObjectField objectField,
-                                                     Argument argument,
-                                                     Map<String, Object> arguments
+    protected HQueryCondition getObjectFieldPredicate(DataFetchingEnvironment env,
+                                                      Logical logical,
+                                                      ObjectField objectField,
+                                                      Argument argument,
+                                                      Map<String, Object> arguments
     ) {
         return getLogicalPredicate(objectField.getName(),
             objectField,
-            argumentEnvironment(environment, arguments),
+            argumentEnvironment(env, arguments),
             argument);
     }
 
-    protected HQueryCondition getArgumentsPredicate(DataFetchingEnvironment environment,
-                                                   Argument argument) {
-        ArrayValue whereValue = getValue(argument, environment);
+    protected HQueryCondition getArgumentsPredicate(DataFetchingEnvironment env,
+                                                    Argument argument) {
+        ArrayValue whereValue = getValue(argument, env);
 
         if (whereValue.getValues().isEmpty()) {
             return new HQueryCondition();
@@ -259,7 +298,7 @@ public class GraphQLQueryFactory {
 
         List<HQueryCondition> predicates = new ArrayList<>();
 
-        List<Map<String, Object>> arguments = environment.getArgument(logical.symbol());
+        List<Map<String, Object>> arguments = env.getArgument(logical.symbol());
         List<ObjectValue> values = whereValue.getValues()
             .stream()
             .map(ObjectValue.class::cast).collect(Collectors.toList());
@@ -280,11 +319,11 @@ public class GraphQLQueryFactory {
                     Argument arg = new Argument(it.getName(), it.getValue());
 
                     if (it.getValue() instanceof ArrayValue) {
-                        return getArgumentsPredicate(argumentEnvironment(environment, args),
+                        return getArgumentsPredicate(argumentEnvironment(env, args),
                             arg);
                     }
 
-                    return getArgumentPredicate(argumentEnvironment(environment, args),
+                    return getArgumentPredicate(argumentEnvironment(env, args),
                         arg);
 
                 }))
@@ -299,7 +338,7 @@ public class GraphQLQueryFactory {
                     Map<String, Object> args = e.getValue();
                     Argument arg = new Argument(it.getName(), it.getValue());
 
-                    return getObjectFieldPredicate(environment, logical, it, arg, args);
+                    return getObjectFieldPredicate(env, logical, it, arg, args);
                 }))
             .filter(Objects::nonNull)
             .forEach(predicates::add);
@@ -307,19 +346,19 @@ public class GraphQLQueryFactory {
         return getCompoundPredicate(predicates, logical);
     }
 
-    private Map<String, Object> getFieldArguments(DataFetchingEnvironment environment,
+    private Map<String, Object> getFieldArguments(DataFetchingEnvironment env,
                                                   ObjectField field, Argument argument) {
         Map<String, Object> arguments;
 
-        if (environment.getArgument(argument.getName()) instanceof Collection) {
-            Collection<Map<String, Object>> list = environment.getArgument(argument.getName());
+        if (env.getArgument(argument.getName()) instanceof Collection) {
+            Collection<Map<String, Object>> list = env.getArgument(argument.getName());
 
             arguments = list.stream()
                 .filter(args -> args.get(field.getName()) != null)
                 .findFirst()
                 .orElse(list.stream().findFirst().get());
         } else {
-            arguments = environment.getArgument(argument.getName());
+            arguments = env.getArgument(argument.getName());
         }
 
         return arguments;
@@ -334,7 +373,7 @@ public class GraphQLQueryFactory {
 
     private HQueryCondition getLogicalPredicates(String fieldName,
                                                  ObjectField objectField,
-                                                 DataFetchingEnvironment environment,
+                                                 DataFetchingEnvironment env,
                                                  Argument argument) {
         ArrayValue value = (ArrayValue) objectField.getValue();
 
@@ -347,12 +386,12 @@ public class GraphQLQueryFactory {
             .map(ObjectValue.class::cast)
             .flatMap(it -> it.getObjectFields().stream())
             .map(it -> {
-                Map<String, Object> args = getFieldArguments(environment, it, argument);
+                Map<String, Object> args = getFieldArguments(env, it, argument);
                 Argument arg = new Argument(it.getName(), it.getValue());
 
                 return getLogicalPredicate(it.getName(),
                     it,
-                    argumentEnvironment(environment, args),
+                    argumentEnvironment(env, args),
                     arg);
             })
             .forEach(predicates::add);
@@ -362,7 +401,7 @@ public class GraphQLQueryFactory {
 
     private HQueryCondition getLogicalPredicate(String fieldName,
                                                 ObjectField objectField,
-                                                DataFetchingEnvironment environment,
+                                                DataFetchingEnvironment env,
                                                 Argument argument) {
         ObjectValue expressionValue;
 
@@ -384,17 +423,17 @@ public class GraphQLQueryFactory {
         expressionValue.getObjectFields().stream()
             .filter(it -> Logical.symbols().contains(it.getName()))
             .map(it -> {
-                Map<String, Object> args = getFieldArguments(environment, it, argument);
+                Map<String, Object> args = getFieldArguments(env, it, argument);
                 Argument arg = new Argument(it.getName(), it.getValue());
 
                 if (it.getValue() instanceof ArrayValue) {
                     return getLogicalPredicates(fieldName, it,
-                        argumentEnvironment(environment, args),
+                        argumentEnvironment(env, args),
                         arg);
                 }
 
                 return getLogicalPredicate(fieldName, it,
-                    argumentEnvironment(environment, args),
+                    argumentEnvironment(env, args),
                     arg);
             })
             .forEach(predicates::add);
@@ -404,19 +443,19 @@ public class GraphQLQueryFactory {
             .stream()
             .anyMatch(it -> !Logical.symbols().contains(it.getName())
                 && !Criteria.symbols().contains(it.getName()))) {
-            GraphQLFieldDefinition fieldDefinition = getFieldDefinition(environment.getGraphQLSchema(),
-                this.getImplementingType(environment),
+            GraphQLFieldDefinition fieldDefinition = getFieldDefinition(env.getGraphQLSchema(),
+                this.getImplementingType(env),
                 new Field(fieldName));
             Map<String, Object> args = new LinkedHashMap<>();
             Argument arg = new Argument(logical.symbol(), expressionValue);
 
             if (Logical.symbols().contains(argument.getName())) {
-                args.put(logical.symbol(), environment.getArgument(argument.getName()));
+                args.put(logical.symbol(), env.getArgument(argument.getName()));
             } else {
-                args.put(logical.symbol(), environment.getArgument(fieldName));
+                args.put(logical.symbol(), env.getArgument(fieldName));
             }
 
-            return getArgumentPredicate(wherePredicateEnvironment(environment, fieldDefinition, args),
+            return getArgumentPredicate(wherePredicateEnvironment(env, fieldDefinition, args),
                 arg);
         }
 
@@ -425,10 +464,10 @@ public class GraphQLQueryFactory {
             .stream()
             .filter(it -> Criteria.symbols().contains(it.getName()))
             .map(it -> getPredicateFilter(new ObjectField(fieldName, it.getValue()),
-                argumentEnvironment(environment, argument),
+                argumentEnvironment(env, argument),
                 new Argument(it.getName(), it.getValue())))
             .sorted()
-            .map(it -> it.toQueryCondition(environment))
+            .map(it -> it.toQueryCondition(env))
             .filter(Objects::nonNull)
             .forEach(predicates::add);
 
@@ -466,14 +505,14 @@ public class GraphQLQueryFactory {
     }
 
     private PredicateFilter getPredicateFilter(ObjectField objectField,
-                                               DataFetchingEnvironment environment, Argument argument) {
+                                               DataFetchingEnvironment env, Argument argument) {
         PredicateFilter.Criteria option = PredicateFilter.Criteria.get(argument.getName());
 
         Map<String, Object> valueArguments = new LinkedHashMap<>();
-        valueArguments.put(objectField.getName(), environment.getArgument(argument.getName()));
+        valueArguments.put(objectField.getName(), env.getArgument(argument.getName()));
 
         DataFetchingEnvironment dataFetchingEnvironment = DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(
-                environment)
+                env)
             .arguments(valueArguments)
             .build();
 
@@ -485,25 +524,25 @@ public class GraphQLQueryFactory {
         return new PredicateFilter(objectField.getName(), filterValue, option);
     }
 
-    protected DataFetchingEnvironment argumentEnvironment(DataFetchingEnvironment environment,
+    protected DataFetchingEnvironment argumentEnvironment(DataFetchingEnvironment env,
                                                           Map<String, Object> arguments) {
-        return DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(environment)
+        return DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(env)
             .arguments(arguments)
             .build();
     }
 
-    protected DataFetchingEnvironment argumentEnvironment(DataFetchingEnvironment environment,
+    protected DataFetchingEnvironment argumentEnvironment(DataFetchingEnvironment env,
                                                           Argument argument) {
-        Map<String, Object> arguments = environment.getArgument(argument.getName());
+        Map<String, Object> arguments = env.getArgument(argument.getName());
 
-        return DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(environment)
+        return DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(env)
             .arguments(arguments)
             .build();
     }
 
-    protected DataFetchingEnvironment wherePredicateEnvironment(DataFetchingEnvironment environment,
+    protected DataFetchingEnvironment wherePredicateEnvironment(DataFetchingEnvironment env,
                                                                 GraphQLFieldDefinition fieldDefinition, Map<String, Object> arguments) {
-        return DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(environment)
+        return DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(env)
             .arguments(arguments)
             .fieldDefinition(fieldDefinition)
             .fieldType(fieldDefinition.getType())
@@ -511,12 +550,12 @@ public class GraphQLQueryFactory {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected Object convertValue(DataFetchingEnvironment environment, Argument argument,
+    protected Object convertValue(DataFetchingEnvironment env, Argument argument,
                                   Value value) {
         if (value instanceof NullValue) {
             return value;
         } else if (value instanceof StringValue) {
-            Object convertedValue = environment.getArgument(argument.getName());
+            Object convertedValue = env.getArgument(argument.getName());
             if (convertedValue != null) {
                 // Return real typed resolved value even if the Value is a StringValue
                 return convertedValue;
@@ -526,9 +565,9 @@ public class GraphQLQueryFactory {
             }
         } else if (value instanceof VariableReference) {
             // Get resolved variable in environment arguments
-            return environment.getVariables().get(((VariableReference) value).getName());
+            return env.getVariables().get(((VariableReference) value).getName());
         } else if (value instanceof ArrayValue) {
-            Collection arrayValue = environment.getArgument(argument.getName());
+            Collection arrayValue = env.getArgument(argument.getName());
 
             if (arrayValue != null) {
                 // Let's unwrap array of array values
@@ -541,7 +580,7 @@ public class GraphQLQueryFactory {
                 else if (arrayValue.stream()
                     .anyMatch(it -> it instanceof Value)) {
                     return arrayValue.stream()
-                        .map(it -> convertValue(environment,
+                        .map(it -> convertValue(env,
                             argument,
                             (Value) it))
                         .collect(Collectors.toList());
@@ -553,7 +592,7 @@ public class GraphQLQueryFactory {
             } else {
                 // Wrap converted values in ArrayList
                 return ((ArrayValue) value).getValues().stream()
-                    .map((it) -> convertValue(environment, argument, it))
+                    .map((it) -> convertValue(env, argument, it))
                     .collect(Collectors.toList());
             }
 
@@ -566,7 +605,7 @@ public class GraphQLQueryFactory {
         } else if (value instanceof FloatValue) {
             return ((FloatValue) value).getValue();
         } else if (value instanceof ObjectValue) {
-            Map<String, Object> values = environment.getArgument(argument.getName());
+            Map<String, Object> values = env.getArgument(argument.getName());
             return values;
         }
 
@@ -576,11 +615,11 @@ public class GraphQLQueryFactory {
     /**
      * Resolve GraphQL object type from Argument output type.
      *
-     * @param environment the environment
+     * @param env the environment
      * @return resolved GraphQL object type or null if no output type is provided
      */
-    private GraphQLImplementingType getImplementingType(DataFetchingEnvironment environment) {
-        GraphQLType outputType = environment.getFieldType();
+    private GraphQLImplementingType getImplementingType(DataFetchingEnvironment env) {
+        GraphQLType outputType = env.getFieldType();
 
         if (outputType instanceof GraphQLList) {
             outputType = ((GraphQLList) outputType).getWrappedType();

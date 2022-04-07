@@ -114,7 +114,7 @@ class PredicateFilter implements Comparable<PredicateFilter> {
     }
 
     @SuppressWarnings("unchecked")
-    public HQueryCondition toQueryCondition(DataFetchingEnvironment environment) {
+    public HQueryCondition toQueryCondition(DataFetchingEnvironment env) {
         HQueryCondition attrCriteria = new HQueryCondition();
         switch (criteria) {
             case LT:

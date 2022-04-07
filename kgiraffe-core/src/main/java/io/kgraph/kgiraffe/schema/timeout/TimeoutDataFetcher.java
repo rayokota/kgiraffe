@@ -12,7 +12,7 @@ public class TimeoutDataFetcher<T> implements DataFetcher<T> {
     }
 
     @Override
-    public T get(DataFetchingEnvironment environment) throws Exception {
+    public T get(DataFetchingEnvironment env) throws Exception {
         throw new QueryTimeoutException("Maximum query duration of " + maxDuration + " ms exceeded.");
     }
 }
