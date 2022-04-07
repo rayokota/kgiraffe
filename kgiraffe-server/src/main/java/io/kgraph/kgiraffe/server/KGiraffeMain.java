@@ -34,7 +34,7 @@ public class KGiraffeMain extends AbstractVerticle {
     public KGiraffeMain(KGiraffeConfig config)
         throws URISyntaxException {
         this.config = config;
-        // TODO
+        // TODO use config
         this.listener = new URI("http://0.0.0.0:8765");
     }
 
@@ -59,13 +59,15 @@ public class KGiraffeMain extends AbstractVerticle {
                 .handler(ApolloWSHandler.create(graphQL, apolloWSOptions))
                 .handler(GraphQLHandler.create(graphQL, graphQLOptions));
 
-            router.route("/playground/*")
-                .handler(StaticHandler.create("playground"));
+            router.route("/kgiraffe/*")
+                .handler(StaticHandler.create("kgiraffe"));
 
+            /*
             GraphiQLHandlerOptions graphiQLOptions = new GraphiQLHandlerOptions()
                 .setEnabled(true);
             router.route("/graphiql/*")
                 .handler(GraphiQLHandler.create(graphiQLOptions));
+            */
 
             // Create the HTTP server
             HttpServerOptions httpServerOptions = new HttpServerOptions()
@@ -83,7 +85,7 @@ public class KGiraffeMain extends AbstractVerticle {
                     LOG.info("Server started, listening on {}", listener.getPort());
                     LOG.info("GraphQL:     http://localhost:{}/graphql", listener.getPort());
                     LOG.info("GraphQL-WS:  ws://localhost:{}/graphql", listener.getPort());
-                    LOG.info("GraphiQL:    http://localhost:{}/playground", listener.getPort());
+                    LOG.info("GraphiQL:    http://localhost:{}/kgiraffe", listener.getPort());
                     LOG.info("      /)/)  ");
                     LOG.info("     ( ..\\  ");
                     LOG.info("     /'-._) ");

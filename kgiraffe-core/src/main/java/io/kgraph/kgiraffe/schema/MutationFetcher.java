@@ -22,8 +22,8 @@ import org.apache.kafka.common.utils.Bytes;
 import org.ojai.Document;
 import org.ojai.Value.Type;
 
-import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_PARAM_NAME;
-import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_PARAM_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ATTR_NAME;
 
 public class MutationFetcher implements DataFetcher {
 
@@ -51,8 +51,8 @@ public class MutationFetcher implements DataFetcher {
     public Object get(DataFetchingEnvironment env) {
         try {
             // TODO
-            Map<String, Object> key = env.getArgument(KEY_PARAM_NAME);
-            Map<String, Object> value = env.getArgument(VALUE_PARAM_NAME);
+            Map<String, Object> key = env.getArgument(KEY_ATTR_NAME);
+            Map<String, Object> value = env.getArgument(VALUE_ATTR_NAME);
 
             JsonNode json = MAPPER.valueToTree(value);
             Object valueObj = AvroSchemaUtils.toObject(json, (AvroSchema) valueSchema);

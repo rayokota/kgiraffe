@@ -3,6 +3,7 @@ package io.kgraph.kgiraffe.schema;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import org.ojai.Document;
+import org.ojai.Value;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
 
@@ -25,6 +26,7 @@ public class AttributeFetcher implements DataFetcher {
             return null;
         }
 
-        return entity.getValue(attrName);
+        Value value = entity.getValue(attrName);
+        return value != null ? value.getObject() : null;
     }
 }

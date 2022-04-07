@@ -48,12 +48,14 @@ public class GraphQLSchemaBuilder {
     public static final String ORDER_BY_PARAM_NAME = "order_by";
     public static final String WHERE_PARAM_NAME = "where";
 
-    public static final String KEY_PARAM_NAME = "key";
-    public static final String VALUE_PARAM_NAME = "value";
-
     // TODO
     public static final String KEY_ATTR_NAME = "_key";
-    // TODO
+    public static final String VALUE_ATTR_NAME = "_value";
+    public static final String TOPIC_ATTR_NAME = "_topic";
+    public static final String PARTITION_ATTR_NAME = "_partition";
+    public static final String OFFSET_ATTR_NAME = "_offset";
+    public static final String TIMESTAMP_ATTR_NAME = "_timestamp";
+    // TODO for Protobuf
     public static final String TYPE_ATTR_NAME = "_type";
 
     private final KGiraffeEngine engine;
@@ -268,7 +270,7 @@ public class GraphQLSchemaBuilder {
                 new SchemaContext(topic, Mode.MUTATION), ((AvroSchema) valueSchema).rawSchema());
 
         return GraphQLArgument.newArgument()
-            .name(VALUE_PARAM_NAME)
+            .name(VALUE_ATTR_NAME)
             .description("Value specification")
             .type(valueInputObject)
             .build();

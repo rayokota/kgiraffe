@@ -37,6 +37,7 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.common.utils.Utils;
 import org.ojai.Document;
 import org.ojai.json.Json;
+import org.ojai.types.ODate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +58,11 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PARTITION_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TOPIC_ATTR_NAME;
 
 public class KGiraffeEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeEngine.class);
@@ -167,7 +173,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
                                  TopicPartition tp, long offset, long timestamp) {
             try {
                 String topic = tp.topic();
-                String id = topic + "-" + tp.partition() + "-" + offset;
+                int partition = tp.partition();
+                String id = topic + "-" + partition + "-" + offset;
                 HDocumentCollection coll = docdb.getCollection(topic);
                 GenericRecord record = (GenericRecord)
                     new KafkaAvroDeserializer(schemaRegistry).deserialize(topic, value.get());
@@ -178,6 +185,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 Document doc = Json.newDocumentStream(
                     new ByteArrayInputStream(valueBytes)).iterator().next();
                 doc.setId(id);
+                doc.set(TOPIC_ATTR_NAME, topic);
+                doc.set(PARTITION_ATTR_NAME, partition);
+                doc.set(OFFSET_ATTR_NAME, offset);
+                doc.set(TIMESTAMP_ATTR_NAME, timestamp);
                 coll.insertOrReplace(doc);
                 coll.flush();
                 doc = coll.findById(id);

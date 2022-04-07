@@ -23,8 +23,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PARTITION_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TOPIC_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.orderByEnum;
 
 public class GraphQLAvroSchemaBuilder {
@@ -72,7 +75,11 @@ public class GraphQLAvroSchemaBuilder {
                     return type;
                 }
             }
-            List<GraphQLInputObjectField> fields = schema.getFields().stream()
+            List<Schema.Field> schemaFields = new ArrayList<>(schema.getFields());
+            if (ctx.isRoot()) {
+                addKafkaFields(schemaFields);
+            }
+            List<GraphQLInputObjectField> fields = schemaFields.stream()
                 .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
                 .map(f -> createInputField(ctx, schema, f))
                 .collect(Collectors.toList());
@@ -241,20 +248,19 @@ public class GraphQLAvroSchemaBuilder {
                     return type;
                 }
             }
-            List<GraphQLFieldDefinition> fields = schema.getFields().stream()
+            List<Schema.Field> schemaFields = new ArrayList<>(schema.getFields());
+            if (ctx.isRoot()) {
+                addKafkaFields(schemaFields);
+            }
+            List<GraphQLFieldDefinition> fields = schemaFields.stream()
                 .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
-                .map(f -> GraphQLFieldDefinition.newFieldDefinition()
-                    .name(f.name())
-                    .description(f.doc())
-                    .type(createOutputType(ctx, f.schema()))
-                    .dataFetcher(new AttributeFetcher(f.name()))
-                    .build())
+                .map(f -> createOutputField(ctx, f))
                 .collect(Collectors.toList());
-            GraphQLObjectType type = GraphQLObjectType.newObject()
+            GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
                 .name(name)
                 .description(schema.getDoc())
-                .fields(fields)
-                .build();
+                .fields(fields);
+            GraphQLObjectType type = builder.build();
             if (ctx.isRoot()) {
                 typeCache.put(name, type);
             }
@@ -262,6 +268,15 @@ public class GraphQLAvroSchemaBuilder {
         } finally {
             ctx.setRoot(false);
         }
+    }
+
+    private GraphQLFieldDefinition createOutputField(SchemaContext ctx, Schema.Field field) {
+        return GraphQLFieldDefinition.newFieldDefinition()
+            .name(field.name())
+            .description(field.doc())
+            .type(createOutputType(ctx, field.schema()))
+            .dataFetcher(new AttributeFetcher(field.name()))
+            .build();
     }
 
     private GraphQLEnumType createOutputEnum(SchemaContext ctx, Schema schema) {
@@ -285,10 +300,21 @@ public class GraphQLAvroSchemaBuilder {
                 .map(t -> GraphQLFieldDefinition.newFieldDefinition()
                     .name(t.getFullName())
                     .type(createOutputType(ctx, t))
-                    // TODO fix union
+                    // TODO fix union fetch
                     .dataFetcher(new AttributeFetcher(t.getFullName()))
                     .build())
                 .collect(Collectors.toList()))
             .build();
+    }
+
+    private void addKafkaFields(List<Schema.Field> schemaFields) {
+        schemaFields.add(new Schema.Field(
+            TOPIC_ATTR_NAME, Schema.create(Schema.Type.STRING), "Kafka topic"));
+        schemaFields.add(new Schema.Field(
+            PARTITION_ATTR_NAME, Schema.create(Schema.Type.INT), "Kafka partition"));
+        schemaFields.add(new Schema.Field(
+            OFFSET_ATTR_NAME, Schema.create(Schema.Type.LONG), "Kafka record offset"));
+        schemaFields.add(new Schema.Field(
+            TIMESTAMP_ATTR_NAME, Schema.create(Schema.Type.LONG), "Kafka record timestamp"));
     }
 }

@@ -33,11 +33,6 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeConfig.class);
 
     // TODO
-    public static final String HOST_NAME_CONFIG = "host.name";
-    public static final String HOST_NAME_DOC =
-        "The host name used in leader election. Make sure to set this if running with multiple nodes.";
-
-    // TODO
     public static final String LISTENERS_CONFIG = "listeners";
     public static final String LISTENERS_DEFAULT = "http://0.0.0.0:8765";
     public static final String LISTENERS_DOC =
@@ -201,12 +196,6 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     static {
         config = baseConfigDef()
             .define(
-                HOST_NAME_CONFIG,
-                Type.STRING,
-                getDefaultHost(),
-                Importance.HIGH,
-                HOST_NAME_DOC
-            ).define(
                 LISTENERS_CONFIG,
                 Type.LIST,
                 LISTENERS_DEFAULT,
