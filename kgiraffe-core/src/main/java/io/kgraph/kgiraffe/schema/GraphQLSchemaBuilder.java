@@ -54,10 +54,10 @@ public class GraphQLSchemaBuilder {
     // TODO
     public static final String KEY_ATTR_NAME = "key";
     // TODO for Protobuf
-    public static final String KEY_TYPE_ATTR_NAME = "key_type";
+    public static final String KEY_TYPE_NAME_ATTR_NAME = "key_type_name";
     public static final String VALUE_ATTR_NAME = "value";
     // TODO for Protobuf
-    public static final String VALUE_TYPE_ATTR_NAME = "value_type";
+    public static final String VALUE_TYPE_NAME_ATTR_NAME = "value_type_name";
     public static final String HEADERS_ATTR_NAME = "headers";
     public static final String TOPIC_ATTR_NAME = "topic";
     public static final String PARTITION_ATTR_NAME = "partition";
@@ -92,9 +92,7 @@ public class GraphQLSchemaBuilder {
     }
 
     public GraphQLAbstractSchemaBuilder getSchemaBuilder(Either<Type, ParsedSchema> schema) {
-        if (schema.isLeft()) {
-            return new GraphQLPrimitiveSchemaBuilder();
-        } else {
+        if (schema.isRight()) {
             ParsedSchema parsedSchema = schema.get();
             switch (parsedSchema.schemaType()) {
                 case "AVRO":
@@ -103,10 +101,9 @@ public class GraphQLSchemaBuilder {
                     return jsonSchemaBuilder;
                 case "PROTOBUF":
                     return protobufBuilder;
-                default:
-                    return primitiveBuilder;
             }
         }
+        return primitiveBuilder;
     }
 
     /**
@@ -175,14 +172,14 @@ public class GraphQLSchemaBuilder {
                                              Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.QUERY_WHERE, false);
-        GraphQLInputType keyObject = Scalars.GraphQLString;
-        /*
-        GraphQLInputObjectType keyObject =
-            (GraphQLInputObjectType) avroBuilder.createInputType(
-                ctx, ((AvroSchema) keySchema.get()).rawSchema());
-
-         */
+        GraphQLInputType keyObject = getSchemaBuilder(keySchema).createInputType(ctx, keySchema);
+        if (!(keyObject instanceof GraphQLInputObjectType)) {
+            keyObject = createInputFieldOp(ctx, topic, KEY_ATTR_NAME, keyObject);
+        }
         GraphQLInputType valueObject = getSchemaBuilder(valueSchema).createInputType(ctx, valueSchema);
+        if (!(valueObject instanceof GraphQLInputObjectType)) {
+            valueObject = createInputFieldOp(ctx, topic, VALUE_ATTR_NAME, valueObject);
+        }
 
         GraphQLInputObjectType whereInputObject = getWhereObject(ctx, topic, keyObject, valueObject);
 
@@ -315,12 +312,7 @@ public class GraphQLSchemaBuilder {
                                                Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.QUERY_ORDER_BY, false);
-        GraphQLInputType keyObject = Scalars.GraphQLString;
-        /*
-        GraphQLInputType keyObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) keySchema.get()).rawSchema());
-
-         */
+        GraphQLInputType keyObject = getSchemaBuilder(keySchema).createInputType(ctx, keySchema);
         GraphQLInputType valueObject = getSchemaBuilder(valueSchema).createInputType(ctx, valueSchema);
 
         String name = topic + "_record_sort";
@@ -373,12 +365,7 @@ public class GraphQLSchemaBuilder {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.OUTPUT, false);
 
-        GraphQLOutputType keyObject = Scalars.GraphQLString;
-            /*
-            (GraphQLObjectType) avroBuilder.createOutputType(
-                ctx, ((AvroSchema) keySchema.get()).rawSchema());
-
-             */
+        GraphQLOutputType keyObject = getSchemaBuilder(keySchema).createOutputType(ctx, keySchema);
         GraphQLOutputType valueObject = getSchemaBuilder(valueSchema).createOutputType(ctx, valueSchema);
 
         String name = topic;
@@ -465,12 +452,7 @@ public class GraphQLSchemaBuilder {
                                            Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.MUTATION, false);
-        GraphQLInputType keyObject = Scalars.GraphQLString;
-        /*
-        GraphQLInputType keyObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) keySchema.get()).rawSchema());
-
-         */
+        GraphQLInputType keyObject = getSchemaBuilder(keySchema).createInputType(ctx, keySchema);
 
         return GraphQLArgument.newArgument()
             .name(KEY_ATTR_NAME)

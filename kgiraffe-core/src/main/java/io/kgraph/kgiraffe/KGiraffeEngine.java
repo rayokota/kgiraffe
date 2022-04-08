@@ -18,6 +18,7 @@ package io.kgraph.kgiraffe;
 
 import graphql.GraphQL;
 import io.hdocdb.HDocument;
+import io.hdocdb.HValue;
 import io.hdocdb.store.HDocumentCollection;
 import io.hdocdb.store.HDocumentDB;
 import io.hdocdb.store.InMemoryHDocumentDB;
@@ -39,9 +40,11 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.common.utils.Utils;
 import org.ojai.Document;
+import org.ojai.Value;
 import org.ojai.json.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +63,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
-import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaUtils;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
@@ -73,6 +75,7 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import org.ojai.Value.Type;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.HEADERS_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PARTITION_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_ATTR_NAME;
@@ -157,12 +160,16 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     public Either<Type, ParsedSchema> getKeySchema(String topic) {
+        return Either.left(Type.STRING);
+        /*
         return keySchemas.computeIfAbsent(topic, t -> {
             Optional<ParsedSchema> schema = getLatestSchema(t + "-key");
             // TODO other primitive keys
             return schema.<Either<Type, ParsedSchema>>map(Either::right)
                 .orElseGet(() -> Either.left(Type.NULL));
         });
+
+         */
     }
 
     public Either<Type, ParsedSchema> getValueSchema(String topic) {
@@ -238,12 +245,20 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 byte[] keyBytes = null;
                 byte[] valueBytes = AvroSchemaUtils.toJson(record);
 
-                Document valueDoc = Json.newDocumentStream(
+                Value keyObj = null;
+                if (key != null && key.get() != Bytes.EMPTY) {
+                    keyObj = new HValue(new StringDeserializer().deserialize(topic, key.get()));
+                }
+
+                Document valueObj = Json.newDocumentStream(
                     new ByteArrayInputStream(valueBytes)).iterator().next();
 
                 Document doc = new HDocument();
                 doc.setId(id);
-                doc.set(VALUE_ATTR_NAME, valueDoc);
+                if (keyObj != null) {
+                    doc.set(KEY_ATTR_NAME, keyObj);
+                }
+                doc.set(VALUE_ATTR_NAME, valueObj);
                 doc.set(TOPIC_ATTR_NAME, topic);
                 doc.set(PARTITION_ATTR_NAME, partition);
                 doc.set(OFFSET_ATTR_NAME, offset);

@@ -22,9 +22,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
-import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 
-import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.createInputFieldOp;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.orderByEnum;
 
 public class GraphQLPrimitiveSchemaBuilder extends GraphQLAbstractSchemaBuilder {
@@ -32,13 +30,47 @@ public class GraphQLPrimitiveSchemaBuilder extends GraphQLAbstractSchemaBuilder 
 
     @Override
     public GraphQLInputType createInputType(SchemaContext ctx, Either<Type, ParsedSchema> schema) {
-        return Scalars.GraphQLString;
+
+        switch (schema.getLeft()) {
+            case BOOLEAN:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
+            case STRING:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLString;
+            case SHORT:
+            case INT:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLInt;
+            case LONG:
+                return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.GraphQLLong;
+            case FLOAT:
+            case DOUBLE:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLFloat;
+            case BINARY:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLString;
+            default:
+                throw new IllegalArgumentException("Illegal type " + schema.getLeft());
+        }
     }
 
     @Override
     public GraphQLOutputType createOutputType(SchemaContext ctx,
                                               Either<Type, ParsedSchema> schema) {
-        return Scalars.GraphQLString;
+        switch (schema.getLeft()) {
+            case BOOLEAN:
+                return Scalars.GraphQLBoolean;
+            case STRING:
+                return Scalars.GraphQLString;
+            case SHORT:
+            case INT:
+                return Scalars.GraphQLInt;
+            case LONG:
+                return ExtendedScalars.GraphQLLong;
+            case FLOAT:
+            case DOUBLE:
+                return Scalars.GraphQLFloat;
+            case BINARY:
+                return Scalars.GraphQLString;
+            default:
+                throw new IllegalArgumentException("Illegal type " + schema.getLeft());
+        }
     }
-
 }

@@ -145,10 +145,17 @@ public class GraphQLAvroSchemaBuilder extends GraphQLAbstractSchemaBuilder {
             .name(ctx.qualify(schema.getFullName() + "_union_" + ctx.incrementNameIndex()))
             .fields(schema.getTypes().stream()
                 .filter(t -> !t.getType().equals(Schema.Type.NULL))
-                .map(t -> GraphQLInputObjectField.newInputObjectField()
-                    .name(t.getFullName())
-                    .type(createInputType(ctx, t))
-                    .build())
+                .map(t -> {
+                    GraphQLInputType fieldType = createInputType(ctx, t);
+                    if (ctx.isWhere() && !(fieldType instanceof GraphQLInputObjectType)) {
+                        fieldType = createInputFieldOp(
+                            ctx, schema.getFullName(), t.getFullName(), fieldType);
+                    }
+                    return GraphQLInputObjectField.newInputObjectField()
+                        .name(t.getFullName())
+                        .type(fieldType)
+                        .build();
+                })
                 .collect(Collectors.toList()))
             .build();
     }
