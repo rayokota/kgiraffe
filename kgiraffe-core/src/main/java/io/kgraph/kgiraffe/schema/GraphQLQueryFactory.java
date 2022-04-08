@@ -112,7 +112,7 @@ public class GraphQLQueryFactory {
             result = Iterables.limit(result, limit);
         }
 
-        Tuple2<String, OrderBy> orderBy = getOrderBy(env, env.getField());
+        Tuple2<FieldPath, OrderBy> orderBy = getOrderBy(env, env.getField());
         if (orderBy != null) {
             Comparator<Document> cmp = orderBy._2 == OrderBy.ASC
                 ? Comparator.comparing(doc -> (HValue) doc.getValue(orderBy._1),
@@ -133,8 +133,8 @@ public class GraphQLQueryFactory {
         return getCompoundPredicate(predicates, Logical.AND);
     }
 
-    protected Tuple2<String, OrderBy> getOrderBy(DataFetchingEnvironment env, Field field) {
-        String orderByPath = null;
+    protected Tuple2<FieldPath, OrderBy> getOrderBy(DataFetchingEnvironment env, Field field) {
+        FieldPath orderByPath = FieldPath.EMPTY;
         OrderBy orderByDirection = null;
         Optional<Argument> orderByArg = getArgument(field, ORDER_BY_PARAM_NAME);
         if (orderByArg.isPresent()) {
@@ -143,11 +143,7 @@ public class GraphQLQueryFactory {
                 if (objectValue.getObjectFields().size() > 0) {
                     // Only use the first attr set for this object
                     ObjectField objectField = objectValue.getObjectFields().get(0);
-                    if (orderByPath == null) {
-                        orderByPath = objectField.getName();
-                    } else {
-                        orderByPath += "." + objectField.getName();
-                    }
+                    orderByPath = orderByPath.cloneWithNewChild(objectField.getName());
                     Value value = objectField.getValue();
                     if (value instanceof EnumValue) {
                         orderByDirection = OrderBy.get(((EnumValue) value).getName());
@@ -158,9 +154,7 @@ public class GraphQLQueryFactory {
                 }
             }
         }
-        return orderByPath != null && orderByDirection != null
-            ? new Tuple2<>(orderByPath, orderByDirection)
-            : null;
+        return orderByDirection != null ? new Tuple2<>(orderByPath, orderByDirection) : null;
     }
 
     protected List<HQueryCondition> getFieldPredicates(Field field,
