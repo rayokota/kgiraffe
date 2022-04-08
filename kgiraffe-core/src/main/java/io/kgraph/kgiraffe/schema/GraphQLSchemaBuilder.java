@@ -11,7 +11,9 @@ import graphql.schema.GraphQLInputObjectType;
 import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
+import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
+import graphql.schema.GraphQLType;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.schema.PredicateFilter.Criteria;
 import io.kgraph.kgiraffe.schema.SchemaContext.Mode;
@@ -22,7 +24,9 @@ import org.ojai.Value.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -64,6 +68,8 @@ public class GraphQLSchemaBuilder {
     private final KGiraffeEngine engine;
     private final List<String> topics;
     private final GraphQLAvroSchemaBuilder avroBuilder;
+
+    private final Map<String, GraphQLType> typeCache = new HashMap<>();
 
     public static final GraphQLEnumType orderByEnum =
         GraphQLEnumType.newEnum()
@@ -150,54 +156,71 @@ public class GraphQLSchemaBuilder {
                                              ParsedSchema valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.QUERY_WHERE, false);
+        GraphQLInputType keyObject = Scalars.GraphQLString;
+        /*
         GraphQLInputObjectType keyObject =
             (GraphQLInputObjectType) avroBuilder.createInputType(
                 ctx, ((AvroSchema) keySchema).rawSchema());
-        GraphQLInputObjectType valueObject =
-            (GraphQLInputObjectType) avroBuilder.createInputType(
-                ctx, ((AvroSchema) valueSchema).rawSchema());
 
-        String name = topic + "_record_criteria";
-        GraphQLInputObjectType whereInputObject = GraphQLInputObjectType.newInputObject()
-            .name(name)
-            .description(topic + " record criteria")
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(KEY_ATTR_NAME)
-                .description("Kafka record key")
-                .type(keyObject)
-                .build())
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(VALUE_ATTR_NAME)
-                .description("Kafka record value")
-                .type(valueObject)
-                .build())
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(TOPIC_ATTR_NAME)
-                .description("Kafka topic")
-                .type(createInputFieldOp(ctx, name, TOPIC_ATTR_NAME, Scalars.GraphQLString))
-                .build())
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(PARTITION_ATTR_NAME)
-                .description("Kafka partition")
-                .type(createInputFieldOp(ctx, name, PARTITION_ATTR_NAME, Scalars.GraphQLInt))
-                .build())
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(OFFSET_ATTR_NAME)
-                .description("Kafka record offset")
-                .type(createInputFieldOp(ctx, name, OFFSET_ATTR_NAME, ExtendedScalars.GraphQLLong))
-                .build())
-            .field(GraphQLInputObjectField.newInputObjectField()
-                .name(TIMESTAMP_ATTR_NAME)
-                .description("Kafka record timestamp")
-                .type(createInputFieldOp(ctx, name, TIMESTAMP_ATTR_NAME, ExtendedScalars.GraphQLLong))
-                .build())
-            .build();
+         */
+        GraphQLInputType valueObject = avroBuilder.createInputType(
+            ctx, ((AvroSchema) valueSchema).rawSchema());
+
+        GraphQLInputObjectType whereInputObject = getWhereObject(ctx, topic, keyObject, valueObject);
 
         return GraphQLArgument.newArgument()
             .name(WHERE_PARAM_NAME)
             .description("Where logical specification")
             .type(whereInputObject)
             .build();
+    }
+
+    private GraphQLInputObjectType getWhereObject(SchemaContext ctx,
+                                                  String topic,
+                                                  GraphQLInputType keyObject,
+                                                  GraphQLInputType valueObject) {
+        String name = topic + "_record_criteria";
+        GraphQLInputObjectType type = (GraphQLInputObjectType) typeCache.get(name);
+        if (type != null) {
+            return type;
+        }
+
+        type = GraphQLInputObjectType.newInputObject()
+                .name(name)
+                .description(topic + " record criteria")
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(KEY_ATTR_NAME)
+                    .description("Kafka record key")
+                    .type(keyObject)
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(VALUE_ATTR_NAME)
+                    .description("Kafka record value")
+                    .type(valueObject)
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(TOPIC_ATTR_NAME)
+                    .description("Kafka topic")
+                    .type(createInputFieldOp(ctx, name, TOPIC_ATTR_NAME, Scalars.GraphQLString))
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(PARTITION_ATTR_NAME)
+                    .description("Kafka partition")
+                    .type(createInputFieldOp(ctx, name, PARTITION_ATTR_NAME, Scalars.GraphQLInt))
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(OFFSET_ATTR_NAME)
+                    .description("Kafka record offset")
+                    .type(createInputFieldOp(ctx, name, OFFSET_ATTR_NAME, ExtendedScalars.GraphQLLong))
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(TIMESTAMP_ATTR_NAME)
+                    .description("Kafka record timestamp")
+                    .type(createInputFieldOp(ctx, name, TIMESTAMP_ATTR_NAME, ExtendedScalars.GraphQLLong))
+                    .build())
+                .build();
+        typeCache.put(name, type);
+        return type;
     }
 
     public static GraphQLInputType createInputFieldOp(SchemaContext ctx,
@@ -274,12 +297,14 @@ public class GraphQLSchemaBuilder {
                                                ParsedSchema valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.QUERY_ORDER_BY, false);
-        GraphQLInputObjectType keyObject =
-            (GraphQLInputObjectType) avroBuilder.createInputType(
-                ctx, ((AvroSchema) keySchema).rawSchema());
-        GraphQLInputObjectType valueObject =
-            (GraphQLInputObjectType) avroBuilder.createInputType(
-                ctx, ((AvroSchema) valueSchema).rawSchema());
+        GraphQLInputType keyObject = Scalars.GraphQLString;
+        /*
+        GraphQLInputType keyObject = avroBuilder.createInputType(
+            ctx, ((AvroSchema) keySchema).rawSchema());
+
+         */
+        GraphQLInputType valueObject = avroBuilder.createInputType(
+            ctx, ((AvroSchema) valueSchema).rawSchema());
 
         String name = topic + "_record_sort";
         GraphQLInputObjectType orderByInputObject = GraphQLInputObjectType.newInputObject()
@@ -331,14 +356,21 @@ public class GraphQLSchemaBuilder {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.OUTPUT, false);
 
-        GraphQLObjectType keyObject =
+        GraphQLOutputType keyObject = Scalars.GraphQLString;
+            /*
             (GraphQLObjectType) avroBuilder.createOutputType(
                 ctx, ((AvroSchema) keySchema).rawSchema());
-        GraphQLObjectType valueObject =
-            (GraphQLObjectType) avroBuilder.createOutputType(
-                ctx, ((AvroSchema) valueSchema).rawSchema());
+
+             */
+        GraphQLOutputType valueObject = avroBuilder.createOutputType(
+            ctx, ((AvroSchema) valueSchema).rawSchema());
 
         String name = topic;
+        GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
+        if (type != null) {
+            return type;
+        }
+
         GraphQLObjectType objectType = GraphQLObjectType.newObject()
             .name(name)
             .description(topic)
@@ -373,6 +405,8 @@ public class GraphQLSchemaBuilder {
                 .type(ExtendedScalars.GraphQLLong)
                 .build())
             .build();
+
+        typeCache.put(name, objectType);
 
         return objectType;
     }
@@ -419,9 +453,12 @@ public class GraphQLSchemaBuilder {
                                            ParsedSchema valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.MUTATION, false);
-        GraphQLInputObjectType keyObject =
-            (GraphQLInputObjectType) avroBuilder.createInputType(
-                ctx, ((AvroSchema) keySchema).rawSchema());
+        GraphQLInputType keyObject = Scalars.GraphQLString;
+        /*
+        GraphQLInputType keyObject = avroBuilder.createInputType(
+            ctx, ((AvroSchema) keySchema).rawSchema());
+
+         */
 
         return GraphQLArgument.newArgument()
             .name(KEY_ATTR_NAME)
@@ -435,9 +472,8 @@ public class GraphQLSchemaBuilder {
                                              ParsedSchema valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.MUTATION, false);
-        GraphQLInputObjectType valueObject =
-            (GraphQLInputObjectType) avroBuilder.createInputType(
-                ctx, ((AvroSchema) valueSchema).rawSchema());
+        GraphQLInputType valueObject = avroBuilder.createInputType(
+            ctx, ((AvroSchema) valueSchema).rawSchema());
 
         return GraphQLArgument.newArgument()
             .name(VALUE_ATTR_NAME)

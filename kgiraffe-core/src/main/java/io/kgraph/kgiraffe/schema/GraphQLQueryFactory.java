@@ -28,6 +28,9 @@ import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.InputValueWithState;
 import io.hdocdb.HValue;
+import io.hdocdb.store.ConditionLeaf;
+import io.hdocdb.store.ConditionNode;
+import io.hdocdb.store.ConditionParent;
 import io.hdocdb.store.HQueryCondition;
 import io.kcache.utils.Streams;
 import io.kgraph.kgiraffe.KGiraffeEngine;
@@ -37,6 +40,7 @@ import io.kgraph.kgiraffe.schema.util.GraphQLSupport;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import org.ojai.Document;
+import org.ojai.FieldPath;
 import org.ojai.Value.Type;
 import org.ojai.store.DocumentStore;
 import org.ojai.store.QueryCondition;
@@ -407,8 +411,15 @@ public class GraphQLQueryFactory {
                 args.put(logical.symbol(), env.getArgument(fieldName));
             }
 
-            return getArgumentPredicate(wherePredicateEnvironment(env, fieldDefinition, args),
-                arg);
+            HQueryCondition predicate = getArgumentPredicate(
+                wherePredicateEnvironment(env, fieldDefinition, args), arg);
+
+            // Augment the FieldPath instances in the condition
+            if (objectField.getValue() instanceof ObjectValue) {
+                predicate = addNewParentToPaths(objectField.getName(), predicate);
+            }
+
+            return predicate;
         }
 
         // Let's parse simple Criteria expressions, i.e. EQ, LIKE, etc.
@@ -425,6 +436,24 @@ public class GraphQLQueryFactory {
 
         return getCompoundPredicate(predicates, logical);
 
+    }
+
+    private HQueryCondition addNewParentToPaths(String parent, HQueryCondition predicate) {
+        return new HQueryCondition(addNewParentToPaths(parent, predicate.getRoot()));
+    }
+
+    private ConditionNode addNewParentToPaths(String parent, ConditionNode node) {
+        if (node.isLeaf()) {
+            ConditionLeaf leaf = (ConditionLeaf) node;
+            FieldPath fieldPath = leaf.getField().cloneWithNewParent(parent);
+            return new ConditionLeaf(fieldPath, leaf.getOp(), leaf.getValue());
+        } else {
+            ConditionParent parentNode = (ConditionParent) node;
+            for (ConditionNode child : parentNode.getChildren()) {
+                parentNode.add(addNewParentToPaths(parent, child));
+            }
+            return parentNode;
+        }
     }
 
     private HQueryCondition getCompoundPredicate(List<HQueryCondition> predicates, Logical logical) {
