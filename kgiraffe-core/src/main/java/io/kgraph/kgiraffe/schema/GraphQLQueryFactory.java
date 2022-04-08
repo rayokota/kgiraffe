@@ -371,34 +371,6 @@ public class GraphQLQueryFactory {
             .orElse(Logical.AND);
     }
 
-    private HQueryCondition getLogicalPredicates(String fieldName,
-                                                 ObjectField objectField,
-                                                 DataFetchingEnvironment env,
-                                                 Argument argument) {
-        ArrayValue value = (ArrayValue) objectField.getValue();
-
-        Logical logical = extractLogical(argument);
-
-        List<HQueryCondition> predicates = new ArrayList<>();
-
-        value.getValues()
-            .stream()
-            .map(ObjectValue.class::cast)
-            .flatMap(it -> it.getObjectFields().stream())
-            .map(it -> {
-                Map<String, Object> args = getFieldArguments(env, it, argument);
-                Argument arg = new Argument(it.getName(), it.getValue());
-
-                return getLogicalPredicate(it.getName(),
-                    it,
-                    argumentEnvironment(env, args),
-                    arg);
-            })
-            .forEach(predicates::add);
-
-        return getCompoundPredicate(predicates, logical);
-    }
-
     private HQueryCondition getLogicalPredicate(String fieldName,
                                                 ObjectField objectField,
                                                 DataFetchingEnvironment env,
@@ -419,30 +391,10 @@ public class GraphQLQueryFactory {
 
         List<HQueryCondition> predicates = new ArrayList<>();
 
-        // Let's parse logical expressions, i.e. AND, OR
-        expressionValue.getObjectFields().stream()
-            .filter(it -> Logical.symbols().contains(it.getName()))
-            .map(it -> {
-                Map<String, Object> args = getFieldArguments(env, it, argument);
-                Argument arg = new Argument(it.getName(), it.getValue());
-
-                if (it.getValue() instanceof ArrayValue) {
-                    return getLogicalPredicates(fieldName, it,
-                        argumentEnvironment(env, args),
-                        arg);
-                }
-
-                return getLogicalPredicate(fieldName, it,
-                    argumentEnvironment(env, args),
-                    arg);
-            })
-            .forEach(predicates::add);
-
         // Let's parse relation criteria expressions if present, i.e. books, author, etc.
         if (expressionValue.getObjectFields()
             .stream()
-            .anyMatch(it -> !Logical.symbols().contains(it.getName())
-                && !Criteria.symbols().contains(it.getName()))) {
+            .anyMatch(it -> !Criteria.symbols().contains(it.getName()))) {
             GraphQLFieldDefinition fieldDefinition = getFieldDefinition(env.getGraphQLSchema(),
                 this.getImplementingType(env),
                 new Field(fieldName));
