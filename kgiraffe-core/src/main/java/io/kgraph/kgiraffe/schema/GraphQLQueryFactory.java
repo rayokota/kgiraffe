@@ -77,13 +77,13 @@ public class GraphQLQueryFactory {
     private final KGiraffeEngine engine;
     private final String topic;
     private final Either<Type, ParsedSchema> keySchema;
-    private final ParsedSchema valueSchema;
+    private final Either<Type, ParsedSchema> valueSchema;
     private final GraphQLObjectType objectType;
 
     public GraphQLQueryFactory(KGiraffeEngine engine,
                                String topic,
                                Either<Type, ParsedSchema> keySchema,
-                               ParsedSchema valueSchema,
+                               Either<Type, ParsedSchema> valueSchema,
                                GraphQLObjectType objectType) {
         this.engine = engine;
         this.topic = topic;

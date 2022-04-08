@@ -35,12 +35,12 @@ public class MutationFetcher implements DataFetcher {
     private final KGiraffeEngine engine;
     private final String topic;
     private final Either<Type, ParsedSchema> keySchema;
-    private final ParsedSchema valueSchema;
+    private final Either<Type, ParsedSchema> valueSchema;
 
     public MutationFetcher(KGiraffeEngine engine,
                            String topic,
                            Either<Type, ParsedSchema> keySchema,
-                           ParsedSchema valueSchema) {
+                           Either<Type, ParsedSchema> valueSchema) {
         this.engine = engine;
         this.topic = topic;
         this.keySchema = keySchema;
@@ -56,7 +56,7 @@ public class MutationFetcher implements DataFetcher {
             Map<String, Object> value = env.getArgument(VALUE_ATTR_NAME);
 
             JsonNode json = MAPPER.valueToTree(value);
-            Object valueObj = AvroSchemaUtils.toObject(json, (AvroSchema) valueSchema);
+            Object valueObj = AvroSchemaUtils.toObject(json, (AvroSchema) valueSchema.get());
 
             Bytes keyBytes = Bytes.wrap(Bytes.EMPTY);
             Bytes valueBytes = Bytes.wrap(

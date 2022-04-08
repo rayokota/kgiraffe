@@ -18,13 +18,13 @@ public class SubscriptionFetcher implements DataFetcher {
     private final KGiraffeEngine engine;
     private final String topic;
     private final Either<Type, ParsedSchema> keySchema;
-    private final ParsedSchema valueSchema;
+    private final Either<Type, ParsedSchema> valueSchema;
     private final GraphQLQueryFactory queryFactory;
 
     public SubscriptionFetcher(KGiraffeEngine engine,
                                String topic,
                                Either<Type, ParsedSchema> keySchema,
-                               ParsedSchema valueSchema,
+                               Either<Type, ParsedSchema> valueSchema,
                                GraphQLQueryFactory queryFactory) {
         this.engine = engine;
         this.topic = topic;

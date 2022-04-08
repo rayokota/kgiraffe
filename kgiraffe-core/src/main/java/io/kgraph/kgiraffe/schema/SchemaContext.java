@@ -8,7 +8,7 @@ import org.ojai.Value.Type;
 public class SchemaContext {
     private final String topic;
     private final Either<Type, ParsedSchema> keySchema;
-    private final ParsedSchema valueSchema;
+    private final Either<Type, ParsedSchema> valueSchema;
     private final Mode mode;
     private final boolean key;
     private boolean root;
@@ -16,7 +16,7 @@ public class SchemaContext {
 
     public SchemaContext(String topic,
                          Either<Type, ParsedSchema> keySchema,
-                         ParsedSchema valueSchema,
+                         Either<Type, ParsedSchema> valueSchema,
                          Mode mode,
                          boolean key) {
         this.topic = topic;
@@ -39,7 +39,7 @@ public class SchemaContext {
         return keySchema;
     }
 
-    public ParsedSchema valueSchema() {
+    public Either<Type, ParsedSchema> valueSchema() {
         return valueSchema;
     }
 

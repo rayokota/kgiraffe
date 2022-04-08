@@ -117,11 +117,7 @@ public class GraphQLSchemaBuilder {
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
         // TODO handle primitive key schemas
         Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
-        ParsedSchema valueSchema = engine.getValueSchema(topic);
-
-        if (!isObject(valueSchema)) {
-            return Stream.empty();
-        }
+        Either<Type, ParsedSchema> valueSchema = engine.getValueSchema(topic);
 
         GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
 
@@ -153,18 +149,18 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLArgument getWhereArgument(String topic,
                                              Either<Type, ParsedSchema> keySchema,
-                                             ParsedSchema valueSchema) {
+                                             Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.QUERY_WHERE, false);
         GraphQLInputType keyObject = Scalars.GraphQLString;
         /*
         GraphQLInputObjectType keyObject =
             (GraphQLInputObjectType) avroBuilder.createInputType(
-                ctx, ((AvroSchema) keySchema).rawSchema());
+                ctx, ((AvroSchema) keySchema.get()).rawSchema());
 
          */
         GraphQLInputType valueObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) valueSchema).rawSchema());
+            ctx, ((AvroSchema) valueSchema.get()).rawSchema());
 
         GraphQLInputObjectType whereInputObject = getWhereObject(ctx, topic, keyObject, valueObject);
 
@@ -294,17 +290,17 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLArgument getOrderByArgument(String topic,
                                                Either<Type, ParsedSchema> keySchema,
-                                               ParsedSchema valueSchema) {
+                                               Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.QUERY_ORDER_BY, false);
         GraphQLInputType keyObject = Scalars.GraphQLString;
         /*
         GraphQLInputType keyObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) keySchema).rawSchema());
+            ctx, ((AvroSchema) keySchema.get()).rawSchema());
 
          */
         GraphQLInputType valueObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) valueSchema).rawSchema());
+            ctx, ((AvroSchema) valueSchema.get()).rawSchema());
 
         String name = topic + "_record_sort";
         GraphQLInputObjectType orderByInputObject = GraphQLInputObjectType.newInputObject()
@@ -352,18 +348,18 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLObjectType getObjectType(String topic,
                                             Either<Type, ParsedSchema> keySchema,
-                                            ParsedSchema valueSchema) {
+                                            Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.OUTPUT, false);
 
         GraphQLOutputType keyObject = Scalars.GraphQLString;
             /*
             (GraphQLObjectType) avroBuilder.createOutputType(
-                ctx, ((AvroSchema) keySchema).rawSchema());
+                ctx, ((AvroSchema) keySchema.get()).rawSchema());
 
              */
         GraphQLOutputType valueObject = avroBuilder.createOutputType(
-            ctx, ((AvroSchema) valueSchema).rawSchema());
+            ctx, ((AvroSchema) valueSchema.get()).rawSchema());
 
         String name = topic;
         GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
@@ -431,11 +427,7 @@ public class GraphQLSchemaBuilder {
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
         // TODO handle primitive key schemas
         Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
-        ParsedSchema valueSchema = engine.getValueSchema(topic);
-
-        if (!isObject(valueSchema)) {
-            return Stream.empty();
-        }
+        Either<Type, ParsedSchema> valueSchema = engine.getValueSchema(topic);
 
         GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
 
@@ -450,13 +442,13 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLArgument getKeyArgument(String topic,
                                            Either<Type, ParsedSchema> keySchema,
-                                           ParsedSchema valueSchema) {
+                                           Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.MUTATION, false);
         GraphQLInputType keyObject = Scalars.GraphQLString;
         /*
         GraphQLInputType keyObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) keySchema).rawSchema());
+            ctx, ((AvroSchema) keySchema.get()).rawSchema());
 
          */
 
@@ -469,11 +461,11 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLArgument getValueArgument(String topic,
                                              Either<Type, ParsedSchema> keySchema,
-                                             ParsedSchema valueSchema) {
+                                             Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.MUTATION, false);
         GraphQLInputType valueObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) valueSchema).rawSchema());
+            ctx, ((AvroSchema) valueSchema.get()).rawSchema());
 
         return GraphQLArgument.newArgument()
             .name(VALUE_ATTR_NAME)
@@ -502,11 +494,7 @@ public class GraphQLSchemaBuilder {
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
         // TODO handle primitive key schemas
         Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
-        ParsedSchema valueSchema = engine.getValueSchema(topic);
-
-        if (!isObject(valueSchema)) {
-            return Stream.empty();
-        }
+        Either<Type, ParsedSchema> valueSchema = engine.getValueSchema(topic);
 
         GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
 

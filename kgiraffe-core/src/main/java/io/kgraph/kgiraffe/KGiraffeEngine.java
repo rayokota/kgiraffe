@@ -87,7 +87,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private SchemaRegistryClient schemaRegistry;
     private GraphQLExecutor executor;
     private Map<String, Either<Type, ParsedSchema>> keySchemas = new HashMap<>();
-    private Map<String, ParsedSchema> valueSchemas = new HashMap<>();
+    private Map<String, Either<Type, ParsedSchema>> valueSchemas = new HashMap<>();
     private Map<String, KafkaCache<Bytes, Tuple2<Optional<Headers>, Bytes>>> caches;
     private HDocumentDB docdb;
     private final AtomicBoolean initialized;
@@ -165,11 +165,12 @@ public class KGiraffeEngine implements Configurable, Closeable {
         });
     }
 
-    public ParsedSchema getValueSchema(String topic) {
+    public Either<Type, ParsedSchema> getValueSchema(String topic) {
         return valueSchemas.computeIfAbsent(topic, t -> {
             Optional<ParsedSchema> schema = getLatestSchema(t + "-value");
-            // TODO check if this works
-            return schema.orElse(new AvroSchema("\"null\""));
+            // TODO other primitive keys
+            return schema.<Either<Type, ParsedSchema>>map(Either::right)
+                .orElseGet(() -> Either.left(Type.NULL));
         });
     }
 
