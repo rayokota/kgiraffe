@@ -84,7 +84,7 @@ public class GraphQLAvroSchemaBuilder {
                 .map(f -> createInputField(ctx, schema, f))
                 .collect(Collectors.toList());
             GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
-                .name(ctx.qualify(schema.getFullName()))
+                .name(name)
                 .description(schema.getDoc())
                 .fields(fields);
 
@@ -116,22 +116,22 @@ public class GraphQLAvroSchemaBuilder {
     private GraphQLInputObjectField createInputField(SchemaContext ctx,
                                                      Schema schema,
                                                      Schema.Field field) {
+        String name = ctx.qualify(schema.getFullName() + "_" + field.name());
         GraphQLInputType fieldType = createInputType(ctx, field.schema());
         if (ctx.isWhere() && !(fieldType instanceof GraphQLInputObjectType)) {
-            String recordName = ctx.qualify(schema.getFullName());
             fieldType = GraphQLInputObjectType.newInputObject()
-                .name(ctx.qualify(schema.getFullName() + "_" + field.name()))
+                .name(name)
                 .description("Criteria expression specification of "
                     + field.name() + " attribute in entity " + schema.getFullName())
                 .field(GraphQLInputObjectField.newInputObjectField()
                     .name(Logical.OR.symbol())
                     .description("Logical OR criteria expression")
-                    .type(new GraphQLList(new GraphQLTypeReference(recordName)))
+                    .type(new GraphQLList(new GraphQLTypeReference(name)))
                     .build())
                 .field(GraphQLInputObjectField.newInputObjectField()
                     .name(Logical.AND.symbol())
                     .description("Logical AND criteria expression")
-                    .type(new GraphQLList(new GraphQLTypeReference(recordName)))
+                    .type(new GraphQLList(new GraphQLTypeReference(name)))
                     .build())
                 .field(GraphQLInputObjectField.newInputObjectField()
                     .name(Criteria.EQ.symbol())

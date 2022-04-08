@@ -223,13 +223,13 @@ public class GraphQLQueryFactory {
         Map<String, Object> predicateArguments = new LinkedHashMap<>();
         predicateArguments.put(logical.symbol(), env.getArguments());
 
-        DataFetchingEnvironment predicateDataFetchingEnvironment = DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(
-                env)
-            .arguments(predicateArguments)
-            .build();
+        DataFetchingEnvironment predicateDataFetchingEnv =
+            DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(env)
+                .arguments(predicateArguments)
+                .build();
         Argument predicateArgument = new Argument(logical.symbol(), whereValue);
 
-        return getArgumentPredicate(predicateDataFetchingEnvironment, predicateArgument);
+        return getArgumentPredicate(predicateDataFetchingEnv, predicateArgument);
     }
 
     protected HQueryCondition getArgumentPredicate(
@@ -511,14 +511,14 @@ public class GraphQLQueryFactory {
         Map<String, Object> valueArguments = new LinkedHashMap<>();
         valueArguments.put(objectField.getName(), env.getArgument(argument.getName()));
 
-        DataFetchingEnvironment dataFetchingEnvironment = DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(
-                env)
-            .arguments(valueArguments)
-            .build();
+        DataFetchingEnvironment dataFetchingEnv =
+            DataFetchingEnvironmentBuilder.newDataFetchingEnvironment(env)
+                .arguments(valueArguments)
+                .build();
 
         Argument dataFetchingArgument = new Argument(objectField.getName(), argument.getValue());
 
-        Object filterValue = convertValue(dataFetchingEnvironment, dataFetchingArgument,
+        Object filterValue = convertValue(dataFetchingEnv, dataFetchingArgument,
             argument.getValue());
 
         return new PredicateFilter(objectField.getName(), filterValue, option);

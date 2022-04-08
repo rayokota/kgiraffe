@@ -11,13 +11,16 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 
 import java.util.Map;
+import java.util.Optional;
 
 import io.hdocdb.store.HDocumentCollection;
 import io.hdocdb.store.HDocumentDB;
 import io.kcache.KafkaCache;
 import io.kgraph.kgiraffe.KGiraffeEngine;
+import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.utils.Bytes;
 import org.ojai.Document;
 import org.ojai.Value.Type;
@@ -58,9 +61,11 @@ public class MutationFetcher implements DataFetcher {
             Bytes keyBytes = Bytes.wrap(Bytes.EMPTY);
             Bytes valueBytes = Bytes.wrap(
                 new KafkaAvroSerializer(engine.getSchemaRegistry()).serialize(topic, valueObj));
-            KafkaCache<Bytes, Bytes> cache = engine.getCache(topic);
+            KafkaCache<Bytes, Tuple2<Optional<Headers>, Bytes>> cache = engine.getCache(topic);
             // TODO key
-            RecordMetadata metadata = cache.put(null, null, valueBytes).getRecordMetadata();
+            // TODO header
+            RecordMetadata metadata =
+                cache.put(null, null, new Tuple2<>(null, valueBytes)).getRecordMetadata();
             String id = metadata.topic() + "-" + metadata.partition() + "-" + metadata.offset();
 
             HDocumentDB docdb = engine.getDocDB();

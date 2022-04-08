@@ -17,6 +17,7 @@
 package io.kgraph.kgiraffe;
 
 import graphql.GraphQL;
+import io.hdocdb.HDocument;
 import io.hdocdb.store.HDocumentCollection;
 import io.hdocdb.store.HDocumentDB;
 import io.hdocdb.store.InMemoryHDocumentDB;
@@ -26,13 +27,17 @@ import io.kcache.KafkaCacheConfig;
 import io.kcache.caffeine.CaffeineCache;
 import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
-import io.kgraph.kgiraffe.util.KryoCodec;
+import io.kgraph.kgiraffe.serialization.KryoCodec;
+import io.kgraph.kgiraffe.serialization.ValueSerde;
+import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.rxjava3.core.eventbus.EventBus;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.common.utils.Utils;
@@ -44,6 +49,8 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -65,10 +72,12 @@ import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import org.ojai.Value.Type;
 
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.HEADERS_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PARTITION_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TOPIC_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ATTR_NAME;
 
 public class KGiraffeEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeEngine.class);
@@ -79,7 +88,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private GraphQLExecutor executor;
     private Map<String, Either<Type, ParsedSchema>> keySchemas = new HashMap<>();
     private Map<String, ParsedSchema> valueSchemas = new HashMap<>();
-    private Map<String, KafkaCache<Bytes, Bytes>> caches;
+    private Map<String, KafkaCache<Bytes, Tuple2<Optional<Headers>, Bytes>>> caches;
     private HDocumentDB docdb;
     private final AtomicBoolean initialized;
 
@@ -192,10 +201,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
         configs.put(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, groupId);
         configs.put(KafkaCacheConfig.KAFKACACHE_CLIENT_ID_CONFIG, groupId + "-" + topic);
         configs.put(KafkaCacheConfig.KAFKACACHE_TOPIC_SKIP_VALIDATION_CONFIG, true);
-        KafkaCache<Bytes, Bytes> cache = new KafkaCache<>(
+        KafkaCache<Bytes, Tuple2<Optional<Headers>, Bytes>> cache = new KafkaCache<>(
             new KafkaCacheConfig(configs),
             Serdes.Bytes(),
-            Serdes.Bytes(),
+            new ValueSerde(),
             new UpdateHandler(schemaRegistry),
             new CaffeineCache<>(null)
         );
@@ -205,7 +214,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         docdb.createCollection(topic);
     }
 
-    class UpdateHandler implements CacheUpdateHandler<Bytes, Bytes> {
+    class UpdateHandler implements CacheUpdateHandler<Bytes, Tuple2<Optional<Headers>, Bytes>> {
 
         private SchemaRegistryClient schemaRegistry;
 
@@ -213,7 +222,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
             this.schemaRegistry = schemaRegistry;
         }
 
-        public void handleUpdate(Bytes key, Bytes value, Bytes oldValue,
+        public void handleUpdate(Bytes key,
+                                 Tuple2<Optional<Headers>, Bytes> value,
+                                 Tuple2<Optional<Headers>, Bytes> oldValue,
                                  TopicPartition tp, long offset, long timestamp) {
             try {
                 String topic = tp.topic();
@@ -221,18 +232,25 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 String id = topic + "-" + partition + "-" + offset;
                 HDocumentCollection coll = docdb.getCollection(topic);
                 GenericRecord record = (GenericRecord)
-                    new KafkaAvroDeserializer(schemaRegistry).deserialize(topic, value.get());
+                    new KafkaAvroDeserializer(schemaRegistry).deserialize(topic, value._2.get());
                 // TODO
                 byte[] keyBytes = null;
                 byte[] valueBytes = AvroSchemaUtils.toJson(record);
 
-                Document doc = Json.newDocumentStream(
+                Document valueDoc = Json.newDocumentStream(
                     new ByteArrayInputStream(valueBytes)).iterator().next();
+
+                Document doc = new HDocument();
                 doc.setId(id);
+                doc.set(VALUE_ATTR_NAME, valueDoc);
                 doc.set(TOPIC_ATTR_NAME, topic);
                 doc.set(PARTITION_ATTR_NAME, partition);
                 doc.set(OFFSET_ATTR_NAME, offset);
                 doc.set(TIMESTAMP_ATTR_NAME, timestamp);
+                Map<String, Object> headers = convertHeaders(value._1.orElse(null));
+                if (headers != null) {
+                    doc.set(HEADERS_ATTR_NAME, headers);
+                }
                 coll.insertOrReplace(doc);
                 coll.flush();
                 doc = coll.findById(id);
@@ -242,6 +260,28 @@ public class KGiraffeEngine implements Configurable, Closeable {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        private Map<String, Object> convertHeaders(Headers headers) {
+            if (headers == null) {
+                return null;
+            }
+            Map<String, Object> map = new HashMap<>();
+            for (Header header : headers) {
+                String value = new String(header.value(), StandardCharsets.UTF_8);
+                map.merge(header.key(), value, (oldV, v) -> {
+                    if (oldV instanceof List) {
+                        ((List<String>) oldV).add((String) v);
+                        return oldV;
+                    } else {
+                        List<String> newV = new ArrayList<>();
+                        newV.add((String) oldV);
+                        newV.add((String) v);
+                        return newV;
+                    }
+                });
+            }
+            return map;
         }
     }
 
@@ -263,7 +303,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         return docdb;
     }
 
-    public KafkaCache<Bytes, Bytes> getCache(String topic) {
+    public KafkaCache<Bytes, Tuple2<Optional<Headers>, Bytes>> getCache(String topic) {
         return caches.get(topic);
     }
 
