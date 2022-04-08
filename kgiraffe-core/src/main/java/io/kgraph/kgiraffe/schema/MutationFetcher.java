@@ -56,6 +56,7 @@ public class MutationFetcher implements DataFetcher {
             Map<String, Object> value = env.getArgument(VALUE_ATTR_NAME);
 
             JsonNode json = MAPPER.valueToTree(value);
+            // TODO generalize
             Object valueObj = AvroSchemaUtils.toObject(json, (AvroSchema) valueSchema.get());
 
             Bytes keyBytes = Bytes.wrap(Bytes.EMPTY);

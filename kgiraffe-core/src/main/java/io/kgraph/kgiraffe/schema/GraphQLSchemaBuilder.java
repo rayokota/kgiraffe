@@ -55,7 +55,6 @@ public class GraphQLSchemaBuilder {
     public static final String KEY_ATTR_NAME = "key";
     // TODO for Protobuf
     public static final String KEY_TYPE_ATTR_NAME = "key_type";
-    // TODO remove _value
     public static final String VALUE_ATTR_NAME = "value";
     // TODO for Protobuf
     public static final String VALUE_TYPE_ATTR_NAME = "value_type";
@@ -68,6 +67,9 @@ public class GraphQLSchemaBuilder {
     private final KGiraffeEngine engine;
     private final List<String> topics;
     private final GraphQLAvroSchemaBuilder avroBuilder;
+    private final GraphQLAvroSchemaBuilder jsonSchemaBuilder;
+    private final GraphQLAvroSchemaBuilder protobufBuilder;
+    private final GraphQLPrimitiveSchemaBuilder primitiveBuilder;
 
     private final Map<String, GraphQLType> typeCache = new HashMap<>();
 
@@ -84,6 +86,27 @@ public class GraphQLSchemaBuilder {
         this.engine = engine;
         this.topics = topics;
         this.avroBuilder = new GraphQLAvroSchemaBuilder();
+        this.jsonSchemaBuilder = new GraphQLAvroSchemaBuilder();
+        this.protobufBuilder = new GraphQLAvroSchemaBuilder();
+        this.primitiveBuilder = new GraphQLPrimitiveSchemaBuilder();
+    }
+
+    public GraphQLAbstractSchemaBuilder getSchemaBuilder(Either<Type, ParsedSchema> schema) {
+        if (schema.isLeft()) {
+            return new GraphQLPrimitiveSchemaBuilder();
+        } else {
+            ParsedSchema parsedSchema = schema.get();
+            switch (parsedSchema.schemaType()) {
+                case "AVRO":
+                    return avroBuilder;
+                case "JSON":
+                    return jsonSchemaBuilder;
+                case "PROTOBUF":
+                    return protobufBuilder;
+                default:
+                    return primitiveBuilder;
+            }
+        }
     }
 
     /**
@@ -159,8 +182,7 @@ public class GraphQLSchemaBuilder {
                 ctx, ((AvroSchema) keySchema.get()).rawSchema());
 
          */
-        GraphQLInputType valueObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) valueSchema.get()).rawSchema());
+        GraphQLInputType valueObject = getSchemaBuilder(valueSchema).createInputType(ctx, valueSchema);
 
         GraphQLInputObjectType whereInputObject = getWhereObject(ctx, topic, keyObject, valueObject);
 
@@ -299,8 +321,7 @@ public class GraphQLSchemaBuilder {
             ctx, ((AvroSchema) keySchema.get()).rawSchema());
 
          */
-        GraphQLInputType valueObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) valueSchema.get()).rawSchema());
+        GraphQLInputType valueObject = getSchemaBuilder(valueSchema).createInputType(ctx, valueSchema);
 
         String name = topic + "_record_sort";
         GraphQLInputObjectType orderByInputObject = GraphQLInputObjectType.newInputObject()
@@ -358,8 +379,7 @@ public class GraphQLSchemaBuilder {
                 ctx, ((AvroSchema) keySchema.get()).rawSchema());
 
              */
-        GraphQLOutputType valueObject = avroBuilder.createOutputType(
-            ctx, ((AvroSchema) valueSchema.get()).rawSchema());
+        GraphQLOutputType valueObject = getSchemaBuilder(valueSchema).createOutputType(ctx, valueSchema);
 
         String name = topic;
         GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
@@ -464,8 +484,7 @@ public class GraphQLSchemaBuilder {
                                              Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx =
             new SchemaContext(topic, keySchema, valueSchema, Mode.MUTATION, false);
-        GraphQLInputType valueObject = avroBuilder.createInputType(
-            ctx, ((AvroSchema) valueSchema.get()).rawSchema());
+        GraphQLInputType valueObject = getSchemaBuilder(valueSchema).createInputType(ctx, valueSchema);
 
         return GraphQLArgument.newArgument()
             .name(VALUE_ATTR_NAME)
