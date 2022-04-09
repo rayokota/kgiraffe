@@ -72,7 +72,7 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.ORDER_BY_PARAM_NAME
 
 public class GraphQLQueryFactory {
 
-    private final static Logger LOG = LoggerFactory.getLogger(GraphQLQueryFactory.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GraphQLQueryFactory.class);
 
     private final KGiraffeEngine engine;
     private final String topic;

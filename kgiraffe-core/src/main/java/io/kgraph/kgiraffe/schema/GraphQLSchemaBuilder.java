@@ -62,7 +62,9 @@ public class GraphQLSchemaBuilder {
     public static final String TOPIC_ATTR_NAME = "topic";
     public static final String PARTITION_ATTR_NAME = "partition";
     public static final String OFFSET_ATTR_NAME = "offset";
-    public static final String TIMESTAMP_ATTR_NAME = "timestamp";
+    public static final String TIMESTAMP_ATTR_NAME = "ts";
+    // TODO
+    public static final String TIMESTAMP_TYPE_ATTR_NAME = "tstype";
 
     // prefix used for internal field names
     private static final String KAFKA = "kafka";

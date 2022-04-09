@@ -20,7 +20,7 @@ import java.util.Map;
 
 public class GraphQLExecutor {
 
-    private final static Logger LOG = LoggerFactory.getLogger(GraphQLExecutor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GraphQLExecutor.class);
 
     private volatile GraphQL graphQL;
     private final GraphQLSchemaBuilder graphQLSchemaBuilder;

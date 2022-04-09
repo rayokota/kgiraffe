@@ -9,11 +9,14 @@ import io.reactivex.rxjava3.core.Flowable;
 import io.vavr.control.Either;
 import org.ojai.Document;
 import org.ojai.Value.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 
 public class SubscriptionFetcher implements DataFetcher {
+    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionFetcher.class);
 
     private final KGiraffeEngine engine;
     private final String topic;
@@ -44,6 +47,7 @@ public class SubscriptionFetcher implements DataFetcher {
                 .filter(doc -> query == null || query.isEmpty() || query.evaluate(doc));
             return publisher;
         } catch (Exception e) {
+            LOG.error("Error during subscribe", e);
             throw new RuntimeException(e);
         }
     }

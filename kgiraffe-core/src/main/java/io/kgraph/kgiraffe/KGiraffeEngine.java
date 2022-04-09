@@ -16,6 +16,9 @@
  */
 package io.kgraph.kgiraffe;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.Message;
 import graphql.GraphQL;
 import io.hdocdb.HDocument;
 import io.hdocdb.HValue;
@@ -29,8 +32,6 @@ import io.kcache.caffeine.CaffeineCache;
 import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
 import io.kgraph.kgiraffe.serialization.KryoCodec;
-import io.kgraph.kgiraffe.serialization.ValueSerde;
-import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.rxjava3.core.eventbus.EventBus;
@@ -39,8 +40,25 @@ import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.record.TimestampType;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.BytesDeserializer;
+import org.apache.kafka.common.serialization.BytesSerializer;
+import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.DoubleDeserializer;
+import org.apache.kafka.common.serialization.DoubleSerializer;
+import org.apache.kafka.common.serialization.FloatDeserializer;
+import org.apache.kafka.common.serialization.FloatSerializer;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.apache.kafka.common.serialization.IntegerSerializer;
+import org.apache.kafka.common.serialization.LongDeserializer;
+import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.Serializer;
+import org.apache.kafka.common.serialization.ShortDeserializer;
+import org.apache.kafka.common.serialization.ShortSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.common.utils.Utils;
 import org.ojai.Document;
@@ -55,6 +73,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,15 +82,26 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
+import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaUtils;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
+import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
+import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
+import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaUtils;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
+
 import org.ojai.Value.Type;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.HEADERS_ATTR_NAME;
@@ -85,13 +115,14 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ATTR_NAME;
 public class KGiraffeEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeEngine.class);
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private KGiraffeConfig config;
     private EventBus eventBus;
     private SchemaRegistryClient schemaRegistry;
     private GraphQLExecutor executor;
-    private Map<String, Either<Type, ParsedSchema>> keySchemas = new HashMap<>();
-    private Map<String, Either<Type, ParsedSchema>> valueSchemas = new HashMap<>();
-    private Map<String, KafkaCache<Bytes, Tuple2<Optional<Headers>, Bytes>>> caches;
+    private Map<String, Either<Type, ParsedSchema>> schemas = new HashMap<>();
+    private Map<String, KafkaCache<Bytes, Bytes>> caches;
     private HDocumentDB docdb;
     private final AtomicBoolean initialized;
 
@@ -121,6 +152,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
             docdb = new InMemoryHDocumentDB();
             initialized = new AtomicBoolean();
         } catch (IOException e) {
+            LOG.error("Error during startup", e);
             throw new RuntimeException(e);
         }
     }
@@ -160,24 +192,21 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     public Either<Type, ParsedSchema> getKeySchema(String topic) {
-        return Either.left(Type.STRING);
-        /*
-        return keySchemas.computeIfAbsent(topic, t -> {
-            Optional<ParsedSchema> schema = getLatestSchema(t + "-key");
-            // TODO other primitive keys
-            return schema.<Either<Type, ParsedSchema>>map(Either::right)
-                .orElseGet(() -> Either.left(Type.NULL));
-        });
-
-         */
+        return getSchema(topic + "-key");
     }
 
     public Either<Type, ParsedSchema> getValueSchema(String topic) {
-        return valueSchemas.computeIfAbsent(topic, t -> {
-            Optional<ParsedSchema> schema = getLatestSchema(t + "-value");
+        return getSchema(topic + "-value");
+    }
+
+    public Either<Type, ParsedSchema> getSchema(String subject) {
+        return schemas.computeIfAbsent(subject, t -> {
+            Optional<ParsedSchema> schema = getLatestSchema(subject);
             // TODO other primitive keys
             return schema.<Either<Type, ParsedSchema>>map(Either::right)
-                .orElseGet(() -> Either.left(Type.NULL));
+                .orElseGet(() -> Either.left(Type.STRING));
+            // TODO
+                //.orElseGet(() -> Either.left(Type.NULL));
         });
     }
 
@@ -195,6 +224,151 @@ public class KGiraffeEngine implements Configurable, Closeable {
         }
     }
 
+    public Value deserializeKey(String topic, byte[] bytes) throws IOException {
+        return deserialize(getSchema(topic + "-key"), topic, bytes);
+    }
+
+    public Value deserializeValue(String topic, byte[] bytes) throws IOException {
+        return deserialize(getSchema(topic + "-value"), topic, bytes);
+    }
+
+    private Value deserialize(Either<Type, ParsedSchema> schema,
+                              String topic,
+                              byte[] bytes) throws IOException {
+        Deserializer<?> deserializer = getDeserializer(schema);
+
+        Object object = deserializer.deserialize(topic, bytes);
+        if (schema.isRight()) {
+            ParsedSchema parsedSchema = schema.get();
+            byte[] json;
+            switch (parsedSchema.schemaType()) {
+                case "AVRO":
+                    json = AvroSchemaUtils.toJson(object);
+                    break;
+                case "JSON":
+                    json = JsonSchemaUtils.toJson(object);
+                    break;
+                case "PROTOBUF":
+                    json = ProtobufSchemaUtils.toJson((Message) object);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
+            }
+            Document doc = Json.newDocumentStream(new ByteArrayInputStream(json)).iterator().next();
+            return HValue.initFromDocument(doc);
+        } if (schema.getLeft() == Type.BINARY) {
+            object = Base64.getEncoder().encodeToString((byte[]) object);
+        }
+
+        return HValue.initFromObject(object);
+    }
+
+    public byte[] serializeKey(String topic, Object object) throws IOException {
+        return serialize(getSchema(topic + "-key"), topic, object);
+    }
+
+    public byte[] serializeValue(String topic, Object object) throws IOException {
+        return serialize(getSchema(topic + "-value"), topic, object);
+    }
+
+    private byte[] serialize(Either<Type, ParsedSchema> schema,
+                             String topic,
+                             Object object) throws IOException {
+        Serializer<Object> serializer = (Serializer<Object>) getSerializer(schema);
+
+        if (schema.isRight()) {
+            ParsedSchema parsedSchema = schema.get();
+            JsonNode json = MAPPER.convertValue(object, JsonNode.class);
+            switch (parsedSchema.schemaType()) {
+                case "AVRO":
+                    object = AvroSchemaUtils.toObject(json, (AvroSchema) parsedSchema);
+                    break;
+                case "JSON":
+                    object = JsonSchemaUtils.toObject(json, (JsonSchema) parsedSchema);
+                    break;
+                case "PROTOBUF":
+                    object = ProtobufSchemaUtils.toObject(json, (ProtobufSchema) parsedSchema);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
+            }
+        } else if (schema.getLeft() == Type.BINARY) {
+            object = Base64.getDecoder().decode((String) object);
+        }
+
+        return serializer.serialize(topic, object);
+    }
+
+    public Serializer<?> getSerializer(Either<Type, ParsedSchema> schema) {
+        if (schema.isRight()) {
+            ParsedSchema parsedSchema = schema.get();
+            switch (parsedSchema.schemaType()) {
+                case "AVRO":
+                    return new KafkaAvroSerializer(schemaRegistry);
+                case "JSON":
+                    return new KafkaJsonSchemaSerializer<>(schemaRegistry);
+                case "PROTOBUF":
+                    return new KafkaProtobufSerializer<>(schemaRegistry);
+                default:
+                    throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
+            }
+        } else {
+            switch (schema.getLeft()) {
+                case STRING:
+                    return new StringSerializer();
+                case SHORT:
+                    return new ShortSerializer();
+                case INT:
+                    return new IntegerSerializer();
+                case LONG:
+                    return new LongSerializer();
+                case FLOAT:
+                    return new FloatSerializer();
+                case DOUBLE:
+                    return new DoubleSerializer();
+                case BINARY:
+                    return new BytesSerializer();
+                default:
+                    throw new IllegalArgumentException("Illegal type " + schema.getLeft());
+            }
+        }
+    }
+
+    public Deserializer<?> getDeserializer(Either<Type, ParsedSchema> schema) {
+        if (schema.isRight()) {
+            ParsedSchema parsedSchema = schema.get();
+            switch (parsedSchema.schemaType()) {
+                case "AVRO":
+                    return new KafkaAvroDeserializer(schemaRegistry);
+                case "JSON":
+                    return new KafkaJsonSchemaDeserializer<>(schemaRegistry);
+                case "PROTOBUF":
+                    return new KafkaProtobufDeserializer<>(schemaRegistry);
+                default:
+                    throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
+            }
+        } else {
+            switch (schema.getLeft()) {
+                case STRING:
+                    return new StringDeserializer();
+                case SHORT:
+                    return new ShortDeserializer();
+                case INT:
+                    return new IntegerDeserializer();
+                case LONG:
+                    return new LongDeserializer();
+                case FLOAT:
+                    return new FloatDeserializer();
+                case DOUBLE:
+                    return new DoubleDeserializer();
+                case BINARY:
+                    return new BytesDeserializer();
+                default:
+                    throw new IllegalArgumentException("Illegal type " + schema.getLeft());
+            }
+        }
+    }
+
     private void initCaches() {
         for (String topic : config.getTopics()) {
             initCache(topic);
@@ -209,10 +383,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
         configs.put(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, groupId);
         configs.put(KafkaCacheConfig.KAFKACACHE_CLIENT_ID_CONFIG, groupId + "-" + topic);
         configs.put(KafkaCacheConfig.KAFKACACHE_TOPIC_SKIP_VALIDATION_CONFIG, true);
-        KafkaCache<Bytes, Tuple2<Optional<Headers>, Bytes>> cache = new KafkaCache<>(
+        KafkaCache<Bytes, Bytes> cache = new KafkaCache<>(
             new KafkaCacheConfig(configs),
             Serdes.Bytes(),
-            new ValueSerde(),
+            Serdes.Bytes(),
             new UpdateHandler(schemaRegistry),
             new CaffeineCache<>(null)
         );
@@ -222,7 +396,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         docdb.createCollection(topic);
     }
 
-    class UpdateHandler implements CacheUpdateHandler<Bytes, Tuple2<Optional<Headers>, Bytes>> {
+    class UpdateHandler implements CacheUpdateHandler<Bytes, Bytes> {
 
         private SchemaRegistryClient schemaRegistry;
 
@@ -230,28 +404,20 @@ public class KGiraffeEngine implements Configurable, Closeable {
             this.schemaRegistry = schemaRegistry;
         }
 
-        public void handleUpdate(Bytes key,
-                                 Tuple2<Optional<Headers>, Bytes> value,
-                                 Tuple2<Optional<Headers>, Bytes> oldValue,
-                                 TopicPartition tp, long offset, long timestamp) {
+        public void handleUpdate(Headers headers,
+                                 Bytes key, Bytes value, Bytes oldValue,
+                                 TopicPartition tp, long offset, long ts, TimestampType tsType) {
             try {
                 String topic = tp.topic();
                 int partition = tp.partition();
                 String id = topic + "-" + partition + "-" + offset;
                 HDocumentCollection coll = docdb.getCollection(topic);
-                GenericRecord record = (GenericRecord)
-                    new KafkaAvroDeserializer(schemaRegistry).deserialize(topic, value._2.get());
-                // TODO
-                byte[] keyBytes = null;
-                byte[] valueBytes = AvroSchemaUtils.toJson(record);
 
                 Value keyObj = null;
                 if (key != null && key.get() != Bytes.EMPTY) {
-                    keyObj = new HValue(new StringDeserializer().deserialize(topic, key.get()));
+                    keyObj = deserializeKey(topic, key.get());
                 }
-
-                Document valueObj = Json.newDocumentStream(
-                    new ByteArrayInputStream(valueBytes)).iterator().next();
+                Value valueObj = deserializeValue(topic, value.get());
 
                 Document doc = new HDocument();
                 doc.setId(id);
@@ -262,10 +428,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 doc.set(TOPIC_ATTR_NAME, topic);
                 doc.set(PARTITION_ATTR_NAME, partition);
                 doc.set(OFFSET_ATTR_NAME, offset);
-                doc.set(TIMESTAMP_ATTR_NAME, timestamp);
-                Map<String, Object> headers = convertHeaders(value._1.orElse(null));
-                if (headers != null) {
-                    doc.set(HEADERS_ATTR_NAME, headers);
+                doc.set(TIMESTAMP_ATTR_NAME, ts);
+                Map<String, Object> headersObj = convertHeaders(headers);
+                if (headersObj != null) {
+                    doc.set(HEADERS_ATTR_NAME, headersObj);
                 }
                 coll.insertOrReplace(doc);
                 coll.flush();
@@ -274,8 +440,14 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 DeliveryOptions options = new DeliveryOptions().setCodecName("kryo");
                 eventBus.publish(topic, doc, options);
             } catch (Exception e) {
+                LOG.error("Error during update", e);
                 throw new RuntimeException(e);
             }
+        }
+
+        public void handleUpdate(Bytes key, Bytes value, Bytes oldValue,
+                                 TopicPartition tp, long offset, long ts) {
+            throw new UnsupportedOperationException();
         }
 
         private Map<String, Object> convertHeaders(Headers headers) {
@@ -319,7 +491,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         return docdb;
     }
 
-    public KafkaCache<Bytes, Tuple2<Optional<Headers>, Bytes>> getCache(String topic) {
+    public KafkaCache<Bytes, Bytes> getCache(String topic) {
         return caches.get(topic);
     }
 

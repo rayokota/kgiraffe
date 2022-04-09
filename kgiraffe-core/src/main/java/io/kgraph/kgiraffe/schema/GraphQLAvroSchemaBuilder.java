@@ -62,7 +62,6 @@ public class GraphQLAvroSchemaBuilder extends GraphQLAbstractSchemaBuilder {
             case DOUBLE:
                 return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLFloat;
             case BOOLEAN:
-                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
             case NULL:
             default:
                 throw new IllegalArgumentException("Illegal type " + schema.getType());
@@ -190,7 +189,6 @@ public class GraphQLAvroSchemaBuilder extends GraphQLAbstractSchemaBuilder {
             case DOUBLE:
                 return Scalars.GraphQLFloat;
             case BOOLEAN:
-                return Scalars.GraphQLBoolean;
             case NULL:
             default:
                 throw new IllegalArgumentException("Illegal type " + schema.getType());

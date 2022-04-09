@@ -32,8 +32,6 @@ public class GraphQLPrimitiveSchemaBuilder extends GraphQLAbstractSchemaBuilder 
     public GraphQLInputType createInputType(SchemaContext ctx, Either<Type, ParsedSchema> schema) {
 
         switch (schema.getLeft()) {
-            case BOOLEAN:
-                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
             case STRING:
                 return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLString;
             case SHORT:
@@ -55,8 +53,6 @@ public class GraphQLPrimitiveSchemaBuilder extends GraphQLAbstractSchemaBuilder 
     public GraphQLOutputType createOutputType(SchemaContext ctx,
                                               Either<Type, ParsedSchema> schema) {
         switch (schema.getLeft()) {
-            case BOOLEAN:
-                return Scalars.GraphQLBoolean;
             case STRING:
                 return Scalars.GraphQLString;
             case SHORT:
