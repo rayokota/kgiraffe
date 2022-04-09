@@ -67,6 +67,10 @@ public class SchemaContext {
         this.root = root;
     }
 
+    public String qualify(String name1, String name2) {
+        return qualify(name1 != null ? name1 + "_" + name2 : name2);
+    }
+
     public String qualify(String name) {
         String suffix;
         switch (mode) {

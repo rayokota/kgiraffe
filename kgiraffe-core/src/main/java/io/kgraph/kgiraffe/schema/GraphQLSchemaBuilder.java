@@ -64,6 +64,9 @@ public class GraphQLSchemaBuilder {
     public static final String OFFSET_ATTR_NAME = "offset";
     public static final String TIMESTAMP_ATTR_NAME = "timestamp";
 
+    // prefix used for internal field names
+    private static final String KAFKA = "kafka";
+
     private final KGiraffeEngine engine;
     private final List<String> topics;
     private final GraphQLAvroSchemaBuilder avroBuilder;
@@ -174,11 +177,11 @@ public class GraphQLSchemaBuilder {
             new SchemaContext(topic, keySchema, valueSchema, Mode.QUERY_WHERE, false);
         GraphQLInputType keyObject = getSchemaBuilder(keySchema).createInputType(ctx, keySchema);
         if (!(keyObject instanceof GraphQLInputObjectType)) {
-            keyObject = createInputFieldOp(ctx, topic, KEY_ATTR_NAME, keyObject);
+            keyObject = createInputFieldOp(ctx, KAFKA, KEY_ATTR_NAME, keyObject);
         }
         GraphQLInputType valueObject = getSchemaBuilder(valueSchema).createInputType(ctx, valueSchema);
         if (!(valueObject instanceof GraphQLInputObjectType)) {
-            valueObject = createInputFieldOp(ctx, topic, VALUE_ATTR_NAME, valueObject);
+            valueObject = createInputFieldOp(ctx, KAFKA, VALUE_ATTR_NAME, valueObject);
         }
 
         GraphQLInputObjectType whereInputObject = getWhereObject(ctx, topic, keyObject, valueObject);
@@ -216,22 +219,22 @@ public class GraphQLSchemaBuilder {
                 .field(GraphQLInputObjectField.newInputObjectField()
                     .name(TOPIC_ATTR_NAME)
                     .description("Kafka topic")
-                    .type(createInputFieldOp(ctx, name, TOPIC_ATTR_NAME, Scalars.GraphQLString))
+                    .type(createInputFieldOp(ctx, KAFKA, TOPIC_ATTR_NAME, Scalars.GraphQLString))
                     .build())
                 .field(GraphQLInputObjectField.newInputObjectField()
                     .name(PARTITION_ATTR_NAME)
                     .description("Kafka partition")
-                    .type(createInputFieldOp(ctx, name, PARTITION_ATTR_NAME, Scalars.GraphQLInt))
+                    .type(createInputFieldOp(ctx, KAFKA, PARTITION_ATTR_NAME, Scalars.GraphQLInt))
                     .build())
                 .field(GraphQLInputObjectField.newInputObjectField()
                     .name(OFFSET_ATTR_NAME)
                     .description("Kafka record offset")
-                    .type(createInputFieldOp(ctx, name, OFFSET_ATTR_NAME, ExtendedScalars.GraphQLLong))
+                    .type(createInputFieldOp(ctx, KAFKA, OFFSET_ATTR_NAME, ExtendedScalars.GraphQLLong))
                     .build())
                 .field(GraphQLInputObjectField.newInputObjectField()
                     .name(TIMESTAMP_ATTR_NAME)
                     .description("Kafka record timestamp")
-                    .type(createInputFieldOp(ctx, name, TIMESTAMP_ATTR_NAME, ExtendedScalars.GraphQLLong))
+                    .type(createInputFieldOp(ctx, KAFKA, TIMESTAMP_ATTR_NAME, ExtendedScalars.GraphQLLong))
                     .build())
                 .build();
         typeCache.put(name, type);
@@ -242,11 +245,12 @@ public class GraphQLSchemaBuilder {
                                                       String typeName,
                                                       String fieldName,
                                                       GraphQLInputType fieldType) {
-        String name = ctx.qualify(typeName + "_" + fieldName);
+        String name = ctx.qualify(typeName, fieldName);
         fieldType = GraphQLInputObjectType.newInputObject()
             .name(name)
             .description("Criteria expression specification of "
-                + fieldName + " attribute in entity " + typeName)
+                + fieldName + " attribute"
+                + (typeName != null ? " in entity " + typeName : ""))
             .field(GraphQLInputObjectField.newInputObjectField()
                 .name(Criteria.EQ.symbol())
                 .description("Equals criteria")
