@@ -294,7 +294,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
             Document doc = Json.newDocumentStream(new ByteArrayInputStream(json)).iterator().next();
             return HValue.initFromDocument(doc);
         } if (schema.getLeft() == Type.BINARY) {
-            object = Base64.getEncoder().encodeToString((byte[]) object);
+            object = Base64.getEncoder().encodeToString(((Bytes) object).get());
         }
 
         return HValue.initFromObject(object);
