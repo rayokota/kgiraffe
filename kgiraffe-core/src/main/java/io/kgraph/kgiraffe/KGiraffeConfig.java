@@ -24,10 +24,14 @@ import org.apache.kafka.common.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 public class KGiraffeConfig extends KafkaCacheConfig {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeConfig.class);
@@ -356,7 +360,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             );
     }
 
-    public KGiraffeConfig(String propsFile) {
+    public KGiraffeConfig(File propsFile) {
         super(config, getPropsFromFile(propsFile));
     }
 
@@ -390,5 +394,18 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         } catch (UnknownHostException e) {
             throw new ConfigException("Unknown local hostname", e);
         }
+    }
+
+    public static Properties getPropsFromFile(File propsFile) throws ConfigException {
+        Properties props = new Properties();
+        if (propsFile == null) {
+            return props;
+        }
+        try (FileInputStream propStream = new FileInputStream(propsFile)) {
+            props.load(propStream);
+        } catch (IOException e) {
+            throw new ConfigException("Couldn't load properties from " + propsFile, e);
+        }
+        return props;
     }
 }

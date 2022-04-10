@@ -13,7 +13,7 @@ import io.confluent.kafka.schemaregistry.ParsedSchema;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.orderByEnum;
 
-public class GraphQLPrimitiveSchemaBuilder extends GraphQLAbstractSchemaBuilder {
+public class GraphQLPrimitiveSchemaBuilder extends GraphQLParsedSchemaBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(GraphQLPrimitiveSchemaBuilder.class);
 
     @Override

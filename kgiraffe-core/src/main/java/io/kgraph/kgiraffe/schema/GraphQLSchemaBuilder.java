@@ -52,9 +52,11 @@ public class GraphQLSchemaBuilder {
 
     // TODO
     public static final String KEY_ATTR_NAME = "key";
+    public static final String KEY_ERROR_ATTR_NAME = "key_error";
     // TODO for Protobuf
     public static final String KEY_TYPE_NAME_ATTR_NAME = "key_type_name";
     public static final String VALUE_ATTR_NAME = "value";
+    public static final String VALUE_ERROR_ATTR_NAME = "value_error";
     // TODO for Protobuf
     public static final String VALUE_TYPE_NAME_ATTR_NAME = "value_type_name";
     public static final String HEADERS_ATTR_NAME = "headers";
@@ -97,7 +99,7 @@ public class GraphQLSchemaBuilder {
         this.primitiveBuilder = new GraphQLPrimitiveSchemaBuilder();
     }
 
-    public GraphQLAbstractSchemaBuilder getSchemaBuilder(Either<Type, ParsedSchema> schema) {
+    public GraphQLParsedSchemaBuilder getSchemaBuilder(Either<Type, ParsedSchema> schema) {
         if (schema.isRight()) {
             ParsedSchema parsedSchema = schema.get();
             switch (parsedSchema.schemaType()) {

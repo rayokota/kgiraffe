@@ -66,8 +66,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -104,11 +107,13 @@ import org.ojai.Value.Type;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.HEADERS_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ERROR_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PARTITION_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TOPIC_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ERROR_ATTR_NAME;
 
 public class KGiraffeEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeEngine.class);
@@ -411,19 +416,22 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 int partition = tp.partition();
                 String id = topic + "-" + partition + "-" + offset;
                 HDocumentCollection coll = docdb.getCollection(topic);
-
-                Value keyObj = null;
-                if (key != null && key.get() != Bytes.EMPTY) {
-                    keyObj = deserializeKey(topic, key.get());
-                }
-                Value valueObj = deserializeValue(topic, value.get());
-
                 Document doc = new HDocument();
                 doc.setId(id);
-                if (keyObj != null) {
-                    doc.set(KEY_ATTR_NAME, keyObj);
+
+                if (key != null && key.get() != Bytes.EMPTY) {
+                    try {
+                        doc.set(KEY_ATTR_NAME, deserializeKey(topic, key.get()));
+                    } catch (IOException e) {
+                        doc.set(KEY_ERROR_ATTR_NAME, trace(e));
+                    }
                 }
-                doc.set(VALUE_ATTR_NAME, valueObj);
+                try {
+                    doc.set(VALUE_ATTR_NAME, deserializeValue(topic, value.get()));
+                } catch (IOException e) {
+                    doc.set(VALUE_ERROR_ATTR_NAME, trace(e));
+                }
+
                 doc.set(TOPIC_ATTR_NAME, topic);
                 doc.set(PARTITION_ATTR_NAME, partition);
                 doc.set(OFFSET_ATTR_NAME, offset);
@@ -469,6 +477,12 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 });
             }
             return map;
+        }
+
+        private String trace(Throwable t) {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            t.printStackTrace(new PrintStream(output, false, StandardCharsets.UTF_8));
+            return output.toString(StandardCharsets.UTF_8);
         }
     }
 

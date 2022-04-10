@@ -13,8 +13,8 @@ import java.util.Map;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 
-public abstract class GraphQLAbstractSchemaBuilder {
-    private static final Logger LOG = LoggerFactory.getLogger(GraphQLAbstractSchemaBuilder.class);
+public abstract class GraphQLParsedSchemaBuilder {
+    private static final Logger LOG = LoggerFactory.getLogger(GraphQLParsedSchemaBuilder.class);
 
     protected final Map<String, GraphQLType> typeCache = new HashMap<>();
 

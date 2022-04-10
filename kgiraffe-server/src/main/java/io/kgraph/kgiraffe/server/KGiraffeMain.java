@@ -17,22 +17,60 @@ import io.vertx.rxjava3.core.Vertx;
 import io.vertx.rxjava3.ext.web.Router;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.concurrent.Callable;
 
-public class KGiraffeMain extends AbstractVerticle {
+@Command(name = "kgiraffe", mixinStandardHelpOptions = true, version = "kgiraffe 0.1",
+    description = "Schema-driven GraphQL for Apache Kafka.")
+public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeMain.class);
 
-    private final KGiraffeConfig config;
-    private final URI listener;
+    private KGiraffeConfig config;
+    private URI listener;
 
-    public KGiraffeMain(KGiraffeConfig config)
-        throws URISyntaxException {
+    @Option(names = {"-F", "--file"}, description = "The configuration file.")
+    private File configFile;
+
+    public KGiraffeMain() {
+    }
+
+    public KGiraffeMain(KGiraffeConfig config) {
         this.config = config;
+    }
+
+    @Override
+    public Integer call() throws Exception {
+        if (configFile != null) {
+            this.config = new KGiraffeConfig(configFile);
+        }
         // TODO use config
         this.listener = new URI("http://0.0.0.0:8765");
+
+        KGiraffeEngine engine = KGiraffeEngine.getInstance();
+        engine.configure(config);
+        Vertx vertx = Vertx.vertx();
+        engine.init(vertx.eventBus());
+        vertx.deployVerticle(this).toFuture().get();
+
+        var t = new Thread(()-> {
+            try {
+                System.in.read();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+        t.join();
+        return 0;
     }
 
     @Override
@@ -104,20 +142,7 @@ public class KGiraffeMain extends AbstractVerticle {
     }
 
     public static void main(String[] args) {
-        try {
-            if (args.length < 1) {
-                LOG.error("Properties file is required to start");
-                System.exit(1);
-            }
-            final KGiraffeConfig config = new KGiraffeConfig(args[0]);
-            KGiraffeEngine engine = KGiraffeEngine.getInstance();
-            engine.configure(config);
-            Vertx vertx = Vertx.vertx();
-            engine.init(vertx.eventBus());
-            vertx.deployVerticle(new KGiraffeMain(config));
-        } catch (Exception e) {
-            LOG.error("Server died unexpectedly: ", e);
-            System.exit(1);
-        }
+        int exitCode = new CommandLine(new KGiraffeMain()).execute(args);
+        System.exit(exitCode);
     }
 }

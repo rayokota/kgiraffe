@@ -35,10 +35,4 @@ if [[ $# -lt 1 ]]; then
 	exit 1
 fi
 
-if [[ ! -e "$1" ]]; then
-	echo "Property file $1 does not exist"
-	print_synopsis
-	exit 1
-fi
-
 exec $(dirname $0)/kgiraffe-run-class ${EXTRA_ARGS} io.kgraph.kgiraffe.server.KGiraffeMain "$@"
