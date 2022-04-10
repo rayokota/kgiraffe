@@ -121,6 +121,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private KGiraffeConfig config;
+    private Map<String, String> keySerdes;
+    private Map<String, String> valueSerdes;
     private EventBus eventBus;
     private SchemaRegistryClient schemaRegistry;
     private GraphQLExecutor executor;
@@ -168,6 +170,11 @@ public class KGiraffeEngine implements Configurable, Closeable {
         this.config = config;
     }
 
+    public void configureSerdes(Map<String, KGiraffeConfig.Serde> keySerdes,
+                                Map<String, KGiraffeConfig.Serde> valueSerdes) {
+
+    }
+
     public void init(EventBus eventBus) {
         this.eventBus = eventBus.registerCodec(new KryoCodec<Document>());
 
@@ -192,6 +199,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
 
     public SchemaRegistryClient getSchemaRegistry() {
         return schemaRegistry;
+    }
+
+    public Map<String, Either<Type, ParsedSchema>>  getSchemas() {
+        return schemas;
     }
 
     public Either<Type, ParsedSchema> getKeySchema(String topic) {

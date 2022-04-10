@@ -1,6 +1,7 @@
 package io.kgraph.kgiraffe.server;
 
 import graphql.GraphQL;
+import io.kcache.KafkaCacheConfig;
 import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.reactivex.rxjava3.core.Single;
@@ -15,6 +16,7 @@ import io.vertx.rxjava3.ext.web.handler.graphql.ApolloWSHandler;
 import io.vertx.rxjava3.ext.web.handler.graphql.GraphQLHandler;
 import io.vertx.rxjava3.core.Vertx;
 import io.vertx.rxjava3.ext.web.Router;
+import org.apache.kafka.common.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -24,9 +26,11 @@ import picocli.CommandLine.Option;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 @Command(name = "kgiraffe", mixinStandardHelpOptions = true, version = "kgiraffe 0.1",
     description = "Schema-driven GraphQL for Apache Kafka.", sortOptions = false)
@@ -64,11 +68,11 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "  -<value> (relative offset from end)\n"
             + "  @<value> (timestamp in ms to start at)\n"
             + "  Default: beginning")
-    private String offset;
+    private KafkaCacheConfig.Offset offset;
 
     @Option(names = {"-k", "--key-serde"},
         description = "(De)serialize keys using <serde>", paramLabel = "<topic=serde>")
-    private Map<String, String> keySerdes;
+    private Map<String, KGiraffeConfig.Serde> keySerdes = new HashMap<>();
 
     @Option(names = {"-v", "--value-serde"},
         description = "(De)serialize values using <serde>\n"
@@ -79,7 +83,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "  <id>   (use schema id from SR)\n"
             + "  Default: latest",
         paramLabel = "<topic=serde>")
-    private Map<String, String> valueSerdes;
+    private Map<String, KGiraffeConfig.Serde> valueSerdes = new HashMap<>();
 
     @Option(names = {"-r", "--schema-registry-url"},
         description = "SR (Schema Registry) URL", paramLabel = "<url>")
@@ -98,15 +102,17 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
     @Override
     public Integer call() throws Exception {
+        KGiraffeEngine engine = KGiraffeEngine.getInstance();
         System.out.println(bootstrapBrokers);
         if (configFile != null) {
-            this.config = new KGiraffeConfig(configFile);
+            config = new KGiraffeConfig(configFile);
         }
-        // TODO use config
-        this.listener = new URI("http://0.0.0.0:8765");
-
-        KGiraffeEngine engine = KGiraffeEngine.getInstance();
+        config = updateConfig();
         engine.configure(config);
+        engine.configureSerdes(keySerdes, valueSerdes);
+
+        listener = new URI(config.getString(KGiraffeConfig.LISTENERS_CONFIG));
+
         Vertx vertx = Vertx.vertx();
         engine.init(vertx.eventBus());
         vertx.deployVerticle(this).toFuture().get();
@@ -126,9 +132,8 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
     @Override
     public void start() throws Exception {
+        KGiraffeEngine engine = KGiraffeEngine.getInstance();
         try {
-            KGiraffeEngine engine = KGiraffeEngine.getInstance();
-
             Router router = Router.router(vertx);
             GraphQL graphQL = engine.getGraphQL();
             router.route().handler(BodyHandler.create());
@@ -192,8 +197,63 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         }
     }
 
+    private KGiraffeConfig updateConfig() {
+        Map<String, String> props = config.originalsStrings();
+        if (!topics.isEmpty()) {
+            props.put(KGiraffeConfig.TOPICS_CONFIG, String.join(",", topics));
+        }
+        if (!partitions.isEmpty()) {
+            props.put(KGiraffeConfig.KAFKACACHE_TOPIC_PARTITIONS_CONFIG, partitions.stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(",")));
+        }
+        if (!bootstrapBrokers.isEmpty()) {
+            props.put(KGiraffeConfig.TOPICS_CONFIG, String.join(",", bootstrapBrokers));
+        }
+        if (initTimeout != null) {
+            props.put(KGiraffeConfig.KAFKACACHE_INIT_TIMEOUT_CONFIG, String.valueOf(initTimeout));
+        }
+        if (offset != null) {
+            props.put(KGiraffeConfig.KAFKACACHE_TOPIC_PARTITIONS_OFFSET_CONFIG, offset.toString());
+        }
+        if (schemaRegistryUrl != null) {
+            props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
+        }
+        if (properties != null) {
+            props.putAll(properties);
+        }
+        return new KGiraffeConfig(props);
+    }
+
+    static class OffsetConverter implements CommandLine.ITypeConverter<KafkaCacheConfig.Offset> {
+        @Override
+        public KafkaCacheConfig.Offset convert(String value) {
+            try {
+                return new KafkaCacheConfig.Offset(value);
+            } catch (ConfigException e) {
+                throw new CommandLine.TypeConversionException("expected one of [beginning, end, "
+                    + "<value>, -<value>, @<value>] but was '" + value + "'");
+            }
+        }
+    }
+
+    static class SerdeConverter implements CommandLine.ITypeConverter<KGiraffeConfig.Serde> {
+        @Override
+        public KGiraffeConfig.Serde convert(String value) {
+            try {
+                return new KGiraffeConfig.Serde(value);
+            } catch (ConfigException e) {
+                throw new CommandLine.TypeConversionException("expected one of [short, int, "
+                    + "long, float, double, string, binary, latest, <id>] but was '"
+                    + value + "'");
+            }
+        }
+    }
+
     public static void main(String[] args) {
         CommandLine commandLine = new CommandLine(new KGiraffeMain());
+        commandLine.registerConverter(KafkaCacheConfig.Offset.class, new OffsetConverter());
+        commandLine.registerConverter(KGiraffeConfig.Serde.class, new SerdeConverter());
         commandLine.setUsageHelpLongOptionsMaxWidth(30);
         int exitCode = commandLine.execute(args);
         System.exit(exitCode);

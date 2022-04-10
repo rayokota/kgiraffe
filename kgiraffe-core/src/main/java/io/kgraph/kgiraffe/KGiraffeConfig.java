@@ -30,7 +30,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 
 public class KGiraffeConfig extends KafkaCacheConfig {
@@ -407,5 +409,79 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             throw new ConfigException("Couldn't load properties from " + propsFile, e);
         }
         return props;
+    }
+
+    public enum SerdeType {
+        SHORT,
+        INT,
+        LONG,
+        FLOAT,
+        DOUBLE,
+        STRING,
+        BINARY,
+        LATEST,
+        ID
+    }
+
+    public static class Serde {
+        private final SerdeType serdeType;
+        private final int id;
+
+        public Serde(String value) {
+            SerdeType serdeType;
+            int id;
+            try {
+                serdeType = SerdeType.valueOf(value.toUpperCase(Locale.ROOT));
+                id = 0;
+            } catch (IllegalArgumentException e) {
+                try {
+                    id = Integer.parseInt(value);
+                    serdeType = SerdeType.ID;
+                } catch (NumberFormatException nfe) {
+                    throw new ConfigException("Couldn't parse serde: " + value, nfe);
+                }
+            }
+            this.serdeType = serdeType;
+            this.id = id;
+        }
+
+        public Serde(SerdeType serdeType, int id) {
+            this.serdeType = serdeType;
+            this.id = id;
+        }
+
+        public SerdeType getSerdeType() {
+            return serdeType;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Serde serde = (Serde) o;
+            return id == serde.id && serdeType == serde.serdeType;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(serdeType, id);
+        }
+
+        @Override
+        public String toString() {
+            if (serdeType == SerdeType.ID) {
+                return String.valueOf(id);
+            } else {
+                return serdeType.name().toLowerCase(Locale.ROOT);
+            }
+        }
     }
 }
