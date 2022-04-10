@@ -19,6 +19,7 @@ import io.kgraph.kgiraffe.schema.PredicateFilter.Criteria;
 import io.kgraph.kgiraffe.schema.SchemaContext.Mode;
 import io.vavr.control.Either;
 import org.apache.avro.Schema;
+import org.apache.kafka.common.record.TimestampType;
 import org.everit.json.schema.ObjectSchema;
 import org.ojai.Value.Type;
 import org.slf4j.Logger;
@@ -50,7 +51,6 @@ public class GraphQLSchemaBuilder {
 
     public static final String INSERT_PARAM_NAME = "insert";
 
-    // TODO
     public static final String KEY_ATTR_NAME = "key";
     public static final String KEY_ERROR_ATTR_NAME = "key_error";
     // TODO for Protobuf
@@ -64,9 +64,7 @@ public class GraphQLSchemaBuilder {
     public static final String PARTITION_ATTR_NAME = "partition";
     public static final String OFFSET_ATTR_NAME = "offset";
     public static final String TIMESTAMP_ATTR_NAME = "ts";
-    // TODO
     public static final String TIMESTAMP_TYPE_ATTR_NAME = "tstype";
-    // TODO
     public static final String EPOCH_ATTR_NAME = "epoch";
 
     // prefix used for internal field names
@@ -89,12 +87,33 @@ public class GraphQLSchemaBuilder {
             .value(OrderBy.DESC.symbol(), OrderBy.DESC.symbol(), "Descending")
             .build();
 
+    public static final GraphQLEnumType tsTypeEnum =
+        GraphQLEnumType.newEnum()
+            .name("tstype_enum")
+            .description("Specifies the timestamp type")
+            .value(
+                TimestampType.NO_TIMESTAMP_TYPE.toString(),
+                TimestampType.NO_TIMESTAMP_TYPE.toString(),
+                "Unknown")
+            .value(
+                TimestampType.CREATE_TIME.toString(),
+                TimestampType.CREATE_TIME.toString(),
+                "Create")
+            .value(
+                TimestampType.LOG_APPEND_TIME.toString(),
+                TimestampType.LOG_APPEND_TIME.toString(),
+                "LogAppend")
+            .build();
+
+
     public GraphQLSchemaBuilder(KGiraffeEngine engine,
                                 List<String> topics) {
         this.engine = engine;
         this.topics = topics;
         this.avroBuilder = new GraphQLAvroSchemaBuilder();
+        // TODO json
         this.jsonSchemaBuilder = new GraphQLAvroSchemaBuilder();
+        // TODO protobuf
         this.protobufBuilder = new GraphQLAvroSchemaBuilder();
         this.primitiveBuilder = new GraphQLPrimitiveSchemaBuilder();
     }
@@ -143,7 +162,6 @@ public class GraphQLSchemaBuilder {
 
     private Stream<GraphQLFieldDefinition> getQueryFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
-        // TODO handle primitive key schemas
         Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
         Either<Type, ParsedSchema> valueSchema = engine.getValueSchema(topic);
 
@@ -387,14 +405,29 @@ public class GraphQLSchemaBuilder {
             .name(name)
             .description(topic)
             .field(GraphQLFieldDefinition.newFieldDefinition()
+                .name(HEADERS_ATTR_NAME)
+                .description("Kafka record headers")
+                .type(ExtendedScalars.Json)
+                .build())
+            .field(GraphQLFieldDefinition.newFieldDefinition()
                 .name(KEY_ATTR_NAME)
                 .description("Kafka record key")
                 .type(keyObject)
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
+                .name(KEY_ERROR_ATTR_NAME)
+                .description("Kafka record key deserialization error")
+                .type(Scalars.GraphQLString)
+                .build())
+            .field(GraphQLFieldDefinition.newFieldDefinition()
                 .name(VALUE_ATTR_NAME)
                 .description("Kafka record value")
                 .type(valueObject)
+                .build())
+            .field(GraphQLFieldDefinition.newFieldDefinition()
+                .name(VALUE_ERROR_ATTR_NAME)
+                .description("Kafka record value deserialization error")
+                .type(Scalars.GraphQLString)
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
                 .name(TOPIC_ATTR_NAME)
@@ -415,6 +448,16 @@ public class GraphQLSchemaBuilder {
                 .name(TIMESTAMP_ATTR_NAME)
                 .description("Kafka record timestamp")
                 .type(ExtendedScalars.GraphQLLong)
+                .build())
+            .field(GraphQLFieldDefinition.newFieldDefinition()
+                .name(TIMESTAMP_TYPE_ATTR_NAME)
+                .description("Kafka record timestamp type")
+                .type(tsTypeEnum)
+                .build())
+            .field(GraphQLFieldDefinition.newFieldDefinition()
+                .name(EPOCH_ATTR_NAME)
+                .description("Kafka record leader epoch")
+                .type(Scalars.GraphQLInt)
                 .build())
             .build();
 
@@ -441,7 +484,6 @@ public class GraphQLSchemaBuilder {
 
     private Stream<GraphQLFieldDefinition> getMutationFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
-        // TODO handle primitive key schemas
         Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
         Either<Type, ParsedSchema> valueSchema = engine.getValueSchema(topic);
 
@@ -451,9 +493,20 @@ public class GraphQLSchemaBuilder {
             .name(topic)
             .type(objectType)
             .dataFetcher(new MutationFetcher(engine, topic, keySchema, valueSchema))
+            .argument(getHeadersArgument(topic, keySchema, valueSchema))
             .argument(getKeyArgument(topic, keySchema, valueSchema))
             .argument(getValueArgument(topic, keySchema, valueSchema))
             .build());
+    }
+
+    private GraphQLArgument getHeadersArgument(String topic,
+                                               Either<Type, ParsedSchema> keySchema,
+                                               Either<Type, ParsedSchema> valueSchema) {
+        return GraphQLArgument.newArgument()
+            .name(HEADERS_ATTR_NAME)
+            .description("Headers specification")
+            .type(ExtendedScalars.Json)
+            .build();
     }
 
     private GraphQLArgument getKeyArgument(String topic,
@@ -502,7 +555,6 @@ public class GraphQLSchemaBuilder {
 
     private Stream<GraphQLFieldDefinition> getQueryFieldStreamDefinition(
         GraphQLCodeRegistry.Builder codeRegistry, String topic) {
-        // TODO handle primitive key schemas
         Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
         Either<Type, ParsedSchema> valueSchema = engine.getValueSchema(topic);
 

@@ -1,4 +1,4 @@
-package io.kgraph.kgiraffe.serialization;
+package io.kgraph.kgiraffe.util;
 
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.MessageCodec;

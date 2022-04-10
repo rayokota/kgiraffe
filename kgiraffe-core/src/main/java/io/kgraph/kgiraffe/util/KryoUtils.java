@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.kgraph.kgiraffe.serialization;
+package io.kgraph.kgiraffe.util;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;

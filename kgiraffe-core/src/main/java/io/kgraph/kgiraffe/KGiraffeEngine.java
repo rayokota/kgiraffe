@@ -31,7 +31,7 @@ import io.kcache.KafkaCacheConfig;
 import io.kcache.caffeine.CaffeineCache;
 import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
-import io.kgraph.kgiraffe.serialization.KryoCodec;
+import io.kgraph.kgiraffe.util.KryoCodec;
 import io.vavr.control.Either;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.rxjava3.core.eventbus.EventBus;
@@ -71,7 +71,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -104,14 +103,14 @@ import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
 
-import org.ojai.Value.Type;
-
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.EPOCH_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.HEADERS_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ERROR_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PARTITION_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_TYPE_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TOPIC_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ERROR_ATTR_NAME;
@@ -453,6 +452,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 Document doc = new HDocument();
                 doc.setId(id);
 
+                Map<String, Object> headersObj = convertHeaders(headers);
+                if (headersObj != null) {
+                    doc.set(HEADERS_ATTR_NAME, headersObj);
+                }
                 if (key != null && key.get() != Bytes.EMPTY) {
                     try {
                         doc.set(KEY_ATTR_NAME, deserializeKey(topic, key.get()));
@@ -470,9 +473,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 doc.set(PARTITION_ATTR_NAME, partition);
                 doc.set(OFFSET_ATTR_NAME, offset);
                 doc.set(TIMESTAMP_ATTR_NAME, ts);
-                Map<String, Object> headersObj = convertHeaders(headers);
-                if (headersObj != null) {
-                    doc.set(HEADERS_ATTR_NAME, headersObj);
+                doc.set(TIMESTAMP_TYPE_ATTR_NAME, tsType.toString());
+                if (leaderEpoch.isPresent()) {
+                    doc.set(EPOCH_ATTR_NAME, leaderEpoch.get());
                 }
                 coll.insertOrReplace(doc);
                 coll.flush();

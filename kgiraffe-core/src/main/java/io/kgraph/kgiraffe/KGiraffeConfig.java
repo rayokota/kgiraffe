@@ -40,7 +40,6 @@ import java.util.stream.Collectors;
 public class KGiraffeConfig extends KafkaCacheConfig {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeConfig.class);
 
-    // TODO
     public static final String LISTENER_CONFIG = "listener";
     public static final String LISTENER_DEFAULT = "http://0.0.0.0:8765";
     public static final String LISTENER_DOC =
