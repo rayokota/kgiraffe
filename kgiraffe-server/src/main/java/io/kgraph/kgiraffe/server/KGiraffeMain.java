@@ -81,7 +81,8 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "  double | string | binary |\n"
             + "  latest (use latest version in SR) |\n"
             + "  <id>   (use schema id from SR)\n"
-            + "  Default: latest",
+            + "  Default for key:   binary\n"
+            + "  Default for value: latest",
         paramLabel = "<topic=serde>")
     private Map<String, KGiraffeConfig.Serde> valueSerdes;
 
@@ -103,7 +104,6 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
     @Override
     public Integer call() throws Exception {
         KGiraffeEngine engine = KGiraffeEngine.getInstance();
-        System.out.println(bootstrapBrokers);
         if (configFile != null) {
             config = new KGiraffeConfig(configFile);
         }

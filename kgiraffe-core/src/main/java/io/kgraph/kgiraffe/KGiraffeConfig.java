@@ -475,6 +475,9 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         private final SerdeType serdeType;
         private final int id;
 
+        public static final Serde KEY_DEFAULT = new Serde(SerdeType.BINARY, 0);
+        public static final Serde VALUE_DEFAULT = new Serde(SerdeType.LATEST, 0);
+
         public Serde(String value) {
             SerdeType serdeType;
             int id;

@@ -61,6 +61,7 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.common.utils.Utils;
 import org.ojai.Document;
 import org.ojai.Value;
+import org.ojai.Value.Type;
 import org.ojai.json.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,12 +122,13 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private KGiraffeConfig config;
-    private Map<String, KGiraffeConfig.Serde> keySerdes;
-    private Map<String, KGiraffeConfig.Serde> valueSerdes;
     private EventBus eventBus;
     private SchemaRegistryClient schemaRegistry;
     private GraphQLExecutor executor;
-    private Map<String, Either<Type, ParsedSchema>> schemas = new HashMap<>();
+    private Map<String, KGiraffeConfig.Serde> keySerdes;
+    private Map<String, KGiraffeConfig.Serde> valueSerdes;
+    private Map<String, Either<Type, ParsedSchema>> keySchemas = new HashMap<>();
+    private Map<String, Either<Type, ParsedSchema>> valueSchemas = new HashMap<>();
     private Map<String, KafkaCache<Bytes, Bytes>> caches;
     private HDocumentDB docdb;
     private final AtomicBoolean initialized;
@@ -198,27 +200,43 @@ public class KGiraffeEngine implements Configurable, Closeable {
         return schemaRegistry;
     }
 
-    public Map<String, Either<Type, ParsedSchema>>  getSchemas() {
-        return schemas;
-    }
-
     public Either<Type, ParsedSchema> getKeySchema(String topic) {
-        return getSchema(topic + "-key");
+        return keySchemas.computeIfAbsent(topic, t -> getSchema(topic + "-key",
+            keySerdes.getOrDefault(topic, KGiraffeConfig.Serde.KEY_DEFAULT)));
     }
 
     public Either<Type, ParsedSchema> getValueSchema(String topic) {
-        return getSchema(topic + "-value");
+        return valueSchemas.computeIfAbsent(topic, t -> getSchema(topic + "-value",
+            valueSerdes.getOrDefault(topic, KGiraffeConfig.Serde.VALUE_DEFAULT)));
     }
 
-    private Either<Type, ParsedSchema> getSchema(String subject) {
-        return schemas.computeIfAbsent(subject, t -> {
-            Optional<ParsedSchema> schema = getLatestSchema(subject);
-            // TODO other primitive keys
-            return schema.<Either<Type, ParsedSchema>>map(Either::right)
-                .orElseGet(() -> Either.left(Type.STRING));
-            // TODO
-                //.orElseGet(() -> Either.left(Type.NULL));
-        });
+    private Either<Type, ParsedSchema> getSchema(String subject, KGiraffeConfig.Serde serde) {
+        switch (serde.getSerdeType()) {
+            case SHORT:
+                return Either.left(Type.SHORT);
+            case INT:
+                return Either.left(Type.INT);
+            case LONG:
+                return Either.left(Type.LONG);
+            case FLOAT:
+                return Either.left(Type.FLOAT);
+            case DOUBLE:
+                return Either.left(Type.DOUBLE);
+            case STRING:
+                return Either.left(Type.STRING);
+            case BINARY:
+                return Either.left(Type.BINARY);
+            case LATEST:
+                return getLatestSchema(subject).<Either<Type, ParsedSchema>>map(Either::right)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                        "Could not find latest schema for subject " + subject));
+            case ID:
+                return getSchemaById(serde.getId()).<Either<Type, ParsedSchema>>map(Either::right)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                        "Could not find schema for id " + serde.getId()));
+            default:
+                throw new IllegalArgumentException("Illegal serde type: " + serde.getSerdeType());
+        }
     }
 
     private Optional<ParsedSchema> getLatestSchema(String subject) {
@@ -235,12 +253,20 @@ public class KGiraffeEngine implements Configurable, Closeable {
         }
     }
 
+    private Optional<ParsedSchema> getSchemaById(int id) {
+        try {
+            return Optional.of(schemaRegistry.getSchemaById(id));
+        } catch (IOException | RestClientException e) {
+            return Optional.empty();
+        }
+    }
+
     public Value deserializeKey(String topic, byte[] bytes) throws IOException {
-        return deserialize(getSchema(topic + "-key"), topic, bytes);
+        return deserialize(getKeySchema(topic), topic, bytes);
     }
 
     public Value deserializeValue(String topic, byte[] bytes) throws IOException {
-        return deserialize(getSchema(topic + "-value"), topic, bytes);
+        return deserialize(getValueSchema(topic), topic, bytes);
     }
 
     private Value deserialize(Either<Type, ParsedSchema> schema,
@@ -275,11 +301,11 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     public byte[] serializeKey(String topic, Object object) throws IOException {
-        return serialize(getSchema(topic + "-key"), topic, object);
+        return serialize(getKeySchema(topic), topic, object);
     }
 
     public byte[] serializeValue(String topic, Object object) throws IOException {
-        return serialize(getSchema(topic + "-value"), topic, object);
+        return serialize(getValueSchema(topic), topic, object);
     }
 
     private byte[] serialize(Either<Type, ParsedSchema> schema,
