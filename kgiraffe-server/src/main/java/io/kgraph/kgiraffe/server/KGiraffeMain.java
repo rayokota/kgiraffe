@@ -111,7 +111,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         engine.configure(config);
         engine.configureSerdes(keySerdes, valueSerdes);
 
-        listener = new URI(config.getString(KGiraffeConfig.LISTENERS_CONFIG));
+        listener = new URI(config.getString(KGiraffeConfig.LISTENER_CONFIG));
 
         Vertx vertx = Vertx.vertx();
         engine.init(vertx.eventBus());
@@ -198,16 +198,19 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
     }
 
     private KGiraffeConfig updateConfig() {
-        Map<String, String> props = config.originalsStrings();
-        if (!topics.isEmpty()) {
+        Map<String, String> props = new HashMap<>();
+        if (config != null) {
+            props.putAll(config.originalsStrings());
+        }
+        if (topics != null) {
             props.put(KGiraffeConfig.TOPICS_CONFIG, String.join(",", topics));
         }
-        if (!partitions.isEmpty()) {
+        if (partitions != null) {
             props.put(KGiraffeConfig.KAFKACACHE_TOPIC_PARTITIONS_CONFIG, partitions.stream()
                 .map(Object::toString)
                 .collect(Collectors.joining(",")));
         }
-        if (!bootstrapBrokers.isEmpty()) {
+        if (bootstrapBrokers != null) {
             props.put(KGiraffeConfig.TOPICS_CONFIG, String.join(",", bootstrapBrokers));
         }
         if (initTimeout != null) {

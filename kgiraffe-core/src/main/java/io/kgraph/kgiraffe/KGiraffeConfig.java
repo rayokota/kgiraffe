@@ -39,11 +39,11 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeConfig.class);
 
     // TODO
-    public static final String LISTENERS_CONFIG = "listeners";
-    public static final String LISTENERS_DEFAULT = "http://0.0.0.0:8765";
-    public static final String LISTENERS_DOC =
-        "List of listeners. http and https are supported. Each listener must include the protocol, "
-            + "hostname, and port. For example: http://myhost:8080, https://0.0.0.0:8081";
+    public static final String LISTENER_CONFIG = "listener";
+    public static final String LISTENER_DEFAULT = "http://0.0.0.0:8765";
+    public static final String LISTENER_DOC =
+        "The URL for kgiraffe to listen on. The listener must include the protocol, "
+            + "hostname, and port. For example: http://myhost:8765, https://0.0.0.0:8765";
 
     public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
     public static final String SCHEMA_REGISTRY_URL_DOC =
@@ -202,11 +202,11 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     static {
         config = baseConfigDef()
             .define(
-                LISTENERS_CONFIG,
-                Type.LIST,
-                LISTENERS_DEFAULT,
+                LISTENER_CONFIG,
+                Type.STRING,
+                LISTENER_DEFAULT,
                 Importance.HIGH,
-                LISTENERS_DOC
+                LISTENER_DOC
             ).define(SCHEMA_REGISTRY_URL_CONFIG,
                 Type.LIST,
                 null,

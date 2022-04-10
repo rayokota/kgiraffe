@@ -84,7 +84,7 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
     }
 
     protected void injectKGiraffeProperties(Properties props) {
-        props.put(KGiraffeConfig.LISTENERS_CONFIG, "http://0.0.0.0:" + serverPort);
+        props.put(KGiraffeConfig.LISTENER_CONFIG, "http://0.0.0.0:" + serverPort);
         props.put(KGiraffeConfig.KAFKACACHE_BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(KGiraffeConfig.KAFKACACHE_DATA_DIR_CONFIG, tempDir.getAbsolutePath());
     }
