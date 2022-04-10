@@ -31,8 +31,6 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.util.Properties;
 
-import static org.mockito.Mockito.mock;
-
 /**
  * Test harness to run against a real, local Kafka cluster. This is essentially
  * Kafka's ZookeeperTestHarness and KafkaServerTestHarness traits combined.

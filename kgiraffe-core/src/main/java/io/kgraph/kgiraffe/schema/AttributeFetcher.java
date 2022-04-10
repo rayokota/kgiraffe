@@ -5,8 +5,6 @@ import graphql.schema.DataFetchingEnvironment;
 import org.ojai.Document;
 import org.ojai.Value;
 
-import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
-
 public class AttributeFetcher implements DataFetcher {
 
     private final String attributeName;

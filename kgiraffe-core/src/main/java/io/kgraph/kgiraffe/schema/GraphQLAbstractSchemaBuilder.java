@@ -4,7 +4,6 @@ import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLType;
 import io.vavr.control.Either;
-import org.apache.avro.Schema;
 import org.ojai.Value.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

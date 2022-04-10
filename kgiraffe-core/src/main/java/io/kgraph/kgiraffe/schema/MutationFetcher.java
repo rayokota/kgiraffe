@@ -1,26 +1,16 @@
 package io.kgraph.kgiraffe.schema;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
-import io.confluent.kafka.schemaregistry.avro.AvroSchema;
-import io.confluent.kafka.schemaregistry.avro.AvroSchemaUtils;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-
-import java.util.Map;
-import java.util.Optional;
 
 import io.hdocdb.store.HDocumentCollection;
 import io.hdocdb.store.HDocumentDB;
 import io.kcache.KafkaCache;
 import io.kgraph.kgiraffe.KGiraffeEngine;
-import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.utils.Bytes;
 import org.ojai.Document;
 import org.ojai.Value.Type;

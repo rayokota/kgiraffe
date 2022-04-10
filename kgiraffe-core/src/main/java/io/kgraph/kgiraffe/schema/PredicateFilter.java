@@ -4,8 +4,6 @@ import com.google.common.collect.EnumHashBiMap;
 import graphql.schema.DataFetchingEnvironment;
 import io.hdocdb.HValue;
 import io.hdocdb.store.HQueryCondition;
-import org.ojai.Value;
-import org.ojai.store.QueryCondition;
 import org.ojai.store.QueryCondition.Op;
 
 import java.util.Collection;

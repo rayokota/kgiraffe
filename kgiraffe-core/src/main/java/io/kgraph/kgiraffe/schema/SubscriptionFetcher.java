@@ -1,6 +1,5 @@
 package io.kgraph.kgiraffe.schema;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import io.hdocdb.store.HQueryCondition;
@@ -13,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 
 public class SubscriptionFetcher implements DataFetcher {
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionFetcher.class);

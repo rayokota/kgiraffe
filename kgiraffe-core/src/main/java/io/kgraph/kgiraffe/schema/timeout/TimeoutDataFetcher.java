@@ -5,7 +5,7 @@ import graphql.schema.DataFetchingEnvironment;
 
 public class TimeoutDataFetcher<T> implements DataFetcher<T> {
 
-    private long maxDuration;
+    private final long maxDuration;
 
     public TimeoutDataFetcher(long maxDuration) {
         this.maxDuration = maxDuration;

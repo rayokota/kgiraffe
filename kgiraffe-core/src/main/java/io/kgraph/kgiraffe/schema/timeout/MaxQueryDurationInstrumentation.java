@@ -11,7 +11,7 @@ public class MaxQueryDurationInstrumentation extends SimpleInstrumentation {
 
     private static final Logger LOG = LoggerFactory.getLogger(MaxQueryDurationInstrumentation.class);
 
-    private long maxDuration;
+    private final long maxDuration;
 
     public MaxQueryDurationInstrumentation(long maxDuration) {
         LOG.info("Loaded max query duration instrumentation.");

@@ -35,13 +35,11 @@ import io.kgraph.kgiraffe.serialization.KryoCodec;
 import io.vavr.control.Either;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.rxjava3.core.eventbus.EventBus;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.BytesDeserializer;
 import org.apache.kafka.common.serialization.BytesSerializer;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -199,7 +197,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         return getSchema(topic + "-value");
     }
 
-    public Either<Type, ParsedSchema> getSchema(String subject) {
+    private Either<Type, ParsedSchema> getSchema(String subject) {
         return schemas.computeIfAbsent(subject, t -> {
             Optional<ParsedSchema> schema = getLatestSchema(subject);
             // TODO other primitive keys
@@ -406,7 +404,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
 
         public void handleUpdate(Headers headers,
                                  Bytes key, Bytes value, Bytes oldValue,
-                                 TopicPartition tp, long offset, long ts, TimestampType tsType) {
+                                 TopicPartition tp, long offset, long ts, TimestampType tsType,
+                                 Optional<Integer> leaderEpoch) {
             try {
                 String topic = tp.topic();
                 int partition = tp.partition();

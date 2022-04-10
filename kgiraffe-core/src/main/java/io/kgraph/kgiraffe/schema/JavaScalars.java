@@ -26,7 +26,7 @@ public class JavaScalars {
     private static final String ISO_8601_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
 
     static {
-        Coercing<Date, String> coercing = new Coercing<Date, String>() {
+        Coercing<Date, String> coercing = new Coercing<>() {
             public String serialize(Object input) throws CoercingSerializeException {
                 Date date;
                 if (input instanceof Date) {

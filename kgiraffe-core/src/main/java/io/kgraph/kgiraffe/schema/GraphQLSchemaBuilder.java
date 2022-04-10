@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
-import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 
 /**
  * A wrapper for the {@link graphql.schema.GraphQLSchema.Builder}.
@@ -65,6 +64,8 @@ public class GraphQLSchemaBuilder {
     public static final String TIMESTAMP_ATTR_NAME = "ts";
     // TODO
     public static final String TIMESTAMP_TYPE_ATTR_NAME = "tstype";
+    // TODO
+    public static final String EPOCH_ATTR_NAME = "epoch";
 
     // prefix used for internal field names
     private static final String KAFKA = "kafka";
