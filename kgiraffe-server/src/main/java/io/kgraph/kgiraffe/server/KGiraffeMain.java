@@ -51,7 +51,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
     @Option(names = {"-m", "--metadata-timeout"},
         description = "Metadata (et.al.) request timeout", paramLabel = "<ms>")
-    private int initTimeout;
+    private Integer initTimeout;
 
     @Option(names = {"-F", "--file"},
         description = "Read configuration properties from file", paramLabel = "<config-file>")
@@ -59,10 +59,11 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
     @Option(names = {"-o", "--offset"},
         description = "Offset to start consuming from:\n"
-            + "  beginning (default) | end |\n"
+            + "  beginning | end |\n"
             + "  <value>  (absolute offset) |\n"
             + "  -<value> (relative offset from end)\n"
-            + "  @<value> (timestamp in ms to start at)")
+            + "  @<value> (timestamp in ms to start at)\n"
+            + "  Default: beginning")
     private String offset;
 
     @Option(names = {"-k", "--key-serde"},
@@ -75,17 +76,14 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "  short | int | long | float |\n"
             + "  double | string | binary |\n"
             + "  latest (use latest version in SR) |\n"
-            + "  <id>   (use schema id from SR)",
+            + "  <id>   (use schema id from SR)\n"
+            + "  Default: latest",
         paramLabel = "<topic=serde>")
     private Map<String, String> valueSerdes;
 
     @Option(names = {"-r", "--schema-registry-url"},
         description = "SR (Schema Registry) URL", paramLabel = "<url>")
     private String schemaRegistryUrl;
-
-    @Option(names = {"-z", "--compression"},
-        description = "Message compression. Default: none", paramLabel = "snappy|gzip|lz4")
-    private String compressionType;
 
     @Option(names = {"-X", "--property"},
         description = "Set kgiraffe configuration property.", paramLabel = "<prop=val>")
