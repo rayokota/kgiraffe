@@ -24,11 +24,12 @@ import picocli.CommandLine.Option;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 @Command(name = "kgiraffe", mixinStandardHelpOptions = true, version = "kgiraffe 0.1",
-    description = "Schema-driven GraphQL for Apache Kafka.")
+    description = "Schema-driven GraphQL for Apache Kafka.", sortOptions = false)
 public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeMain.class);
@@ -36,8 +37,59 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
     private KGiraffeConfig config;
     private URI listener;
 
-    @Option(names = {"-F", "--file"}, description = "The configuration file.")
+    @Option(names = {"-t", "--topic"},
+        description = "Topic(s) to consume from and produce to", paramLabel = "<topic>")
+    private List<String> topics;
+
+    @Option(names = {"-p", "--partition"},
+        description = "Partition(s)", paramLabel = "<partition>")
+    private List<Integer> partitions;
+
+    @Option(names = {"-b", "--bootstrap-server"},
+        description = "Bootstrap broker(s) (host:[port])", paramLabel = "<broker>")
+    private List<String> bootstrapBrokers;
+
+    @Option(names = {"-m", "--metadata-timeout"},
+        description = "Metadata (et.al.) request timeout", paramLabel = "<ms>")
+    private int initTimeout;
+
+    @Option(names = {"-F", "--file"},
+        description = "Read configuration properties from file", paramLabel = "<config-file>")
     private File configFile;
+
+    @Option(names = {"-o", "--offset"},
+        description = "Offset to start consuming from:\n"
+            + "  beginning (default) | end |\n"
+            + "  <value>  (absolute offset) |\n"
+            + "  -<value> (relative offset from end)\n"
+            + "  @<value> (timestamp in ms to start at)")
+    private String offset;
+
+    @Option(names = {"-k", "--key-serde"},
+        description = "(De)serialize keys using <serde>", paramLabel = "<topic=serde>")
+    private Map<String, String> keySerdes;
+
+    @Option(names = {"-v", "--value-serde"},
+        description = "(De)serialize values using <serde>\n"
+            + "Available serdes:\n"
+            + "  short | int | long | float |\n"
+            + "  double | string | binary |\n"
+            + "  latest (use latest version in SR) |\n"
+            + "  <id>   (use schema id from SR)",
+        paramLabel = "<topic=serde>")
+    private Map<String, String> valueSerdes;
+
+    @Option(names = {"-r", "--schema-registry-url"},
+        description = "SR (Schema Registry) URL", paramLabel = "<url>")
+    private String schemaRegistryUrl;
+
+    @Option(names = {"-z", "--compression"},
+        description = "Message compression. Default: none", paramLabel = "snappy|gzip|lz4")
+    private String compressionType;
+
+    @Option(names = {"-X", "--property"},
+        description = "Set kgiraffe configuration property.", paramLabel = "<prop=val>")
+    private Map<String, String> properties;
 
     public KGiraffeMain() {
     }
@@ -48,6 +100,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
     @Override
     public Integer call() throws Exception {
+        System.out.println(bootstrapBrokers);
         if (configFile != null) {
             this.config = new KGiraffeConfig(configFile);
         }
@@ -60,7 +113,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         engine.init(vertx.eventBus());
         vertx.deployVerticle(this).toFuture().get();
 
-        var t = new Thread(()-> {
+        Thread t = new Thread(()-> {
             try {
                 System.in.read();
             } catch (IOException e) {
@@ -142,7 +195,9 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
     }
 
     public static void main(String[] args) {
-        int exitCode = new CommandLine(new KGiraffeMain()).execute(args);
+        CommandLine commandLine = new CommandLine(new KGiraffeMain());
+        commandLine.setUsageHelpLongOptionsMaxWidth(30);
+        int exitCode = commandLine.execute(args);
         System.exit(exitCode);
     }
 }
