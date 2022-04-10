@@ -49,7 +49,7 @@
         <kcache.version>4.0.3-SNAPSHOT</kcache.version>
         <kryo.version>5.3.0</kryo.version>
         <mockito.version>4.4.0</mockito.version>
-        <ojai.version>3.1.1</ojai.version>
+        <ojai.version>3.1.1-mapr</ojai.version>
         <picocli-version>4.6.3</picocli-version>
         <rxjava.version>3.0.0</rxjava.version>
         <scala.version>2.13.8</scala.version>
