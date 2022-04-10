@@ -17,6 +17,7 @@
 package io.kgraph.kgiraffe;
 
 import io.kcache.KafkaCacheConfig;
+import io.vavr.Tuple2;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -34,6 +35,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 public class KGiraffeConfig extends KafkaCacheConfig {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeConfig.class);
@@ -52,6 +54,22 @@ public class KGiraffeConfig extends KafkaCacheConfig {
 
     public static final String TOPICS_CONFIG = "topics";
     public static final String TOPICS_DOC = "Comma-separated list of topics.";
+
+    public static final String KEY_SERDES_CONFIG = "key.serdes";
+    public static final String KEY_SERDES_DOC =
+        "Comma-separated list of \"<topic>=<serde>\" "
+            + "settings, where \"serde\" is the serde to use for topic keys, "
+            + "which must be one of [short, int, long, float, double, string, "
+            + "binary, latest (use latest version in SR), <id> (use schema id from SR)]. "
+            + "Default: latest";
+
+    public static final String VALUE_SERDES_CONFIG = "value.serdes";
+    public static final String VALUE_SERDES_DOC =
+        "Comma-separated list of \"<topic>=<serde>\" "
+            + "settings, where \"serde\" is the serde to use for topic values, "
+            + "which must be one of [short, int, long, float, double, string, "
+            + "binary, latest (use latest version in SR), <id> (use schema id from SR)]. "
+            + "Default: latest";
 
     public static final String GRAPHQL_MAX_COMPLEXITY_CONFIG = "graphql.max.complexity";
     public static final int GRAPHQL_MAX_COMPLEXITY_DEFAULT = Integer.MAX_VALUE;
@@ -217,6 +235,16 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                 null,
                 Importance.HIGH,
                 TOPICS_DOC
+            ).define(KEY_SERDES_CONFIG,
+                Type.LIST,
+                "",
+                Importance.HIGH,
+                KEY_SERDES_DOC
+            ).define(VALUE_SERDES_CONFIG,
+                Type.LIST,
+                "",
+                Importance.HIGH,
+                VALUE_SERDES_DOC
             ).define(
                 GRAPHQL_MAX_COMPLEXITY_CONFIG,
                 Type.INT,
@@ -376,6 +404,26 @@ public class KGiraffeConfig extends KafkaCacheConfig {
 
     public List<String> getTopics() {
         return getList(TOPICS_CONFIG);
+    }
+
+    public Map<String, Serde> getKeySerdes() {
+        List<String> serdes = getList(KEY_SERDES_CONFIG);
+        return serdes.stream()
+            .map(s -> {
+                int index = s.indexOf("=");
+                return new Tuple2<>(s.substring(0, index), new Serde(s.substring(index + 1)));
+            })
+            .collect(Collectors.toMap(t -> t._1, t -> t._2));
+    }
+
+    public Map<String, Serde> getValueSerdes() {
+        List<String> serdes = getList(VALUE_SERDES_CONFIG);
+        return serdes.stream()
+            .map(s -> {
+                int index = s.indexOf("=");
+                return new Tuple2<>(s.substring(0, index), new Serde(s.substring(index + 1)));
+            })
+            .collect(Collectors.toMap(t -> t._1, t -> t._2));
     }
 
     public int getGraphQLMaxComplexity() {

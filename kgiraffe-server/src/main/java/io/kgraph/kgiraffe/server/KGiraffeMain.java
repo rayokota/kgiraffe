@@ -72,7 +72,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
     @Option(names = {"-k", "--key-serde"},
         description = "(De)serialize keys using <serde>", paramLabel = "<topic=serde>")
-    private Map<String, KGiraffeConfig.Serde> keySerdes = new HashMap<>();
+    private Map<String, KGiraffeConfig.Serde> keySerdes;
 
     @Option(names = {"-v", "--value-serde"},
         description = "(De)serialize values using <serde>\n"
@@ -83,7 +83,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "  <id>   (use schema id from SR)\n"
             + "  Default: latest",
         paramLabel = "<topic=serde>")
-    private Map<String, KGiraffeConfig.Serde> valueSerdes = new HashMap<>();
+    private Map<String, KGiraffeConfig.Serde> valueSerdes;
 
     @Option(names = {"-r", "--schema-registry-url"},
         description = "SR (Schema Registry) URL", paramLabel = "<url>")
@@ -109,7 +109,6 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         }
         config = updateConfig();
         engine.configure(config);
-        engine.configureSerdes(keySerdes, valueSerdes);
 
         listener = new URI(config.getString(KGiraffeConfig.LISTENER_CONFIG));
 
@@ -218,6 +217,16 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         }
         if (offset != null) {
             props.put(KGiraffeConfig.KAFKACACHE_TOPIC_PARTITIONS_OFFSET_CONFIG, offset.toString());
+        }
+        if (keySerdes != null) {
+            props.put(KGiraffeConfig.KEY_SERDES_CONFIG, keySerdes.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining(",")));
+        }
+        if (valueSerdes != null) {
+            props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, valueSerdes.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining(",")));
         }
         if (schemaRegistryUrl != null) {
             props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);

@@ -121,8 +121,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private KGiraffeConfig config;
-    private Map<String, String> keySerdes;
-    private Map<String, String> valueSerdes;
+    private Map<String, KGiraffeConfig.Serde> keySerdes;
+    private Map<String, KGiraffeConfig.Serde> valueSerdes;
     private EventBus eventBus;
     private SchemaRegistryClient schemaRegistry;
     private GraphQLExecutor executor;
@@ -170,16 +170,13 @@ public class KGiraffeEngine implements Configurable, Closeable {
         this.config = config;
     }
 
-    public void configureSerdes(Map<String, KGiraffeConfig.Serde> keySerdes,
-                                Map<String, KGiraffeConfig.Serde> valueSerdes) {
-
-    }
-
     public void init(EventBus eventBus) {
         this.eventBus = eventBus.registerCodec(new KryoCodec<Document>());
 
         List<String> urls = config.getSchemaRegistryUrls();
         List<String> topics = config.getTopics();
+        keySerdes = config.getKeySerdes();
+        valueSerdes = config.getValueSerdes();
         List<SchemaProvider> providers = Arrays.asList(
             new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
         );
