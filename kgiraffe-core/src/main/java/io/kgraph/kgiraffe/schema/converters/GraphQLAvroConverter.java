@@ -62,7 +62,9 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             case DOUBLE:
                 return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLFloat;
             case BOOLEAN:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
             case NULL:
+                // Return boolean as there is no null type
                 return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
             default:
                 throw new IllegalArgumentException("Illegal type " + schema.getType());
@@ -188,7 +190,9 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             case DOUBLE:
                 return Scalars.GraphQLFloat;
             case BOOLEAN:
+                return Scalars.GraphQLBoolean;
             case NULL:
+                // Return boolean as there is no null type
                 return Scalars.GraphQLBoolean;
             default:
                 throw new IllegalArgumentException("Illegal type " + schema.getType());

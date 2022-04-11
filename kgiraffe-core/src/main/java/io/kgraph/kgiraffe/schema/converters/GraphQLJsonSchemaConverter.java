@@ -1,6 +1,7 @@
 package io.kgraph.kgiraffe.schema.converters;
 
 import graphql.Scalars;
+import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLEnumType;
 import graphql.schema.GraphQLEnumValueDefinition;
 import graphql.schema.GraphQLFieldDefinition;
@@ -55,9 +56,7 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
     }
 
     private GraphQLInputType createInputType(SchemaContext ctx, String scope, Schema schema) {
-        if (isIgnored(schema)) {
-            return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
-        } else if (schema instanceof StringSchema) {
+        if (schema instanceof StringSchema) {
             return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLString;
         } else if (schema instanceof NumberSchema) {
             if (((NumberSchema) schema).requiresInteger()) {
@@ -67,6 +66,9 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
             }
         } else if (schema instanceof BooleanSchema) {
             return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
+        } else if (schema instanceof NullSchema) {
+            // Return boolean as there is no null type
+            return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
         } else if (schema instanceof ConstSchema) {
             return ctx.isOrderBy() ? orderByEnum :
                 createInputConst(ctx, scope, (ConstSchema) schema);
@@ -74,10 +76,23 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
             return ctx.isOrderBy() ? orderByEnum :
                 createInputEnum(ctx, scope, (EnumSchema) schema);
         } else if (schema instanceof CombinedSchema) {
-            Schema subschema = ((CombinedSchema) schema).getSubschemas().stream()
-                .filter(s -> !(s instanceof NullSchema))
-                .findFirst().get();
-            return createInputType(ctx, scope, subschema);
+            if (isOptional(schema)) {
+                Schema subschema = ((CombinedSchema) schema).getSubschemas().stream()
+                    .filter(s -> !(s instanceof NullSchema))
+                    .findFirst().get();
+                return createInputType(ctx, scope, subschema);
+            } else {
+                return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
+            }
+        } else if (schema instanceof NotSchema) {
+            return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
+        } else if (schema instanceof ConditionalSchema) {
+            return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
+        } else if (schema instanceof EmptySchema) {
+            return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
+        } else if (schema instanceof FalseSchema) {
+            // Return boolean as there is no null type
+            return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
         } else if (schema instanceof ObjectSchema) {
             return createInputRecord(ctx, scope, (ObjectSchema) schema);
         } else if (schema instanceof ArraySchema) {
@@ -218,9 +233,7 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
     }
 
     public GraphQLOutputType createOutputType(SchemaContext ctx, String scope, Schema schema) {
-        if (isIgnored(schema)) {
-            return Scalars.GraphQLBoolean;
-        } else if (schema instanceof StringSchema) {
+        if (schema instanceof StringSchema) {
             return Scalars.GraphQLString;
         } else if (schema instanceof NumberSchema) {
             if (((NumberSchema) schema).requiresInteger()) {
@@ -230,15 +243,31 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
             }
         } else if (schema instanceof BooleanSchema) {
             return Scalars.GraphQLBoolean;
+        } else if (schema instanceof NullSchema) {
+            // Return boolean as there is no null type
+            return Scalars.GraphQLBoolean;
         } else if (schema instanceof ConstSchema) {
             return createOutputConst(ctx, scope, (ConstSchema) schema);
         } else if (schema instanceof EnumSchema) {
             return createOutputEnum(ctx, scope, (EnumSchema) schema);
         } else if (schema instanceof CombinedSchema) {
-            Schema subschema = ((CombinedSchema) schema).getSubschemas().stream()
-                .filter(s -> !(s instanceof NullSchema))
-                .findFirst().get();
-            return createOutputType(ctx, scope, subschema);
+            if (isOptional(schema)) {
+                Schema subschema = ((CombinedSchema) schema).getSubschemas().stream()
+                    .filter(s -> !(s instanceof NullSchema))
+                    .findFirst().get();
+                return createOutputType(ctx, scope, subschema);
+            } else {
+                return ExtendedScalars.Json;
+            }
+        } else if (schema instanceof NotSchema) {
+            return ExtendedScalars.Json;
+        } else if (schema instanceof ConditionalSchema) {
+            return ExtendedScalars.Json;
+        } else if (schema instanceof EmptySchema) {
+            return ExtendedScalars.Json;
+        } else if (schema instanceof FalseSchema) {
+            // Return boolean as there is no null type
+            return Scalars.GraphQLBoolean;
         } else if (schema instanceof ObjectSchema) {
             return createOutputRecord(ctx, scope, (ObjectSchema) schema);
         } else if (schema instanceof ArraySchema) {
@@ -342,19 +371,16 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
 
      */
 
-    private boolean isIgnored(Schema schema) {
-        if (schema instanceof NullSchema
-            || schema instanceof NotSchema
-            || schema instanceof ConditionalSchema
-            || schema instanceof EmptySchema
-            || schema instanceof FalseSchema) {
-            return true;
-        }
+    private boolean isOptional(Schema schema) {
         if (schema instanceof CombinedSchema) {
             CombinedSchema combinedSchema = (CombinedSchema) schema;
             return combinedSchema.getSubschemas().size() == 2
                 && combinedSchema.getSubschemas().stream().anyMatch(s -> s instanceof NullSchema);
         }
         return false;
+    }
+
+    private boolean isIgnored(Schema schema) {
+        return schema instanceof NullSchema || schema instanceof FalseSchema;
     }
 }
