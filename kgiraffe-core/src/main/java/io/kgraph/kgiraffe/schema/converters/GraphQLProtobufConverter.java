@@ -4,6 +4,8 @@ import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.squareup.wire.schema.internal.parser.MessageElement;
+import com.squareup.wire.schema.internal.parser.TypeElement;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLEnumType;
@@ -16,6 +18,7 @@ import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLTypeReference;
+import graphql.schema.GraphQLUnionType;
 import io.kgraph.kgiraffe.schema.AttributeFetcher;
 import io.kgraph.kgiraffe.schema.Logical;
 import io.kgraph.kgiraffe.schema.SchemaContext;
@@ -56,8 +59,37 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
 
     @Override
     public GraphQLInputType createInputType(SchemaContext ctx, Either<Type, ParsedSchema> schema) {
-        // TODO iterate over schemaObj.getTypes
-        return createInputRecord(ctx, ((ProtobufSchema) schema.get()).toDescriptor());
+        ProtobufSchema protobufSchema = (ProtobufSchema) schema.get();
+        if (hasMultipleMessageTypes(protobufSchema)) {
+            String name = ctx.qualify(protobufSchema.fullName() + "_union");
+            GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
+                .name(name)
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Logical.OR.symbol())
+                    .description("Logical operation for expressions")
+                    .type(new GraphQLList(new GraphQLTypeReference(name)))
+                    .build())
+                .field(GraphQLInputObjectField.newInputObjectField()
+                    .name(Logical.AND.symbol())
+                    .description("Logical operation for expressions")
+                    .type(new GraphQLList(new GraphQLTypeReference(name)))
+                    .build());
+
+            ctx.setRoot(false); // set to false before recursing
+            for (TypeElement type : protobufSchema.rawSchema().getTypes()) {
+                if (type instanceof MessageElement) {
+                    String fieldName = type.getName();
+                    Descriptor descriptor = protobufSchema.toDescriptor(type.getName());
+                    builder.field(GraphQLInputObjectField.newInputObjectField()
+                        .name(fieldName)
+                        .type(createInputRecord(ctx, descriptor))
+                        .build());
+                }
+            }
+            return builder.build();
+        } else {
+            return createInputRecord(ctx, ((ProtobufSchema) schema.get()).toDescriptor());
+        }
     }
 
     private GraphQLInputType createInputType(SchemaContext ctx, FieldDescriptor field) {
@@ -125,6 +157,10 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             return type;
         }
         try {
+            boolean isRoot = ctx.isRoot();
+            if (isRoot) {
+                ctx.setRoot(false);
+            }
             List<GraphQLInputObjectField> fields = schema.getFields().stream()
                 .map(f -> createInputField(ctx, schema, f))
                 .collect(Collectors.toList());
@@ -137,7 +173,7 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
                 .fields(fields)
                 .fields(oneofs);
 
-            if (ctx.isRoot()) {
+            if (isRoot) {
                 if (ctx.isWhere()) {
                     builder.field(GraphQLInputObjectField.newInputObjectField()
                             .name(Logical.OR.symbol())
@@ -154,7 +190,6 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             type = builder.build();
             return type;
         } finally {
-            ctx.setRoot(false);
             typeCache.put(name, type);
         }
     }
@@ -187,7 +222,27 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     @Override
     public GraphQLOutputType createOutputType(SchemaContext ctx,
                                               Either<Type, ParsedSchema> schema) {
-        return createOutputRecord(ctx, ((ProtobufSchema) schema.get()).toDescriptor());
+        ProtobufSchema protobufSchema = (ProtobufSchema) schema.get();
+        if (hasMultipleMessageTypes(protobufSchema)) {
+            String name = ctx.qualify(protobufSchema.fullName() + "_union");
+            GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
+                .name(name);
+
+            ctx.setRoot(false); // set to false before recursing
+            for (TypeElement type : protobufSchema.rawSchema().getTypes()) {
+                if (type instanceof MessageElement) {
+                    String fieldName = type.getName();
+                    Descriptor descriptor = protobufSchema.toDescriptor(type.getName());
+                    builder.field(GraphQLFieldDefinition.newFieldDefinition()
+                        .name(fieldName)
+                        .type(createOutputRecord(ctx, descriptor))
+                        .build());
+                }
+            }
+            return builder.build();
+        } else {
+            return createOutputRecord(ctx, ((ProtobufSchema) schema.get()).toDescriptor());
+        }
     }
 
     private GraphQLOutputType createOutputType(SchemaContext ctx, FieldDescriptor field) {
@@ -268,7 +323,6 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             type = builder.build();
             return type;
         } finally {
-            ctx.setRoot(false);
             typeCache.put(name, type);
         }
     }
@@ -312,5 +366,11 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     private String jsonName(FieldDescriptor field) {
         DescriptorProtos.FieldDescriptorProto proto = field.toProto();
         return proto.hasJsonName() ? proto.getJsonName() : proto.getName();
+    }
+
+    public static boolean hasMultipleMessageTypes(ProtobufSchema schema) {
+        return schema.rawSchema().getTypes().stream()
+            .filter(t -> t instanceof MessageElement)
+            .count() > 1;
     }
 }

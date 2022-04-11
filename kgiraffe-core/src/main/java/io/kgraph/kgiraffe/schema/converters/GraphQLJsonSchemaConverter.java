@@ -105,6 +105,10 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
             return type;
         }
         try {
+            boolean isRoot = ctx.isRoot();
+            if (isRoot) {
+                ctx.setRoot(false);
+            }
             List<GraphQLInputObjectField> fields = schema.getPropertySchemas().entrySet().stream()
                 .filter(f -> !isIgnored(schema))
                 .map(f -> createInputField(
@@ -115,7 +119,7 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
                 .description(schema.getDescription())
                 .fields(fields);
 
-            if (ctx.isRoot()) {
+            if (isRoot) {
                 if (ctx.isWhere()) {
                     builder.field(GraphQLInputObjectField.newInputObjectField()
                             .name(Logical.OR.symbol())
@@ -132,7 +136,6 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
             type = builder.build();
             return type;
         } finally {
-            ctx.setRoot(false);
             typeCache.put(name, type);
         }
     }
@@ -272,7 +275,6 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
             type = builder.build();
             return type;
         } finally {
-            ctx.setRoot(false);
             typeCache.put(name, type);
         }
     }

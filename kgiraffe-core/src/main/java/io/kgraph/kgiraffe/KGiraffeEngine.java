@@ -18,6 +18,7 @@ package io.kgraph.kgiraffe;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.Message;
 import graphql.GraphQL;
 import io.hdocdb.HDocument;
@@ -31,6 +32,7 @@ import io.kcache.KafkaCacheConfig;
 import io.kcache.caffeine.CaffeineCache;
 import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
+import io.kgraph.kgiraffe.schema.converters.GraphQLProtobufConverter;
 import io.kgraph.kgiraffe.util.KryoCodec;
 import io.vavr.control.Either;
 import io.vertx.core.eventbus.DeliveryOptions;
@@ -277,6 +279,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         if (schema.isRight()) {
             ParsedSchema parsedSchema = schema.get();
             byte[] json;
+            String typeName = null;
             switch (parsedSchema.schemaType()) {
                 case "AVRO":
                     json = AvroSchemaUtils.toJson(object);
@@ -285,12 +288,22 @@ public class KGiraffeEngine implements Configurable, Closeable {
                     json = JsonSchemaUtils.toJson(object);
                     break;
                 case "PROTOBUF":
-                    json = ProtobufSchemaUtils.toJson((Message) object);
+                    ProtobufSchema protobufSchema = (ProtobufSchema) parsedSchema;
+                    Message message = (Message) object;
+                    json = ProtobufSchemaUtils.toJson(message);
+                    if (GraphQLProtobufConverter.hasMultipleMessageTypes(protobufSchema)) {
+                        typeName = message.getDescriptorForType().getName();
+                    }
                     break;
                 default:
                     throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
             }
             Document doc = Json.newDocumentStream(new ByteArrayInputStream(json)).iterator().next();
+            if (typeName != null) {
+                HDocument rootDoc = new HDocument();
+                rootDoc.set(typeName, doc);
+                doc = rootDoc;
+            }
             return HValue.initFromDocument(doc);
         } if (schema.getLeft() == Type.BINARY) {
             object = Base64.getEncoder().encodeToString(((Bytes) object).get());
@@ -323,7 +336,13 @@ public class KGiraffeEngine implements Configurable, Closeable {
                     object = JsonSchemaUtils.toObject(json, (JsonSchema) parsedSchema);
                     break;
                 case "PROTOBUF":
-                    object = ProtobufSchemaUtils.toObject(json, (ProtobufSchema) parsedSchema);
+                    ProtobufSchema protobufSchema = (ProtobufSchema) parsedSchema;
+                    if (GraphQLProtobufConverter.hasMultipleMessageTypes(protobufSchema)) {
+                        String typeName = json.fieldNames().next();
+                        json = json.get(typeName);
+                        protobufSchema = protobufSchema.copy(typeName);
+                    }
+                    object = ProtobufSchemaUtils.toObject(json, protobufSchema);
                     break;
                 default:
                     throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());

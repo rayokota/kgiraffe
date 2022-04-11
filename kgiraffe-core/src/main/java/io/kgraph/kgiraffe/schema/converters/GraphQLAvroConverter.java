@@ -76,6 +76,10 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             return type;
         }
         try {
+            boolean isRoot = ctx.isRoot();
+            if (isRoot) {
+                ctx.setRoot(false);
+            }
             List<GraphQLInputObjectField> fields = schema.getFields().stream()
                 .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
                 .map(f -> createInputField(ctx, schema, f))
@@ -85,7 +89,7 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
                 .description(schema.getDoc())
                 .fields(fields);
 
-            if (ctx.isRoot()) {
+            if (isRoot) {
                 if (ctx.isWhere()) {
                     builder.field(GraphQLInputObjectField.newInputObjectField()
                             .name(Logical.OR.symbol())
@@ -102,7 +106,6 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             type = builder.build();
             return type;
         } finally {
-            ctx.setRoot(false);
             typeCache.put(name, type);
         }
     }
@@ -210,7 +213,6 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             type = builder.build();
             return type;
         } finally {
-            ctx.setRoot(false);
             typeCache.put(name, type);
         }
     }
