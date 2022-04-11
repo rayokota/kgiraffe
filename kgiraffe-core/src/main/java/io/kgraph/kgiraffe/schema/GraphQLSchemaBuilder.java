@@ -268,12 +268,14 @@ public class GraphQLSchemaBuilder {
                                                       String typeName,
                                                       String fieldName,
                                                       GraphQLInputType fieldType) {
-        String name = ctx.qualify(typeName, fieldName);
+        return createInputFieldOp(ctx.qualify(typeName, fieldName), fieldType);
+    }
+
+    public static GraphQLInputType createInputFieldOp(String name,
+                                                      GraphQLInputType fieldType) {
         fieldType = GraphQLInputObjectType.newInputObject()
             .name(name)
-            .description("Criteria expression specification of "
-                + fieldName + " attribute"
-                + (typeName != null ? " in entity " + typeName : ""))
+            .description("Criteria expression specification for " + name)
             .field(GraphQLInputObjectField.newInputObjectField()
                 .name(Criteria.EQ.symbol())
                 .description("Equals criteria")

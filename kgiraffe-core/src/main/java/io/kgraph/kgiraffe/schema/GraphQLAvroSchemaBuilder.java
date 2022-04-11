@@ -114,8 +114,7 @@ public class GraphQLAvroSchemaBuilder extends GraphQLParsedSchemaBuilder {
         String name = ctx.qualify(schema.getFullName() + "_" + field.name());
         GraphQLInputType fieldType = createInputType(ctx, field.schema());
         if (ctx.isWhere() && !(fieldType instanceof GraphQLInputObjectType)) {
-            fieldType = createInputFieldOp(
-                ctx, schema.getFullName(), field.name(), fieldType);
+            fieldType = createInputFieldOp(name, fieldType);
         }
         return GraphQLInputObjectField.newInputObjectField()
             .name(field.name())
