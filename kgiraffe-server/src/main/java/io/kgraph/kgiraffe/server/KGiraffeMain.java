@@ -26,13 +26,18 @@ import picocli.CommandLine.Option;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
-@Command(name = "kgiraffe", mixinStandardHelpOptions = true, version = "kgiraffe 0.1",
+@Command(name = "kgiraffe", mixinStandardHelpOptions = true,
+    versionProvider = KGiraffeMain.ManifestVersionProvider.class,
     description = "Schema-driven GraphQL for Apache Kafka.", sortOptions = false)
 public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> {
 
@@ -259,6 +264,39 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
                     + "long, float, double, string, binary, latest, <id>] but was '"
                     + value + "'");
             }
+        }
+    }
+
+    static class ManifestVersionProvider implements CommandLine.IVersionProvider {
+        public String[] getVersion() throws Exception {
+            Enumeration<URL> resources = CommandLine.class.getClassLoader().getResources("META-INF/MANIFEST.MF");
+            while (resources.hasMoreElements()) {
+                URL url = resources.nextElement();
+                try {
+                    Manifest manifest = new Manifest(url.openStream());
+                    if (isApplicableManifest(manifest)) {
+                        Attributes attr = manifest.getMainAttributes();
+                        return new String[] {
+                            "kgiraffe - Schema-Driven GraphQL for Apache Kafka",
+                            "https://github.com/rayokota/kgiraffe",
+                            "Copyright (c) 2022, Robert Yokota",
+                            "Version " + get(attr, "Implementation-Version")
+                        };
+                    }
+                } catch (IOException ex) {
+                    return new String[] { "Unable to read from " + url + ": " + ex };
+                }
+            }
+            return new String[0];
+        }
+
+        private boolean isApplicableManifest(Manifest manifest) {
+            Attributes attributes = manifest.getMainAttributes();
+            return "kgiraffe-server".equals(get(attributes, "Implementation-Title"));
+        }
+
+        private static Object get(Attributes attributes, String key) {
+            return attributes.get(new Attributes.Name(key));
         }
     }
 
