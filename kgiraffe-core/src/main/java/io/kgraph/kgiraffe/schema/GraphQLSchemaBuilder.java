@@ -72,10 +72,10 @@ public class GraphQLSchemaBuilder {
 
     private final KGiraffeEngine engine;
     private final List<String> topics;
-    private final GraphQLAvroSchemaBuilder avroBuilder;
-    private final GraphQLAvroSchemaBuilder jsonSchemaBuilder;
-    private final GraphQLAvroSchemaBuilder protobufBuilder;
-    private final GraphQLPrimitiveSchemaBuilder primitiveBuilder;
+    private final GraphQLAvroConverter avroBuilder;
+    private final GraphQLAvroConverter jsonSchemaBuilder;
+    private final GraphQLAvroConverter protobufBuilder;
+    private final GraphQLPrimitiveConverter primitiveBuilder;
 
     private final Map<String, GraphQLType> typeCache = new HashMap<>();
 
@@ -110,15 +110,15 @@ public class GraphQLSchemaBuilder {
                                 List<String> topics) {
         this.engine = engine;
         this.topics = topics;
-        this.avroBuilder = new GraphQLAvroSchemaBuilder();
+        this.avroBuilder = new GraphQLAvroConverter();
         // TODO json
-        this.jsonSchemaBuilder = new GraphQLAvroSchemaBuilder();
+        this.jsonSchemaBuilder = new GraphQLAvroConverter();
         // TODO protobuf
-        this.protobufBuilder = new GraphQLAvroSchemaBuilder();
-        this.primitiveBuilder = new GraphQLPrimitiveSchemaBuilder();
+        this.protobufBuilder = new GraphQLAvroConverter();
+        this.primitiveBuilder = new GraphQLPrimitiveConverter();
     }
 
-    public GraphQLParsedSchemaBuilder getSchemaBuilder(Either<Type, ParsedSchema> schema) {
+    public GraphQLSchemaConverter getSchemaBuilder(Either<Type, ParsedSchema> schema) {
         if (schema.isRight()) {
             ParsedSchema parsedSchema = schema.get();
             switch (parsedSchema.schemaType()) {

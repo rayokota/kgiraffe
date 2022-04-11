@@ -38,14 +38,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
-import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.createInputFieldOp;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.orderByEnum;
 
-public class GraphQLJsonSchemaBuilder extends GraphQLParsedSchemaBuilder {
-    private static final Logger LOG = LoggerFactory.getLogger(GraphQLJsonSchemaBuilder.class);
+public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
+    private static final Logger LOG = LoggerFactory.getLogger(GraphQLJsonSchemaConverter.class);
 
     @Override
     public GraphQLInputType createInputType(SchemaContext ctx, Either<Type, ParsedSchema> schema) {

@@ -27,8 +27,8 @@ import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.createInputFieldOp;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.orderByEnum;
 
-public class GraphQLAvroSchemaBuilder extends GraphQLParsedSchemaBuilder {
-    private static final Logger LOG = LoggerFactory.getLogger(GraphQLAvroSchemaBuilder.class);
+public class GraphQLAvroConverter extends GraphQLSchemaConverter {
+    private static final Logger LOG = LoggerFactory.getLogger(GraphQLAvroConverter.class);
 
     @Override
     public GraphQLInputType createInputType(SchemaContext ctx, Either<Type, ParsedSchema> schema) {
