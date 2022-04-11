@@ -1,10 +1,9 @@
 package io.kgraph.kgiraffe.schema;
 
-import com.google.protobuf.Descriptors;
+import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
-import com.google.protobuf.Descriptors.OneofDescriptor;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLEnumType;
@@ -16,10 +15,8 @@ import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
-import graphql.schema.GraphQLScalarType;
 import graphql.schema.GraphQLTypeReference;
 import io.vavr.control.Either;
-import org.apache.avro.Schema;
 import org.ojai.Value.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +25,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
-import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.createInputFieldOp;
@@ -36,6 +32,11 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.orderByEnum;
 
 public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     private static final Logger LOG = LoggerFactory.getLogger(GraphQLProtobufConverter.class);
+
+    public static final String PROTOBUF_ANY_TYPE = "google.protobuf.Any";
+    public static final String PROTOBUF_TIMESTAMP_TYPE = "google.protobuf.Timestamp";
+    public static final String PROTOBUF_DURATION_TYPE = "google.protobuf.Duration";
+    public static final String PROTOBUF_STRUCT_TYPE = "google.protobuf.Struct";
 
     public static final String PROTOBUF_DOUBLE_WRAPPER_TYPE = "google.protobuf.DoubleValue";
     public static final String PROTOBUF_FLOAT_WRAPPER_TYPE = "google.protobuf.FloatValue";
@@ -47,6 +48,9 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     public static final String PROTOBUF_STRING_WRAPPER_TYPE = "google.protobuf.StringValue";
     public static final String PROTOBUF_BYTES_WRAPPER_TYPE = "google.protobuf.BytesValue";
 
+    public static final String PROTOBUF_FIELD_MASK_TYPE = "google.protobuf.FieldMask";
+    public static final String PROTOBUF_EMPTY_TYPE = "google.protobuf.Empty";
+
     @Override
     public GraphQLInputType createInputType(SchemaContext ctx, Either<Type, ParsedSchema> schema) {
         // TODO iterate over schemaObj.getTypes
@@ -54,6 +58,9 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     }
 
     private GraphQLInputType createInputType(SchemaContext ctx, FieldDescriptor field) {
+        if (field.isMapField()) {
+            return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
+        }
         GraphQLInputType type;
         switch (field.getType()) {
             case MESSAGE:
@@ -69,16 +76,17 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             case INT32:
             case SINT32:
             case SFIXED32:
-                type = ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLInt;
-                break;
             case UINT32:
             case FIXED32:
+                type = ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLInt;
+                break;
             case INT64:
             case UINT64:
             case SINT64:
             case FIXED64:
             case SFIXED64:
-                type = ctx.isOrderBy() ? orderByEnum : ExtendedScalars.GraphQLLong;
+                // Protobuf maps long to a JSON string
+                type = ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLString;
                 break;
             case FLOAT:
             case DOUBLE:
@@ -90,16 +98,24 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             default:
                 throw new IllegalArgumentException("Illegal type " + field.getType());
         }
-        // TODO test MAP
         return field.isRepeated() ? new GraphQLList(type) : type;
     }
 
     private GraphQLInputType createInputRecord(SchemaContext ctx, Descriptor schema) {
-        GraphQLScalarType unwrapped = createUnwrappedType(schema);
-        if (unwrapped != null) {
-            return unwrapped;
+        switch (schema.getFullName()) {
+            case PROTOBUF_ANY_TYPE:
+            case PROTOBUF_STRUCT_TYPE:
+            case PROTOBUF_EMPTY_TYPE:
+                return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
+            case PROTOBUF_TIMESTAMP_TYPE:
+            case PROTOBUF_DURATION_TYPE:
+            case PROTOBUF_FIELD_MASK_TYPE:
+                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLString;
         }
-
+        FieldDescriptor unwrapped = unwrapType(schema);
+        if (unwrapped != null) {
+            return createInputType(ctx, unwrapped);
+        }
         String name = ctx.qualify(schema.getFullName());
         GraphQLInputObjectType type = (GraphQLInputObjectType) typeCache.get(name);
         if (type != null) {
@@ -149,7 +165,7 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             fieldType = createInputFieldOp(name, fieldType);
         }
         return GraphQLInputObjectField.newInputObjectField()
-            .name(field.getName())
+            .name(jsonName(field))
             .type(fieldType)
             .build();
     }
@@ -172,6 +188,9 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     }
 
     private GraphQLOutputType createOutputType(SchemaContext ctx, FieldDescriptor field) {
+        if (field.isMapField()) {
+            return ExtendedScalars.Json;
+        }
         GraphQLOutputType type;
         switch (field.getType()) {
             case MESSAGE:
@@ -187,16 +206,17 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             case INT32:
             case SINT32:
             case SFIXED32:
-                type = Scalars.GraphQLInt;
-                break;
             case UINT32:
             case FIXED32:
+                type = Scalars.GraphQLInt;
+                break;
             case INT64:
             case UINT64:
             case SINT64:
             case FIXED64:
             case SFIXED64:
-                type = ExtendedScalars.GraphQLLong;
+                // Protobuf maps long to a JSON string
+                type = Scalars.GraphQLString;
                 break;
             case FLOAT:
             case DOUBLE:
@@ -213,9 +233,19 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     }
 
     private GraphQLOutputType createOutputRecord(SchemaContext ctx, Descriptor schema) {
-        GraphQLScalarType unwrapped = createUnwrappedType(schema);
+        switch (schema.getFullName()) {
+            case PROTOBUF_ANY_TYPE:
+            case PROTOBUF_STRUCT_TYPE:
+            case PROTOBUF_EMPTY_TYPE:
+                return ExtendedScalars.Json;
+            case PROTOBUF_TIMESTAMP_TYPE:
+            case PROTOBUF_DURATION_TYPE:
+            case PROTOBUF_FIELD_MASK_TYPE:
+                return Scalars.GraphQLString;
+        }
+        FieldDescriptor unwrapped = unwrapType(schema);
         if (unwrapped != null) {
-            return unwrapped;
+            return createOutputType(ctx, unwrapped);
         }
         String name = ctx.qualify(schema.getFullName());
         GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
@@ -243,9 +273,9 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
 
     private GraphQLFieldDefinition createOutputField(SchemaContext ctx, FieldDescriptor field) {
         return GraphQLFieldDefinition.newFieldDefinition()
-            .name(field.getName())
+            .name(jsonName(field))
             .type(createOutputType(ctx, field))
-            .dataFetcher(new AttributeFetcher(field.getName()))
+            .dataFetcher(new AttributeFetcher(jsonName(field)))
             .build();
     }
 
@@ -260,24 +290,25 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             .build();
     }
 
-    private GraphQLScalarType createUnwrappedType(Descriptor schema) {
+    private FieldDescriptor unwrapType(Descriptor schema) {
         switch (schema.getFullName()) {
             case PROTOBUF_STRING_WRAPPER_TYPE:
             case PROTOBUF_BYTES_WRAPPER_TYPE:
-                return Scalars.GraphQLString;
             case PROTOBUF_INT32_WRAPPER_TYPE:
-                return Scalars.GraphQLInt;
             case PROTOBUF_UINT32_WRAPPER_TYPE:
             case PROTOBUF_INT64_WRAPPER_TYPE:
             case PROTOBUF_UINT64_WRAPPER_TYPE:
-                return ExtendedScalars.GraphQLLong;
             case PROTOBUF_FLOAT_WRAPPER_TYPE:
             case PROTOBUF_DOUBLE_WRAPPER_TYPE:
-                return Scalars.GraphQLFloat;
             case PROTOBUF_BOOL_WRAPPER_TYPE:
-                return Scalars.GraphQLBoolean;
+                return schema.getFields().get(0);
             default:
                 return null;
         }
+    }
+
+    private String jsonName(FieldDescriptor field) {
+        DescriptorProtos.FieldDescriptorProto proto = field.toProto();
+        return proto.hasJsonName() ? proto.getJsonName() : proto.getName();
     }
 }
