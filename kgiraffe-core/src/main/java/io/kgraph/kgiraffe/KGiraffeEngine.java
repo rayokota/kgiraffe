@@ -34,6 +34,7 @@ import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
 import io.kgraph.kgiraffe.schema.converters.GraphQLProtobufConverter;
 import io.kgraph.kgiraffe.util.KryoCodec;
+import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.rxjava3.core.eventbus.EventBus;
@@ -130,6 +131,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private Map<String, KGiraffeConfig.Serde> valueSerdes;
     private Map<String, Either<Type, ParsedSchema>> keySchemas = new HashMap<>();
     private Map<String, Either<Type, ParsedSchema>> valueSchemas = new HashMap<>();
+    private Map<Tuple2<String, ProtobufSchema>, ProtobufSchema> schemaCache = new HashMap<>();
     private Map<String, KafkaCache<Bytes, Bytes>> caches;
     private HDocumentDB docdb;
     private final AtomicBoolean initialized;
@@ -340,7 +342,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                     if (GraphQLProtobufConverter.hasMultipleMessageTypes(protobufSchema)) {
                         String typeName = json.fieldNames().next();
                         json = json.get(typeName);
-                        protobufSchema = protobufSchema.copy(typeName);
+                        protobufSchema = schemaWithName(protobufSchema, typeName);
                     }
                     object = ProtobufSchemaUtils.toObject(json, protobufSchema);
                     break;
@@ -352,6 +354,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
         }
 
         return serializer.serialize(topic, object);
+    }
+
+    private ProtobufSchema schemaWithName(ProtobufSchema schema, String name) {
+        return schemaCache.computeIfAbsent(new Tuple2<>(name, schema), k -> schema.copy(name));
     }
 
     public Serializer<?> getSerializer(Either<Type, ParsedSchema> schema) {
