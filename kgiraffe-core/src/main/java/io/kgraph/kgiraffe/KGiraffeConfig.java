@@ -30,6 +30,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -467,7 +469,24 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         STRING,
         BINARY,
         LATEST,
-        ID
+        ID;
+
+        private static final Map<String, SerdeType> lookup = new HashMap<>();
+
+        static {
+            for (SerdeType v : EnumSet.allOf(SerdeType.class)) {
+                lookup.put(v.toString(), v);
+            }
+        }
+
+        public static SerdeType get(String name) {
+            return lookup.get(name.toLowerCase(Locale.ROOT));
+        }
+
+        @Override
+        public String toString() {
+            return name().toLowerCase(Locale.ROOT);
+        }
     }
 
     public static class Serde {
@@ -478,17 +497,14 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         public static final Serde VALUE_DEFAULT = new Serde(SerdeType.LATEST, 0);
 
         public Serde(String value) {
-            SerdeType serdeType;
-            int id;
-            try {
-                serdeType = SerdeType.valueOf(value.toUpperCase(Locale.ROOT));
-                id = 0;
-            } catch (IllegalArgumentException e) {
+            int id = 0;
+            SerdeType serdeType = SerdeType.get(value);
+            if (serdeType == null) {
                 try {
                     id = Integer.parseInt(value);
                     serdeType = SerdeType.ID;
-                } catch (NumberFormatException nfe) {
-                    throw new ConfigException("Couldn't parse serde: " + value, nfe);
+                } catch (NumberFormatException e) {
+                    throw new ConfigException("Couldn't parse serde: " + value, e);
                 }
             }
             this.serdeType = serdeType;
@@ -530,7 +546,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             if (serdeType == SerdeType.ID) {
                 return String.valueOf(id);
             } else {
-                return serdeType.name().toLowerCase(Locale.ROOT);
+                return serdeType.toString();
             }
         }
     }
