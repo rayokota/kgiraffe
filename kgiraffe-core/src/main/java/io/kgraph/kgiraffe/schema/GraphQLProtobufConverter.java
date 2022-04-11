@@ -228,7 +228,6 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             default:
                 throw new IllegalArgumentException("Illegal type " + field.getType());
         }
-        // TODO test MAP
         return field.isRepeated() ? new GraphQLList(type) : type;
     }
 

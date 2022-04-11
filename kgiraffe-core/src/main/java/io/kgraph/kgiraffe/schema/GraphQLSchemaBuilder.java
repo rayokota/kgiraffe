@@ -53,12 +53,8 @@ public class GraphQLSchemaBuilder {
 
     public static final String KEY_ATTR_NAME = "key";
     public static final String KEY_ERROR_ATTR_NAME = "key_error";
-    // TODO for Protobuf
-    public static final String KEY_TYPE_NAME_ATTR_NAME = "key_type_name";
     public static final String VALUE_ATTR_NAME = "value";
     public static final String VALUE_ERROR_ATTR_NAME = "value_error";
-    // TODO for Protobuf
-    public static final String VALUE_TYPE_NAME_ATTR_NAME = "value_type_name";
     public static final String HEADERS_ATTR_NAME = "headers";
     public static final String TOPIC_ATTR_NAME = "topic";
     public static final String PARTITION_ATTR_NAME = "partition";
@@ -72,10 +68,10 @@ public class GraphQLSchemaBuilder {
 
     private final KGiraffeEngine engine;
     private final List<String> topics;
-    private final GraphQLAvroConverter avroBuilder;
-    private final GraphQLAvroConverter jsonSchemaBuilder;
-    private final GraphQLAvroConverter protobufBuilder;
-    private final GraphQLPrimitiveConverter primitiveBuilder;
+    private final GraphQLAvroConverter avroConverter;
+    private final GraphQLJsonSchemaConverter jsonSchemaConverter;
+    private final GraphQLProtobufConverter protobufConverter;
+    private final GraphQLPrimitiveConverter primitiveConverter;
 
     private final Map<String, GraphQLType> typeCache = new HashMap<>();
 
@@ -110,12 +106,10 @@ public class GraphQLSchemaBuilder {
                                 List<String> topics) {
         this.engine = engine;
         this.topics = topics;
-        this.avroBuilder = new GraphQLAvroConverter();
-        // TODO json
-        this.jsonSchemaBuilder = new GraphQLAvroConverter();
-        // TODO protobuf
-        this.protobufBuilder = new GraphQLAvroConverter();
-        this.primitiveBuilder = new GraphQLPrimitiveConverter();
+        this.avroConverter = new GraphQLAvroConverter();
+        this.jsonSchemaConverter = new GraphQLJsonSchemaConverter();
+        this.protobufConverter = new GraphQLProtobufConverter();
+        this.primitiveConverter = new GraphQLPrimitiveConverter();
     }
 
     public GraphQLSchemaConverter getSchemaBuilder(Either<Type, ParsedSchema> schema) {
@@ -123,14 +117,14 @@ public class GraphQLSchemaBuilder {
             ParsedSchema parsedSchema = schema.get();
             switch (parsedSchema.schemaType()) {
                 case "AVRO":
-                    return avroBuilder;
+                    return avroConverter;
                 case "JSON":
-                    return jsonSchemaBuilder;
+                    return jsonSchemaConverter;
                 case "PROTOBUF":
-                    return protobufBuilder;
+                    return protobufConverter;
             }
         }
-        return primitiveBuilder;
+        return primitiveConverter;
     }
 
     /**
