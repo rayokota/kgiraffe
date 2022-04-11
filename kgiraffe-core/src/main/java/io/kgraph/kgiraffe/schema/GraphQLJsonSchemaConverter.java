@@ -104,13 +104,11 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
                                                      ObjectSchema schema) {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
+        GraphQLInputObjectType type = (GraphQLInputObjectType) typeCache.get(name);
+        if (type != null) {
+            return type;
+        }
         try {
-            if (ctx.isRoot()) {
-                GraphQLInputObjectType type = (GraphQLInputObjectType) typeCache.get(name);
-                if (type != null) {
-                    return type;
-                }
-            }
             List<GraphQLInputObjectField> fields = schema.getPropertySchemas().entrySet().stream()
                 .filter(f -> !(f.getValue() instanceof NullSchema || f.getValue() instanceof EmptySchema))
                 .map(f -> createInputField(
@@ -135,13 +133,11 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
                             .build());
                 }
             }
-            GraphQLInputObjectType type = builder.build();
-            if (ctx.isRoot()) {
-                typeCache.put(name, type);
-            }
+            type = builder.build();
             return type;
         } finally {
             ctx.setRoot(false);
+            typeCache.put(name, type);
         }
     }
 
@@ -271,13 +267,11 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
                                                  ObjectSchema schema) {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
+        GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
+        if (type != null) {
+            return type;
+        }
         try {
-            if (ctx.isRoot()) {
-                GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
-                if (type != null) {
-                    return type;
-                }
-            }
             List<GraphQLFieldDefinition> fields = schema.getPropertySchemas().entrySet().stream()
                 .filter(f -> !(f.getValue() instanceof NullSchema || f.getValue() instanceof EmptySchema))
                 .map(f -> createOutputField(
@@ -287,13 +281,11 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
                 .name(name)
                 .description(schema.getDescription())
                 .fields(fields);
-            GraphQLObjectType type = builder.build();
-            if (ctx.isRoot()) {
-                typeCache.put(name, type);
-            }
+            type = builder.build();
             return type;
         } finally {
             ctx.setRoot(false);
+            typeCache.put(name, type);
         }
     }
 

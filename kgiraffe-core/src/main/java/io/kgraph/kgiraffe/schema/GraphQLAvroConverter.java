@@ -68,13 +68,11 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
 
     private GraphQLInputObjectType createInputRecord(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
+        GraphQLInputObjectType type = (GraphQLInputObjectType) typeCache.get(name);
+        if (type != null) {
+            return type;
+        }
         try {
-            if (ctx.isRoot()) {
-                GraphQLInputObjectType type = (GraphQLInputObjectType) typeCache.get(name);
-                if (type != null) {
-                    return type;
-                }
-            }
             List<GraphQLInputObjectField> fields = schema.getFields().stream()
                 .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
                 .map(f -> createInputField(ctx, schema, f))
@@ -98,13 +96,11 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
                             .build());
                 }
             }
-            GraphQLInputObjectType type = builder.build();
-            if (ctx.isRoot()) {
-                typeCache.put(name, type);
-            }
+            type = builder.build();
             return type;
         } finally {
             ctx.setRoot(false);
+            typeCache.put(name, type);
         }
     }
 
@@ -195,13 +191,11 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
 
     private GraphQLObjectType createOutputRecord(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
+        GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
+        if (type != null) {
+            return type;
+        }
         try {
-            if (ctx.isRoot()) {
-                GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
-                if (type != null) {
-                    return type;
-                }
-            }
             List<GraphQLFieldDefinition> fields = schema.getFields().stream()
                 .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
                 .map(f -> createOutputField(ctx, f))
@@ -210,13 +204,11 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
                 .name(name)
                 .description(schema.getDoc())
                 .fields(fields);
-            GraphQLObjectType type = builder.build();
-            if (ctx.isRoot()) {
-                typeCache.put(name, type);
-            }
+            type = builder.build();
             return type;
         } finally {
             ctx.setRoot(false);
+            typeCache.put(name, type);
         }
     }
 
