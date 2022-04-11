@@ -1,8 +1,9 @@
-package io.kgraph.kgiraffe.schema;
+package io.kgraph.kgiraffe.schema.converters;
 
 import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLType;
+import io.kgraph.kgiraffe.schema.SchemaContext;
 import io.vavr.control.Either;
 import org.ojai.Value.Type;
 import org.slf4j.Logger;

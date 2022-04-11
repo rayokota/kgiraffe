@@ -1,7 +1,6 @@
-package io.kgraph.kgiraffe.schema;
+package io.kgraph.kgiraffe.schema.converters;
 
 import graphql.Scalars;
-import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLEnumType;
 import graphql.schema.GraphQLEnumValueDefinition;
 import graphql.schema.GraphQLFieldDefinition;
@@ -12,6 +11,9 @@ import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLTypeReference;
+import io.kgraph.kgiraffe.schema.AttributeFetcher;
+import io.kgraph.kgiraffe.schema.Logical;
+import io.kgraph.kgiraffe.schema.SchemaContext;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import org.everit.json.schema.ArraySchema;
