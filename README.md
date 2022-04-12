@@ -1,5 +1,7 @@
 # KGiraffe
 
+![hi](./resources/kgiraffe-small.png)
+
 [![Build Status][github-actions-shield]][github-actions-link]
 [![Maven][maven-shield]][maven-link]
 [![Javadoc][javadoc-shield]][javadoc-link]
