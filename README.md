@@ -1,7 +1,7 @@
 
 ![logo](./resources/kgiraffe-small.png)
 
-# kgirafql
+# kgiraffe
 
 [![Build Status][github-actions-shield]][github-actions-link]
 [![Maven][maven-shield]][maven-link]
@@ -15,7 +15,7 @@
 [javadoc-shield]: https://javadoc.io/badge/io.kgraph/kgiraffe-core.svg?color=blue
 [javadoc-link]: https://javadoc.io/doc/io.kgraph/kgiraffe-core
 
-kgirafql is like kcat (formerly kafkacat), but with a GraphQL interface
+kgiraffe is like kcat (formerly kafkacat), but with a GraphQL interface
 
 ## Getting Started
 
