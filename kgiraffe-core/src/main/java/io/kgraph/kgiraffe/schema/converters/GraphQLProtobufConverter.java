@@ -18,7 +18,6 @@ import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLTypeReference;
-import graphql.schema.GraphQLUnionType;
 import io.kgraph.kgiraffe.schema.AttributeFetcher;
 import io.kgraph.kgiraffe.schema.Logical;
 import io.kgraph.kgiraffe.schema.SchemaContext;

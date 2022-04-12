@@ -18,7 +18,6 @@ package io.kgraph.kgiraffe;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.Message;
 import graphql.GraphQL;
 import io.hdocdb.HDocument;
@@ -30,14 +29,12 @@ import io.kcache.CacheUpdateHandler;
 import io.kcache.KafkaCache;
 import io.kcache.KafkaCacheConfig;
 import io.kcache.caffeine.CaffeineCache;
+import io.kgraph.kgiraffe.notifier.Notifier;
 import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
 import io.kgraph.kgiraffe.schema.converters.GraphQLProtobufConverter;
-import io.kgraph.kgiraffe.util.KryoCodec;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
-import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.rxjava3.core.eventbus.EventBus;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
@@ -78,7 +75,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -126,7 +122,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private KGiraffeConfig config;
-    private EventBus eventBus;
+    private Notifier notifier;
     private SchemaRegistryClient schemaRegistry;
     private GraphQLExecutor executor;
     private Map<String, KGiraffeConfig.Serde> keySerdes;
@@ -177,8 +173,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
         this.config = config;
     }
 
-    public void init(EventBus eventBus) {
-        this.eventBus = eventBus.registerCodec(new KryoCodec<Document>());
+    public void init(Notifier notifier) {
+        this.notifier = notifier;
 
         List<String> urls = config.getSchemaRegistryUrls();
         List<String> topics = config.getTopics();
@@ -208,6 +204,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
         } else {
             return new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
         }
+    }
+
+    public Notifier getNotifier() {
+        return notifier;
     }
 
     public SchemaRegistryClient getSchemaRegistry() {
@@ -523,8 +523,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 coll.flush();
                 doc = coll.findById(id);
 
-                DeliveryOptions options = new DeliveryOptions().setCodecName("kryo");
-                eventBus.publish(topic, doc, options);
+                notifier.publish(topic, doc);
             } catch (Exception e) {
                 LOG.error("Error during update", e);
                 throw new RuntimeException(e);
@@ -585,10 +584,6 @@ public class KGiraffeEngine implements Configurable, Closeable {
 
     public KafkaCache<Bytes, Bytes> getCache(String topic) {
         return caches.get(topic);
-    }
-
-    public EventBus getEventBus() {
-        return eventBus;
     }
 
     public GraphQL getGraphQL() {

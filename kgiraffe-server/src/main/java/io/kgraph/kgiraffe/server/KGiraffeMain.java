@@ -4,18 +4,19 @@ import graphql.GraphQL;
 import io.kcache.KafkaCacheConfig;
 import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.KGiraffeEngine;
+import io.kgraph.kgiraffe.server.notifier.VertxNotifier;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.ext.web.handler.graphql.ApolloWSOptions;
 import io.vertx.ext.web.handler.graphql.GraphQLHandlerOptions;
 import io.vertx.rxjava3.core.AbstractVerticle;
+import io.vertx.rxjava3.core.Vertx;
 import io.vertx.rxjava3.core.http.HttpServer;
+import io.vertx.rxjava3.ext.web.Router;
 import io.vertx.rxjava3.ext.web.handler.BodyHandler;
 import io.vertx.rxjava3.ext.web.handler.StaticHandler;
 import io.vertx.rxjava3.ext.web.handler.graphql.ApolloWSHandler;
 import io.vertx.rxjava3.ext.web.handler.graphql.GraphQLHandler;
-import io.vertx.rxjava3.core.Vertx;
-import io.vertx.rxjava3.ext.web.Router;
 import org.apache.kafka.common.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +122,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
         KGiraffeEngine engine = KGiraffeEngine.getInstance();
         engine.configure(config);
-        engine.init(vertx.eventBus());
+        engine.init(new VertxNotifier(vertx.eventBus()));
 
         vertx.deployVerticle(this).toFuture().get();
 

@@ -1,9 +1,9 @@
 package io.kgraph.kgiraffe.schema;
 
-import io.confluent.kafka.schemaregistry.ParsedSchema;
-
 import io.vavr.control.Either;
 import org.ojai.Value.Type;
+
+import io.confluent.kafka.schemaregistry.ParsedSchema;
 
 public class SchemaContext {
     private final String topic;

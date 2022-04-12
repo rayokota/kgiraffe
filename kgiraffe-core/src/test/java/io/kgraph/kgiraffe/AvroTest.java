@@ -3,36 +3,17 @@ package io.kgraph.kgiraffe;
 import graphql.ExecutionResult;
 import graphql.GraphQL;
 import io.kgraph.kgiraffe.utils.LocalClusterTestHarness;
-import io.reactivex.rxjava3.core.Single;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.json.JsonObject;
-import io.vertx.junit5.VertxExtension;
-import io.vertx.junit5.VertxTestContext;
-import io.vertx.rxjava3.core.RxHelper;
-import io.vertx.rxjava3.core.Vertx;
-import io.vertx.rxjava3.core.http.HttpClient;
-import io.vertx.rxjava3.ext.web.client.HttpResponse;
-import io.vertx.rxjava3.ext.web.client.WebClient;
-import io.vertx.rxjava3.ext.web.client.predicate.ResponsePredicate;
-import io.vertx.rxjava3.ext.web.codec.BodyCodec;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.Map;
 
-@ExtendWith(VertxExtension.class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class AvroTest extends LocalClusterTestHarness {
 
-    private WebClient webClient;
-
     @BeforeEach
-    public void setUp(Vertx vertx, VertxTestContext testContext) throws Exception {
-        super.setUp(vertx, testContext);
-        testContext.completeNow();
+    public void setUp() throws Exception {
+        super.setUp();
     }
 
     @AfterEach

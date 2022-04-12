@@ -75,10 +75,6 @@
             <artifactId>vavr</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-rx-java3</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.reactivex.rxjava3</groupId>
             <artifactId>rxjava</artifactId>
         </dependency>
@@ -139,11 +135,6 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-junit5-rx-java3</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

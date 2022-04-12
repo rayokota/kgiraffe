@@ -14,20 +14,14 @@
 
 package io.kgraph.kgiraffe.utils;
 
-import com.google.common.io.Files;
 import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.KGiraffeEngine;
-import io.vertx.junit5.VertxTestContext;
-import io.vertx.rxjava3.core.Vertx;
+import io.kgraph.kgiraffe.notifier.RxBusNotifier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.util.Properties;
 
 /**
@@ -56,12 +50,12 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
     }
 
     @BeforeEach
-    public void setUp(Vertx vertx, VertxTestContext testContext) throws Exception {
+    public void setUp() throws Exception {
         super.setUp();
-        setUpServer(vertx);
+        setUpServer();
     }
 
-    private void setUpServer(Vertx vertx) {
+    private void setUpServer() {
         try {
             props = new Properties();
             injectKGiraffeProperties(props);
@@ -70,7 +64,7 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
 
             engine = KGiraffeEngine.getInstance();
             engine.configure(config);
-            engine.init(vertx.eventBus());
+            engine.init(new RxBusNotifier());
         } catch (Exception e) {
             LOG.error("Server died unexpectedly: ", e);
             System.exit(1);

@@ -3,8 +3,6 @@ package io.kgraph.kgiraffe.schema;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
-import io.confluent.kafka.schemaregistry.ParsedSchema;
-
 import io.hdocdb.store.HDocumentCollection;
 import io.hdocdb.store.HDocumentDB;
 import io.kcache.KafkaCache;
@@ -24,6 +22,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import io.confluent.kafka.schemaregistry.ParsedSchema;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.HEADERS_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;

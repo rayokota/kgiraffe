@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.kgraph.kgiraffe.util;
+package io.kgraph.kgiraffe.server.notifier;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;

@@ -38,10 +38,8 @@ public class SubscriptionFetcher implements DataFetcher {
     public Object get(DataFetchingEnvironment env) {
         try {
             HQueryCondition query = queryFactory.getCriteriaQuery(env, env.getField());
-            Flowable<Document> publisher = engine.getEventBus()
+            Flowable<Document> publisher = engine.getNotifier()
                 .consumer(topic)
-                .toFlowable()
-                .map(m -> (Document) m.body())
                 .filter(doc -> query == null || query.isEmpty() || query.evaluate(doc));
             return publisher;
         } catch (Exception e) {
