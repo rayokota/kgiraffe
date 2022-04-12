@@ -20,7 +20,7 @@ and then modify `config/kgiraffe.properties` to point to an existing Kafka broke
 the following:
 
 ```bash
-$ bin/kgiraffe-start config/kgiraffe.properties
+$ bin/kgiraffe -F config/kgiraffe.properties
 ```
 
 

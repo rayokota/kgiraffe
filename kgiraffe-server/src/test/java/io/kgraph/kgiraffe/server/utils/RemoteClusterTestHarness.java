@@ -19,6 +19,7 @@ import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.server.KGiraffeMain;
 import io.kgraph.kgiraffe.utils.ClusterTestHarness;
+import io.vertx.junit5.VertxTestContext;
 import io.vertx.rxjava3.core.Vertx;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,7 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
 
     protected File tempDir;
     protected Integer serverPort;
+    protected KGiraffeMain server;
 
     public RemoteClusterTestHarness() {
         super();
@@ -54,13 +56,11 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
     }
 
     public KGiraffeMain createKGiraffe() throws Exception {
-        props = new Properties();
-        endpoints = "http://127.0.0.1:" + choosePort();
-        return new KGiraffeMain(new KGiraffeConfig(props));
+        return server;
     }
 
     @BeforeEach
-    public void setUp(Vertx vertx) throws Exception {
+    public void setUp(Vertx vertx, VertxTestContext testContext) throws Exception {
         super.setUp();
         if (tempDir == null) {
             tempDir = Files.createTempDir();
@@ -71,9 +71,12 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
     private void setUpServer(Vertx vertx) {
         try {
             serverPort = choosePort();
+            props = new Properties();
             injectKGiraffeProperties(props);
 
             KGiraffeConfig config = new KGiraffeConfig(props);
+            server = new KGiraffeMain(config);
+
             KGiraffeEngine engine = KGiraffeEngine.getInstance();
             engine.configure(config);
             engine.init(vertx.eventBus());

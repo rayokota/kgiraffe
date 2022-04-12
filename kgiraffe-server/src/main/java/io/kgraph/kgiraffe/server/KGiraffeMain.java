@@ -26,6 +26,7 @@ import picocli.CommandLine.Option;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -44,7 +45,6 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeMain.class);
 
     private KGiraffeConfig config;
-    private URI listener;
 
     @Option(names = {"-t", "--topic"},
         description = "Topic(s) to consume from and produce to", paramLabel = "<topic>")
@@ -106,19 +106,23 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         this.config = config;
     }
 
+    public URI getListener() throws URISyntaxException {
+        return new URI(config.getString(KGiraffeConfig.LISTENER_CONFIG));
+    }
+
     @Override
     public Integer call() throws Exception {
-        KGiraffeEngine engine = KGiraffeEngine.getInstance();
         if (configFile != null) {
             config = new KGiraffeConfig(configFile);
         }
         config = updateConfig();
-        engine.configure(config);
-
-        listener = new URI(config.getString(KGiraffeConfig.LISTENER_CONFIG));
 
         Vertx vertx = Vertx.vertx();
+
+        KGiraffeEngine engine = KGiraffeEngine.getInstance();
+        engine.configure(config);
         engine.init(vertx.eventBus());
+
         vertx.deployVerticle(this).toFuture().get();
 
         Thread t = new Thread(()-> {
@@ -165,6 +169,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             */
 
             // Create the HTTP server
+            URI listener = getListener();
             HttpServerOptions httpServerOptions = new HttpServerOptions()
                 .addWebSocketSubProtocol("graphql-ws")
                 .setTcpKeepAlive(true);

@@ -231,12 +231,18 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 return Either.left(Type.BINARY);
             case LATEST:
                 return getLatestSchema(subject).<Either<Type, ParsedSchema>>map(Either::right)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                        "Could not find latest schema for subject " + subject));
+                    .orElseGet(() -> {
+                        LOG.error("Could not find latest schema for subject {}, "
+                            + "defaulting to \"binary\"", subject);
+                        return Either.left(Type.BINARY);
+                    });
             case ID:
                 return getSchemaById(serde.getId()).<Either<Type, ParsedSchema>>map(Either::right)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                        "Could not find schema for id " + serde.getId()));
+                    .orElseGet(() -> {
+                        LOG.error("Could not find schema with id {}, "
+                            + "defaulting to \"binary\"", serde.getId());
+                        return Either.left(Type.BINARY);
+                    });
             default:
                 throw new IllegalArgumentException("Illegal serde type: " + serde.getSerdeType());
         }
