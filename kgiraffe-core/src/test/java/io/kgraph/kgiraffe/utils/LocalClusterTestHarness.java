@@ -12,13 +12,11 @@
  * limitations under the License.
  */
 
-package io.kgraph.kgiraffe.server.utils;
+package io.kgraph.kgiraffe.utils;
 
 import com.google.common.io.Files;
 import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.KGiraffeEngine;
-import io.kgraph.kgiraffe.server.KGiraffeMain;
-import io.kgraph.kgiraffe.utils.ClusterTestHarness;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.rxjava3.core.Vertx;
 import org.junit.jupiter.api.AfterEach;
@@ -36,26 +34,21 @@ import java.util.Properties;
  * Test harness to run against a real, local Kafka cluster. This is essentially
  * Kafka's ZookeeperTestHarness and KafkaServerTestHarness traits combined.
  */
-public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
+public abstract class LocalClusterTestHarness extends ClusterTestHarness {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RemoteClusterTestHarness.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LocalClusterTestHarness.class);
 
     protected Properties props;
 
     protected Integer serverPort;
-    protected KGiraffeMain verticle;
     protected KGiraffeEngine engine;
 
-    public RemoteClusterTestHarness() {
+    public LocalClusterTestHarness() {
         super();
     }
 
-    public RemoteClusterTestHarness(int numBrokers) {
+    public LocalClusterTestHarness(int numBrokers) {
         super(numBrokers);
-    }
-
-    public KGiraffeMain getVerticle() throws Exception {
-        return verticle;
     }
 
     public KGiraffeEngine getEngine() throws Exception {
@@ -70,12 +63,10 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
 
     private void setUpServer(Vertx vertx) {
         try {
-            serverPort = choosePort();
             props = new Properties();
             injectKGiraffeProperties(props);
 
             KGiraffeConfig config = new KGiraffeConfig(props);
-            verticle = new KGiraffeMain(config);
 
             engine = KGiraffeEngine.getInstance();
             engine.configure(config);
@@ -91,33 +82,6 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
         props.put(KGiraffeConfig.KAFKACACHE_BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://test");
         props.put(KGiraffeConfig.TOPICS_CONFIG, "t1");
-    }
-
-    /**
-     * Choose a number of random available ports
-     */
-    public static int[] choosePorts(int count) {
-        try {
-            ServerSocket[] sockets = new ServerSocket[count];
-            int[] ports = new int[count];
-            for (int i = 0; i < count; i++) {
-                sockets[i] = new ServerSocket(0, 0, InetAddress.getByName("0.0.0.0"));
-                ports[i] = sockets[i].getLocalPort();
-            }
-            for (int i = 0; i < count; i++) {
-                sockets[i].close();
-            }
-            return ports;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * Choose an available port
-     */
-    public static int choosePort() {
-        return choosePorts(1)[0];
     }
 
     @AfterEach

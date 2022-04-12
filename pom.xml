@@ -37,13 +37,14 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <antlr.version>4.5</antlr.version>
+        <antlr.version>4.9.3</antlr.version>
         <assertj.version>3.22.0</assertj.version>
         <graphql.version>18.0</graphql.version>
         <graphql.java.extended.scalars.version>17.0</graphql.java.extended.scalars.version>
         <guava.version>31.1-jre</guava.version>
         <hdocdb.version>1.0.2-SNAPSHOT</hdocdb.version>
-        <jackson.version>2.13.2.2</jackson.version>
+        <jackson.core.version>2.13.2</jackson.core.version>
+        <jackson.databind.version>2.13.2.2</jackson.databind.version>
         <junit-jupiter.version>5.8.2</junit-jupiter.version>
         <kafka.version>3.1.0</kafka.version>
         <kafka.scala.version>2.13</kafka.scala.version>
@@ -141,18 +142,13 @@
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.core.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-annotations</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-databind</artifactId>
-                <version>${jackson.version}</version>
+                <version>${jackson.databind.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
@@ -208,6 +204,11 @@
                 <groupId>com.graphql-java</groupId>
                 <artifactId>graphql-java-extended-scalars</artifactId>
                 <version>${graphql.java.extended.scalars.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-runtime</artifactId>
+                <version>${antlr.version}</version>
             </dependency>
             <!-- TESTING -->
             <dependency>

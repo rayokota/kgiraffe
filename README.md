@@ -1,7 +1,7 @@
 
-![hi](./resources/kgiraffe-small.png)
+![logo](./resources/kgiraffe-small.png)
 
-# KGiraffe
+# kgirafQL
 
 [![Build Status][github-actions-shield]][github-actions-link]
 [![Maven][maven-shield]][maven-link]
