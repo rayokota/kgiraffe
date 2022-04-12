@@ -45,7 +45,7 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
 
     protected File tempDir;
     protected Integer serverPort;
-    protected KGiraffeMain server;
+    protected KGiraffeMain verticle;
 
     public RemoteClusterTestHarness() {
         super();
@@ -55,8 +55,8 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
         super(numBrokers);
     }
 
-    public KGiraffeMain createKGiraffe() throws Exception {
-        return server;
+    public KGiraffeMain getVerticle() throws Exception {
+        return verticle;
     }
 
     @BeforeEach
@@ -75,7 +75,7 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
             injectKGiraffeProperties(props);
 
             KGiraffeConfig config = new KGiraffeConfig(props);
-            server = new KGiraffeMain(config);
+            verticle = new KGiraffeMain(config);
 
             KGiraffeEngine engine = KGiraffeEngine.getInstance();
             engine.configure(config);
@@ -90,6 +90,8 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
         props.put(KGiraffeConfig.LISTENER_CONFIG, "http://0.0.0.0:" + serverPort);
         props.put(KGiraffeConfig.KAFKACACHE_BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(KGiraffeConfig.KAFKACACHE_DATA_DIR_CONFIG, tempDir.getAbsolutePath());
+        props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://test");
+        props.put(KGiraffeConfig.TOPICS_CONFIG, "t1");
     }
 
     /**

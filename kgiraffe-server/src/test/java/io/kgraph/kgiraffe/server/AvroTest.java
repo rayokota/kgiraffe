@@ -78,17 +78,15 @@ public class AvroTest extends RemoteClusterTestHarness {
 
     @Test
     public void testBasic(Vertx vertx, VertxTestContext testContext) throws Exception {
-        RxHelper.deployVerticle(vertx, createKGiraffe())
-            .subscribe(s -> testContext.succeedingThenComplete());
+        RxHelper.deployVerticle(vertx, getVerticle()).blockingGet();
 
-        JsonObject request = new JsonObject()
-            .put("query",
-                "{\n" + "  __schema {\n"
-                    + "    queryType {\n"
-                    + "      name\n"
-                    + "    }\n"
-                    + "  }\n"
-                    + "}");
+        JsonObject request = new JsonObject().put("query",
+            "{\n" + "  __schema {\n"
+                + "    queryType {\n"
+                + "      name\n"
+                + "    }\n"
+                + "  }\n"
+                + "}");
 
         Single<HttpResponse<JsonObject>> response = webClient.post("/graphql")
             .expect(ResponsePredicate.SC_OK)
@@ -96,13 +94,19 @@ public class AvroTest extends RemoteClusterTestHarness {
             .as(BodyCodec.jsonObject())
             .sendJsonObject(request);
 
-        response.subscribe(
+        response.blockingSubscribe(
             json -> {
-                System.out.println("response = " + response);
+                System.out.println("success = " + json.body());
             },
             failure -> {
+                System.out.println("response = " + failure);
+                System.out.println("response = " + failure);
+                System.out.println("response = " + failure);
+                System.out.println("response = " + failure);
                 throw failure;
             });
+
+        testContext.completeNow();
 
         //assertThat(getResp2.getKvs()).hasSize(1);
         //assertThat(getResp2.getKvs().get(0).getValue().toString(UTF_8)).isEqualTo(oneTwoThree.toString(UTF_8));

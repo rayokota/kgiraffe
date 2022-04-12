@@ -78,6 +78,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -99,6 +100,7 @@ import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaUtils;
+import io.confluent.kafka.schemaregistry.testutil.MockSchemaRegistry;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
@@ -185,8 +187,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         List<SchemaProvider> providers = Arrays.asList(
             new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
         );
-        this.schemaRegistry =
-            new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
+        schemaRegistry = createSchemaRegistry(urls, providers);
         GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, topics);
         this.executor = new GraphQLExecutor(config, schemaBuilder);
 
@@ -196,6 +197,16 @@ public class KGiraffeEngine implements Configurable, Closeable {
         if (!isInitialized) {
             throw new IllegalStateException("Illegal state while initializing engine. Engine "
                 + "was already initialized");
+        }
+    }
+
+    private SchemaRegistryClient createSchemaRegistry(List<String> urls,
+                                                      List<SchemaProvider> providers) {
+        String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
+        if (mockScope != null) {
+            return MockSchemaRegistry.getClientForScope(mockScope, providers);
+        } else {
+            return new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
         }
     }
 

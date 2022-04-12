@@ -404,7 +404,11 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     }
 
     public List<String> getTopics() {
-        return getList(TOPICS_CONFIG);
+        List<String> topics = getList(TOPICS_CONFIG);
+        if (topics == null || topics.isEmpty()) {
+            throw new ConfigException("Specify at least one topic");
+        }
+        return topics;
     }
 
     public Map<String, Serde> getKeySerdes() {
