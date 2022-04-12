@@ -17,6 +17,7 @@ package io.kgraph.kgiraffe.server.utils;
 import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.server.KGiraffeMain;
+import io.kgraph.kgiraffe.server.notifier.VertxNotifier;
 import io.kgraph.kgiraffe.utils.ClusterTestHarness;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.rxjava3.core.Vertx;
@@ -77,7 +78,7 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
 
             engine = KGiraffeEngine.getInstance();
             engine.configure(config);
-            engine.init(vertx.eventBus());
+            engine.init(new VertxNotifier(vertx.eventBus()));
         } catch (Exception e) {
             LOG.error("Server died unexpectedly: ", e);
             System.exit(1);
