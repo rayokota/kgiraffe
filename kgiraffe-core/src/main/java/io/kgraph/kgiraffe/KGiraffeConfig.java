@@ -472,7 +472,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         try (FileInputStream propStream = new FileInputStream(propsFile)) {
             props.load(propStream);
         } catch (IOException e) {
-            throw new ConfigException("Couldn't load properties from " + propsFile, e);
+            throw new ConfigException("Could not load properties from " + propsFile, e);
         }
         return props;
     }
@@ -535,7 +535,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                     id = Integer.parseInt(value);
                     serdeType = SerdeType.ID;
                 } catch (NumberFormatException e) {
-                    throw new ConfigException("Couldn't parse serde: " + value, e);
+                    throw new ConfigException("Could not parse serde: " + value, e);
                 }
             }
             this.serdeType = serdeType;

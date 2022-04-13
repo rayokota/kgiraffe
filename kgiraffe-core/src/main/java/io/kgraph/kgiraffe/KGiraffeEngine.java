@@ -259,7 +259,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                     try {
                         schema = Files.readString(Paths.get(file));
                     } catch (IOException e) {
-                        throw new IllegalArgumentException("Couldn't read file: " + file);
+                        throw new IllegalArgumentException("Could not read file: " + file);
                     }
                 }
                 return schemaRegistry.parseSchema(schemaType, schema, Collections.emptyList())
