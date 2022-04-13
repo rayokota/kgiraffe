@@ -17,16 +17,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
 
-    @BeforeEach
-    public void setUp() throws Exception {
-        super.setUp();
-    }
-
-    @AfterEach
-    public void tearDown() throws Exception {
-        super.tearDown();
-    }
-
     @Test
     @SuppressWarnings("unchecked")
     public void testSimple() throws Exception {

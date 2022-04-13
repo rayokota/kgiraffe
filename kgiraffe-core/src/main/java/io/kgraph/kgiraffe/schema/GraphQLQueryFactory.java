@@ -98,6 +98,9 @@ public class GraphQLQueryFactory {
         DocumentStore coll = engine.getDocDB().getCollection(topic);
         Iterable<Document> result = query == null || query.isEmpty() ? coll.find() : coll.find(query);
 
+        // For debugging
+        List<Document> docs = Streams.streamOf(coll.find()).collect(Collectors.toList());
+
         Optional<Argument> offsetArg = getArgument(env.getField(), OFFSET_PARAM_NAME);
         if (offsetArg.isPresent()) {
             IntValue offsetValue = getValue(offsetArg.get(), env);

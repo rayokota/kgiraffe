@@ -1,5 +1,6 @@
 package io.kgraph.kgiraffe.server;
 
+import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.server.utils.RemoteClusterTestHarness;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.core.http.HttpClientOptions;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.util.Properties;
 
 @ExtendWith(VertxExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -74,5 +77,11 @@ public class AvroTest extends RemoteClusterTestHarness {
 
         //assertThat(getResp2.getKvs()).hasSize(1);
         //assertThat(getResp2.getKvs().get(0).getValue().toString(UTF_8)).isEqualTo(oneTwoThree.toString(UTF_8));
+    }
+    @Override
+    protected void injectKGiraffeProperties(Properties props) {
+        super.injectKGiraffeProperties(props);
+        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, "'t1=avro:{\"type\":\"record\"," +
+            "\"name\":\"myrecord\",\"fields\":[{\"name\":\"f1\",\"type\":\"string\"}]}'");
     }
 }
