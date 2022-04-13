@@ -42,13 +42,13 @@
         <graphql.version>18.0</graphql.version>
         <graphql.java.extended.scalars.version>17.0</graphql.java.extended.scalars.version>
         <guava.version>31.1-jre</guava.version>
-        <hdocdb.version>1.0.2-SNAPSHOT</hdocdb.version>
+        <hdocdb.version>2.0.0</hdocdb.version>
         <jackson.version>2.13.2</jackson.version>
         <jackson.databind.version>2.13.2.2</jackson.databind.version>
         <junit-jupiter.version>5.8.2</junit-jupiter.version>
         <kafka.version>3.1.0</kafka.version>
         <kafka.scala.version>2.13</kafka.scala.version>
-        <kcache.version>4.0.3-SNAPSHOT</kcache.version>
+        <kcache.version>4.0.3</kcache.version>
         <kryo.version>5.3.0</kryo.version>
         <mockito.version>4.4.0</mockito.version>
         <ojai.version>3.1.1</ojai.version>
