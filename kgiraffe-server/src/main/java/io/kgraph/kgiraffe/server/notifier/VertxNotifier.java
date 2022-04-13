@@ -26,13 +26,14 @@ import org.ojai.Document;
 
 public class VertxNotifier implements Notifier {
     private final EventBus eventBus;
+    private final DeliveryOptions options;
 
     public VertxNotifier(EventBus eventBus) {
         this.eventBus = eventBus.registerCodec(new KryoCodec<Document>());
+        this.options = new DeliveryOptions().setCodecName("kryo");
     }
 
     public void publish(String address, Document doc) {
-        DeliveryOptions options = new DeliveryOptions().setCodecName("kryo");
         eventBus.publish(address, doc, options);
     }
 

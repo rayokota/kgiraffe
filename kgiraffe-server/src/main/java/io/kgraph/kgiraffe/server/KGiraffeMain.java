@@ -140,6 +140,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         t.setDaemon(true);
         t.start();
         t.join();
+
         return 0;
     }
 
@@ -203,9 +204,8 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
                     }
                 });
         } catch (Exception e) {
-            LOG.error("Could not start server", e);
-            e.printStackTrace();
-            throw e;
+            LOG.error("Could not start server: {}", e.getLocalizedMessage());
+            System.exit(1);
         }
     }
 

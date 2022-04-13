@@ -39,10 +39,6 @@
             <artifactId>kcache</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.kcache</groupId>
-            <artifactId>kcache-caffeine</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.hdocdb</groupId>
             <artifactId>hdocdb</artifactId>
         </dependency>

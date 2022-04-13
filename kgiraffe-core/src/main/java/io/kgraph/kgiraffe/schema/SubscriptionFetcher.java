@@ -43,7 +43,6 @@ public class SubscriptionFetcher implements DataFetcher {
                 .filter(doc -> query == null || query.isEmpty() || query.evaluate(doc));
             return publisher;
         } catch (Exception e) {
-            LOG.error("Error during subscribe", e);
             throw new RuntimeException(e);
         }
     }

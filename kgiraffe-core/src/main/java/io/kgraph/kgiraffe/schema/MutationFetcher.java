@@ -76,7 +76,6 @@ public class MutationFetcher implements DataFetcher {
             Document doc = coll.findById(id);
             return doc;
         } catch (Exception e) {
-            LOG.error("Error during mutate", e);
             throw new RuntimeException(e);
         }
     }

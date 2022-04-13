@@ -68,7 +68,7 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
             engine.configure(config);
             engine.init(new RxBusNotifier());
         } catch (Exception e) {
-            LOG.error("Server died unexpectedly: ", e);
+            LOG.error("Server died unexpectedly", e);
             System.exit(1);
         }
     }
