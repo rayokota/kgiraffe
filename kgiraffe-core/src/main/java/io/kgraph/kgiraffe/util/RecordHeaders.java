@@ -124,7 +124,7 @@ public class RecordHeaders implements Headers {
     }
 
     private Iterator<Header> closeAware(final Iterator<Header> original) {
-        return new Iterator<Header>() {
+        return new Iterator<>() {
             @Override
             public boolean hasNext() {
                 return original.hasNext();

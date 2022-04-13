@@ -61,11 +61,11 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
         super(numBrokers);
     }
 
-    public KGiraffeMain getVerticle() throws Exception {
+    public KGiraffeMain getVerticle() {
         return verticle;
     }
 
-    public KGiraffeEngine getEngine() throws Exception {
+    public KGiraffeEngine getEngine() {
         return engine;
     }
 

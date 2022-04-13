@@ -135,11 +135,11 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private GraphQLExecutor executor;
     private Map<String, KGiraffeConfig.Serde> keySerdes;
     private Map<String, KGiraffeConfig.Serde> valueSerdes;
-    private Map<String, Either<Type, ParsedSchema>> keySchemas = new HashMap<>();
-    private Map<String, Either<Type, ParsedSchema>> valueSchemas = new HashMap<>();
-    private Map<Tuple2<String, ProtobufSchema>, ProtobufSchema> schemaCache = new HashMap<>();
-    private Map<String, KafkaCache<Bytes, Bytes>> caches;
-    private HDocumentDB docdb;
+    private final Map<String, Either<Type, ParsedSchema>> keySchemas = new HashMap<>();
+    private final Map<String, Either<Type, ParsedSchema>> valueSchemas = new HashMap<>();
+    private final Map<Tuple2<String, ProtobufSchema>, ProtobufSchema> schemaCache = new HashMap<>();
+    private final Map<String, KafkaCache<Bytes, Bytes>> caches;
+    private final HDocumentDB docdb;
     private final AtomicBoolean initialized;
 
     private static KGiraffeEngine INSTANCE;
@@ -370,6 +370,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         return serialize(getValueSchema(topic), topic, object);
     }
 
+    @SuppressWarnings("unchecked")
     private byte[] serialize(Either<Type, ParsedSchema> schema,
                              String topic,
                              Object object) throws IOException {
@@ -568,6 +569,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
             throw new UnsupportedOperationException();
         }
 
+        @SuppressWarnings("unchecked")
         private Map<String, Object> convertHeaders(Headers headers) {
             if (headers == null) {
                 return null;

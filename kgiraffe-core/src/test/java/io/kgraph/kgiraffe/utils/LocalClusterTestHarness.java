@@ -47,7 +47,7 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
         super(numBrokers);
     }
 
-    public KGiraffeEngine getEngine() throws Exception {
+    public KGiraffeEngine getEngine() {
         return engine;
     }
 

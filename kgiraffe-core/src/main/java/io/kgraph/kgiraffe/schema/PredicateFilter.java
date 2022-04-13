@@ -111,7 +111,6 @@ class PredicateFilter implements Comparable<PredicateFilter> {
         return this.getField().compareTo(o.getField());
     }
 
-    @SuppressWarnings("unchecked")
     public HQueryCondition toQueryCondition(DataFetchingEnvironment env) {
         HQueryCondition attrCriteria = new HQueryCondition();
         switch (criteria) {

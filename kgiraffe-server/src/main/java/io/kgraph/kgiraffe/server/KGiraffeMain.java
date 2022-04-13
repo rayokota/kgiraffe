@@ -6,16 +6,18 @@ import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.KGiraffeConfig.MapPropertyParser;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.server.notifier.VertxNotifier;
+import io.reactivex.rxjava3.core.Single;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.ext.web.handler.graphql.ApolloWSOptions;
+import io.vertx.ext.web.handler.graphql.GraphQLHandlerOptions;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServer;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.handler.graphql.ApolloWSHandler;
-import io.vertx.ext.web.handler.graphql.ApolloWSOptions;
 import io.vertx.ext.web.handler.graphql.GraphQLHandler;
-import io.vertx.ext.web.handler.graphql.GraphQLHandlerOptions;
 import org.apache.kafka.common.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,7 +132,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
         vertx.deployVerticle(this);
 
-        Thread t = new Thread(() -> {
+        Thread t = new Thread(()-> {
             try {
                 System.in.read();
             } catch (IOException e) {
@@ -290,7 +292,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
                     Manifest manifest = new Manifest(url.openStream());
                     if (isApplicableManifest(manifest)) {
                         Attributes attr = manifest.getMainAttributes();
-                        return new String[]{
+                        return new String[] {
                             "kgiraffe - A GraphQL Interface for Apache Kafka",
                             "https://github.com/rayokota/kgiraffe",
                             "Copyright (c) 2022, Robert Yokota",
@@ -298,7 +300,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
                         };
                     }
                 } catch (IOException ex) {
-                    return new String[]{"Unable to read from " + url + ": " + ex};
+                    return new String[] { "Unable to read from " + url + ": " + ex };
                 }
             }
             return new String[0];
