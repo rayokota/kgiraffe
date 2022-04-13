@@ -411,11 +411,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     }
 
     public List<String> getSchemaRegistryUrls() {
-        List<String> urls = getList(SCHEMA_REGISTRY_URL_CONFIG);
-        if (urls == null || urls.isEmpty()) {
-            throw new ConfigException("Missing schema registry URL");
-        }
-        return urls;
+        return getList(SCHEMA_REGISTRY_URL_CONFIG);
     }
 
     public List<String> getTopics() {

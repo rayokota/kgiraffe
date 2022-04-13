@@ -227,7 +227,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
                 .collect(Collectors.joining(",")));
         }
         if (bootstrapBrokers != null) {
-            props.put(KGiraffeConfig.TOPICS_CONFIG, String.join(",", bootstrapBrokers));
+            props.put(KGiraffeConfig.KAFKACACHE_BOOTSTRAP_SERVERS_CONFIG, String.join(",", bootstrapBrokers));
         }
         if (initTimeout != null) {
             props.put(KGiraffeConfig.KAFKACACHE_INIT_TIMEOUT_CONFIG, String.valueOf(initTimeout));

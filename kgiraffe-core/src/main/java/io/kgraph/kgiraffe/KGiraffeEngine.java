@@ -38,6 +38,7 @@ import io.vavr.control.Either;
 import org.apache.commons.lang.SerializationException;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.record.TimestampType;
@@ -190,7 +191,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
         List<SchemaProvider> providers = Arrays.asList(
             new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
         );
-        schemaRegistry = createSchemaRegistry(urls, providers);
+        if (urls != null && !urls.isEmpty()) {
+            schemaRegistry = createSchemaRegistry(urls, providers);
+        }
         GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, topics);
         this.executor = new GraphQLExecutor(config, schemaBuilder);
 
@@ -218,6 +221,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     public SchemaRegistryClient getSchemaRegistry() {
+        if (schemaRegistry == null) {
+            throw new ConfigException("Missing schema registry URL");
+        }
         return schemaRegistry;
     }
 
@@ -262,7 +268,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                         throw new IllegalArgumentException("Could not read file: " + file);
                     }
                 }
-                return schemaRegistry.parseSchema(schemaType, schema, Collections.emptyList())
+                return getSchemaRegistry().parseSchema(schemaType, schema, Collections.emptyList())
                     .<Either<Type, ParsedSchema>>map(Either::right)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid schema: " + serde.getSchema()));
             case LATEST:
@@ -286,9 +292,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
 
     private Optional<ParsedSchema> getLatestSchema(String subject) {
         try {
-            SchemaMetadata schemaMetadata = schemaRegistry.getLatestSchemaMetadata(subject);
+            SchemaMetadata schemaMetadata = getSchemaRegistry().getLatestSchemaMetadata(subject);
             Optional<ParsedSchema> optSchema =
-                schemaRegistry.parseSchema(
+                getSchemaRegistry().parseSchema(
                     schemaMetadata.getSchemaType(),
                     schemaMetadata.getSchema(),
                     schemaMetadata.getReferences());
@@ -300,7 +306,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
 
     private Optional<ParsedSchema> getSchemaById(int id) {
         try {
-            return Optional.of(schemaRegistry.getSchemaById(id));
+            return Optional.of(getSchemaRegistry().getSchemaById(id));
         } catch (IOException | RestClientException e) {
             return Optional.empty();
         }
@@ -407,11 +413,11 @@ public class KGiraffeEngine implements Configurable, Closeable {
             ParsedSchema parsedSchema = schema.get();
             switch (parsedSchema.schemaType()) {
                 case "AVRO":
-                    return new KafkaAvroSerializer(schemaRegistry, config.originals());
+                    return new KafkaAvroSerializer(getSchemaRegistry(), config.originals());
                 case "JSON":
-                    return new KafkaJsonSchemaSerializer<>(schemaRegistry, config.originals());
+                    return new KafkaJsonSchemaSerializer<>(getSchemaRegistry(), config.originals());
                 case "PROTOBUF":
-                    return new KafkaProtobufSerializer<>(schemaRegistry, config.originals());
+                    return new KafkaProtobufSerializer<>(getSchemaRegistry(), config.originals());
                 default:
                     throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
             }
@@ -442,11 +448,11 @@ public class KGiraffeEngine implements Configurable, Closeable {
             ParsedSchema parsedSchema = schema.get();
             switch (parsedSchema.schemaType()) {
                 case "AVRO":
-                    return new KafkaAvroDeserializer(schemaRegistry, config.originals());
+                    return new KafkaAvroDeserializer(getSchemaRegistry(), config.originals());
                 case "JSON":
-                    return new KafkaJsonSchemaDeserializer<>(schemaRegistry, config.originals());
+                    return new KafkaJsonSchemaDeserializer<>(getSchemaRegistry(), config.originals());
                 case "PROTOBUF":
-                    return new KafkaProtobufDeserializer<>(schemaRegistry, config.originals());
+                    return new KafkaProtobufDeserializer<>(getSchemaRegistry(), config.originals());
                 default:
                     throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
             }
@@ -490,7 +496,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
             new KafkaCacheConfig(configs),
             Serdes.Bytes(),
             Serdes.Bytes(),
-            new UpdateHandler(schemaRegistry),
+            new UpdateHandler(),
             new CaffeineCache<>(null)
         );
         cache.init();
@@ -500,12 +506,6 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     class UpdateHandler implements CacheUpdateHandler<Bytes, Bytes> {
-
-        private SchemaRegistryClient schemaRegistry;
-
-        public UpdateHandler(SchemaRegistryClient schemaRegistry) {
-            this.schemaRegistry = schemaRegistry;
-        }
 
         public void handleUpdate(Headers headers,
                                  Bytes key, Bytes value, Bytes oldValue,
@@ -525,21 +525,21 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 }
                 if (key != null && key.get() != Bytes.EMPTY) {
                     try {
-                        doc.set(KEY_ATTR_NAME, deserializeKey(topic, key.get()));
                         if (getKeySchema(topic).isRight()) {
                             int schemaId = schemaIdFor(key.get());
                             doc.set(KEY_SCHEMA_ID, schemaId);
                         }
+                        doc.set(KEY_ATTR_NAME, deserializeKey(topic, key.get()));
                     } catch (IOException e) {
                         doc.set(KEY_ERROR_ATTR_NAME, trace(e));
                     }
                 }
                 try {
-                    doc.set(VALUE_ATTR_NAME, deserializeValue(topic, value.get()));
                     if (getValueSchema(topic).isRight()) {
                         int schemaId = schemaIdFor(value.get());
                         doc.set(VALUE_SCHEMA_ID, schemaId);
                     }
+                    doc.set(VALUE_ATTR_NAME, deserializeValue(topic, value.get()));
                 } catch (IOException e) {
                     doc.set(VALUE_ERROR_ATTR_NAME, trace(e));
                 }
