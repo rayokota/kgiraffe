@@ -1,44 +1,28 @@
 package io.kgraph.kgiraffe.server;
 
 import io.kgraph.kgiraffe.server.utils.RemoteClusterTestHarness;
-import io.reactivex.rxjava3.core.Single;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.rxjava3.core.RxHelper;
-import io.vertx.rxjava3.core.Vertx;
-import io.vertx.rxjava3.core.http.HttpClient;
-import io.vertx.rxjava3.ext.web.client.HttpResponse;
-import io.vertx.rxjava3.ext.web.client.WebClient;
-import io.vertx.rxjava3.ext.web.client.predicate.ResponsePredicate;
-import io.vertx.rxjava3.ext.web.codec.BodyCodec;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClient;
+import io.vertx.ext.web.client.WebClient;
 
 import java.util.Map;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import static io.kgraph.kgiraffe.server.utils.ChainRequestHelper.requestWithFuture;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @ExtendWith(VertxExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class BasicTest extends RemoteClusterTestHarness {
-
-    private WebClient webClient;
-
-    @BeforeEach
-    public void setUp(Vertx vertx, VertxTestContext testContext) throws Exception {
-        super.setUp(vertx, testContext);
-        HttpClient client = vertx.createHttpClient(new HttpClientOptions()
-            .setDefaultPort(serverPort)
-            .setDefaultHost("localhost"));
-        webClient = WebClient.wrap(client);
-        testContext.completeNow();
-    }
 
     @Test
     @SuppressWarnings("unchecked")
@@ -51,24 +35,65 @@ public class BasicTest extends RemoteClusterTestHarness {
             + "  }\n"
             + "}");
 
-        RxHelper.deployVerticle(vertx, getVerticle())
-            .flatMap(
-                id -> webClient.post("/graphql")
-                    .expect(ResponsePredicate.SC_OK)
-                    .expect(ResponsePredicate.JSON)
-                    .as(BodyCodec.jsonObject())
-                    .sendJsonObject(request)
-            )
-            .blockingSubscribe(
-                httpResponse -> {
-                    Map<String, Object> executionResult = httpResponse.body().getMap();
+        requestWithFuture(webClient, "/graphql", request)
+            .thenCompose(response -> {
+                Map<String, Object> executionResult = response.body().getMap();
+                Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
+                testContext.verify(() -> {
+                    assertThat(result.get("__schema")).isNotNull();
+                });
+
+                return requestWithFuture(webClient, "/graphql", request);
+            })
+            .whenComplete((response, t) -> {
+                if (t != null) {
+                    testContext.failNow(t);
+                }
+                Map<String, Object> executionResult = response.body().getMap();
+                Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
+                testContext.verify(() -> {
+                    assertThat(result.get("__schema")).isNotNull();
+                });
+
+                testContext.completeNow();
+            });
+
+            /*
+            Future<HttpResponse<JsonObject>> future =webClient.post("/graphql")
+                .expect(ResponsePredicate.SC_OK)
+                .expect(ResponsePredicate.JSON)
+                .as(BodyCodec.jsonObject())
+                .sendJsonObject(request);
+
+            future.
+                .compose(response -> {
+                    Map<String, Object> executionResult = response.body().getMap();
                     Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
                     testContext.verify(() -> {
                         assertThat(result.get("__schema")).isNotNull();
                     });
-                },
-                testContext::failNow
-            );
+
+                    return webClient.post("/graphql")
+                        .expect(ResponsePredicate.SC_OK)
+                        .expect(ResponsePredicate.JSON)
+                        .as(BodyCodec.jsonObject())
+                        .sendJsonObject(request);
+                    , ar -> {
+                            if (ar.succeeded()) {
+                                HttpResponse<JsonObject> resp = ar.result();
+                                Map<String, Object> execResult = response.body().getMap();
+                                Map<String, Object> data = (Map<String, Object>) executionResult.get("data");
+                                testContext.verify(() -> {
+                                    assertThat(data.get("__schema")).isNotNull();
+                                    testContext.completeNow();
+                                });
+                            } else {
+                                testContext.failNow(ar.cause());
+                            }
+                        });
+                });
+
+
 
         /*
         webClient.post("/graphql")
@@ -89,6 +114,6 @@ public class BasicTest extends RemoteClusterTestHarness {
         );
 
          */
-        testContext.completeNow();
     }
+
 }

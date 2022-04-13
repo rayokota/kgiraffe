@@ -20,7 +20,8 @@ package io.kgraph.kgiraffe.server.notifier;
 import io.kgraph.kgiraffe.notifier.Notifier;
 import io.reactivex.rxjava3.core.Flowable;
 import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.rxjava3.core.eventbus.EventBus;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.rxjava3.FlowableHelper;
 import org.ojai.Document;
 
 public class VertxNotifier implements Notifier {
@@ -36,9 +37,7 @@ public class VertxNotifier implements Notifier {
     }
 
     public Flowable<Document> consumer(String address) {
-        return eventBus
-            .consumer(address)
-            .toFlowable()
+        return FlowableHelper.toFlowable(eventBus.consumer(address))
             .map(m -> (Document) m.body());
     }
 }

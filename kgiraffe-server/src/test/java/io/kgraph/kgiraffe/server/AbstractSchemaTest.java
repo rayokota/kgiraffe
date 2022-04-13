@@ -2,20 +2,18 @@ package io.kgraph.kgiraffe.server;
 
 import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.server.utils.RemoteClusterTestHarness;
-import io.reactivex.rxjava3.core.Single;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.handler.graphql.ApolloWSMessageType;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.rxjava3.core.RxHelper;
-import io.vertx.rxjava3.core.Vertx;
-import io.vertx.rxjava3.core.buffer.Buffer;
-import io.vertx.rxjava3.core.http.HttpClient;
-import io.vertx.rxjava3.ext.web.client.HttpResponse;
-import io.vertx.rxjava3.ext.web.client.WebClient;
-import io.vertx.rxjava3.ext.web.client.predicate.ResponsePredicate;
-import io.vertx.rxjava3.ext.web.codec.BodyCodec;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClient;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.predicate.ResponsePredicate;
+import io.vertx.ext.web.codec.BodyCodec;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,24 +25,12 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static io.kgraph.kgiraffe.server.utils.ChainRequestHelper.requestWithFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(VertxExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class AbstractSchemaTest extends RemoteClusterTestHarness {
-
-    private HttpClient client;
-    private WebClient webClient;
-
-    @BeforeEach
-    public void setUp(Vertx vertx, VertxTestContext testContext) throws Exception {
-        super.setUp(vertx, testContext);
-        client = vertx.createHttpClient(new HttpClientOptions()
-            .setDefaultPort(serverPort)
-            .setDefaultHost("localhost"));
-        webClient = WebClient.wrap(client);
-        testContext.completeNow();
-    }
 
     /*
     public void start() {
@@ -71,6 +57,7 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
 
      */
 
+    /*
     @Test
     @SuppressWarnings("unchecked")
     public void testSchemaQuery(Vertx vertx, VertxTestContext testContext) throws Exception {
@@ -103,6 +90,9 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
                 },
                 testContext::failNow);
     }
+
+     */
+
     @Test
     @SuppressWarnings("unchecked")
     public void testSimple(Vertx vertx, VertxTestContext testContext) throws Exception {
@@ -131,12 +121,12 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
             .put("type", ApolloWSMessageType.START.getText())
             .put("payload", new JsonObject())
             .put("query", "subscription {\n" +
-            "  t1 {\n" +
-            "    value {\n" +
-            "    \tf1\n" +
-            "    }\n" +
-            "  }\n" +
-            "}");
+                "  t1 {\n" +
+                "    value {\n" +
+                "    \tf1\n" +
+                "    }\n" +
+                "  }\n" +
+                "}");
 
         JsonObject mutation2 = new JsonObject().put("query", "mutation {\n" +
             "  t1(value: { f1: \"world\"}) {\n" +
@@ -146,37 +136,21 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
             "  }\n" +
             "}");
 
-        RxHelper.deployVerticle(vertx, getVerticle())
-            .flatMap(id ->
-                webClient.post("/graphql")
-                    .expect(ResponsePredicate.SC_OK)
-                    .expect(ResponsePredicate.JSON)
-                    .as(BodyCodec.jsonObject())
-                    .sendJsonObject(mutation)
+        requestWithFuture(webClient, "/graphql", mutation)
+            .thenCompose(response -> {
+                Map<String, Object> executionResult = response.body().getMap();
+                Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
+                Map<String, Object> t1 = (Map<String, Object>) result.get("t1");
+                Map<String, Object> value = (Map<String, Object>) t1.get("value");
+                String f1 = (String) value.get("f1");
+                testContext.verify(() -> {
+                    assertThat(f1).isEqualTo("hello");
+                });
 
-            )
-            .blockingSubscribe(
-                httpResponse -> {
-                    Map<String, Object> executionResult = httpResponse.body().getMap();
-                    Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
-                    Map<String, Object> t1 = (Map<String, Object>) result.get("t1");
-                    Map<String, Object> value = (Map<String, Object>) t1.get("value");
-                    String f1 = (String) value.get("f1");
-                    testContext.verify(() -> {
-                        assertThat(f1).isEqualTo("hello");
-                    });
-                },
-                testContext::failNow);
-
-        webClient.post("/graphql")
-            .expect(ResponsePredicate.SC_OK)
-            .expect(ResponsePredicate.JSON)
-            .as(BodyCodec.jsonObject())
-            .sendJsonObject(query)
-
-            .blockingSubscribe(
-            httpResponse -> {
-                Map<String, Object> executionResult = httpResponse.body().getMap();
+                return requestWithFuture(webClient, "/graphql", query);
+            })
+            .thenCompose(response -> {
+                Map<String, Object> executionResult = response.body().getMap();
                 Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
                 List<Map<String, Object>> t1s = (List<Map<String, Object>>) result.get("t1");
                 Map<String, Object> t1 = t1s.get(0);
@@ -185,8 +159,25 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
                 testContext.verify(() -> {
                     assertThat(f1).isEqualTo("hello");
                 });
-            },
-            testContext::failNow);
+
+                return requestWithFuture(webClient, "/graphql", query);
+            })
+            .whenComplete((response, t) -> {
+                if (t != null) {
+                    testContext.failNow(t);
+                }
+                /*
+                Map<String, Object> executionResult = response.body().getMap();
+                Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
+                testContext.verify(() -> {
+                    assertThat(result.get("__schema")).isNotNull();
+                });
+
+                 */
+
+                testContext.completeNow();
+            });
+    }
 
         /*
          * Protocol:
@@ -197,6 +188,7 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
          * <----- data <-------
          */
 
+    /*
         JsonObject init = new JsonObject().put("type", ApolloWSMessageType.CONNECTION_INIT.getText());
 
         client.webSocket("/graphql")
@@ -237,6 +229,7 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
 
          */
 
+    /*
         webClient.post("/graphql")
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
@@ -315,8 +308,8 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
         f1 = (String) value.get("f1");
         assertThat(f1).isEqualTo("world");
 
-         */
     }
+         */
     @Override
     protected void injectKGiraffeProperties(Properties props) {
         super.injectKGiraffeProperties(props);

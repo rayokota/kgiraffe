@@ -10,14 +10,14 @@ import io.reactivex.rxjava3.core.Single;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.ext.web.handler.graphql.ApolloWSOptions;
 import io.vertx.ext.web.handler.graphql.GraphQLHandlerOptions;
-import io.vertx.rxjava3.core.AbstractVerticle;
-import io.vertx.rxjava3.core.Vertx;
-import io.vertx.rxjava3.core.http.HttpServer;
-import io.vertx.rxjava3.ext.web.Router;
-import io.vertx.rxjava3.ext.web.handler.BodyHandler;
-import io.vertx.rxjava3.ext.web.handler.StaticHandler;
-import io.vertx.rxjava3.ext.web.handler.graphql.ApolloWSHandler;
-import io.vertx.rxjava3.ext.web.handler.graphql.GraphQLHandler;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpServer;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.ext.web.handler.graphql.ApolloWSHandler;
+import io.vertx.ext.web.handler.graphql.GraphQLHandler;
 import org.apache.kafka.common.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,7 +130,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         engine.configure(config);
         engine.init(new VertxNotifier(vertx.eventBus()));
 
-        vertx.deployVerticle(this).toFuture().get();
+        vertx.deployVerticle(this);
 
         Thread t = new Thread(()-> {
             try {
@@ -180,31 +180,29 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             HttpServerOptions httpServerOptions = new HttpServerOptions()
                 .addWebSocketSubProtocol("graphql-ws")
                 .setTcpKeepAlive(true);
-            Single<HttpServer> single = vertx.createHttpServer(httpServerOptions)
+            vertx.createHttpServer(httpServerOptions)
                 // Handle every request using the router
                 .requestHandler(router)
                 .exceptionHandler(it -> LOG.error("Server error", it))
                 // Start listening
-                .rxListen(listener.getPort());
-
-            single.subscribe(
-                server -> {
-                    LOG.info("Server started, listening on {}", listener.getPort());
-                    LOG.info("GraphQL:     http://localhost:{}/graphql", listener.getPort());
-                    LOG.info("GraphQL-WS:  ws://localhost:{}/graphql", listener.getPort());
-                    LOG.info("GraphiQL:    http://localhost:{}/kgiraffe", listener.getPort());
-                    LOG.info("      /)/)  ");
-                    LOG.info("     ( ..\\  ");
-                    LOG.info("     /'-._) ");
-                    LOG.info("    /#/     ");
-                    LOG.info("   /#/      ");
-                    LOG.info("  /#/       ");
-                    LOG.info("KGiraffe is at your service...");
-                },
-                failure -> {
-                    LOG.info("Could not start server " + failure);
-                    LOG.error("Server died unexpectedly: ", failure);
-                    System.exit(1);
+                .listen(listener.getPort(), ar -> {
+                    if (ar.succeeded()) {
+                        LOG.info("Server started, listening on {}", listener.getPort());
+                        LOG.info("GraphQL:     http://localhost:{}/graphql", listener.getPort());
+                        LOG.info("GraphQL-WS:  ws://localhost:{}/graphql", listener.getPort());
+                        LOG.info("GraphiQL:    http://localhost:{}/kgiraffe", listener.getPort());
+                        LOG.info("      /)/)  ");
+                        LOG.info("     ( ..\\  ");
+                        LOG.info("     /'-._) ");
+                        LOG.info("    /#/     ");
+                        LOG.info("   /#/      ");
+                        LOG.info("  /#/       ");
+                        LOG.info("KGiraffe is at your service...");
+                    } else {
+                        LOG.info("Could not start server " + ar.cause());
+                        LOG.error("Server died unexpectedly: ", ar.cause());
+                        System.exit(1);
+                    }
                 });
         } catch (Exception e) {
             LOG.error("Could not start server", e);

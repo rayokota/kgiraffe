@@ -19,8 +19,11 @@ import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.server.KGiraffeMain;
 import io.kgraph.kgiraffe.server.notifier.VertxNotifier;
 import io.kgraph.kgiraffe.utils.ClusterTestHarness;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientOptions;
+import io.vertx.ext.web.client.WebClient;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.rxjava3.core.Vertx;
+import io.vertx.core.Vertx;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
@@ -39,9 +42,12 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
 
     private static final Logger LOG = LoggerFactory.getLogger(RemoteClusterTestHarness.class);
 
-    protected Properties props;
-
     protected Integer serverPort;
+    
+    protected HttpClient httpClient;
+    protected WebClient webClient;
+
+    protected Properties props;
     protected KGiraffeMain verticle;
     protected KGiraffeEngine engine;
 
@@ -64,12 +70,23 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
     @BeforeEach
     public void setUp(Vertx vertx, VertxTestContext testContext) throws Exception {
         super.setUp();
+
+        serverPort = choosePort();
+        setUpClient(vertx);
         setUpServer(vertx);
+
+        vertx.deployVerticle(getVerticle(), testContext.succeedingThenComplete());
+    }
+
+    private void setUpClient(Vertx vertx) {
+        httpClient = vertx.createHttpClient(new HttpClientOptions()
+            .setDefaultPort(serverPort)
+            .setDefaultHost("localhost"));
+        webClient = WebClient.wrap(httpClient);
     }
 
     private void setUpServer(Vertx vertx) {
         try {
-            serverPort = choosePort();
             props = new Properties();
             injectKGiraffeProperties(props);
 
