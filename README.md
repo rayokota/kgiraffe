@@ -3,8 +3,6 @@
 
 # kgiraffe
 
-kgiraffe is like [kcat](https://github.com/edenhill/kcat) (formerly kafkacat), but with a GraphQL interface
-
 [![Build Status][github-actions-shield]][github-actions-link]
 [![Maven][maven-shield]][maven-link]
 [![Javadoc][javadoc-shield]][javadoc-link]
@@ -16,6 +14,7 @@ kgiraffe is like [kcat](https://github.com/edenhill/kcat) (formerly kafkacat), b
 [javadoc-shield]: https://javadoc.io/badge/io.kgraph/kgiraffe-core.svg?color=blue
 [javadoc-link]: https://javadoc.io/doc/io.kgraph/kgiraffe-core
 
+kgiraffe is like [kcat](https://github.com/edenhill/kcat) (formerly kafkacat), but with a GraphQL interface
 
 ## Getting Started
 
