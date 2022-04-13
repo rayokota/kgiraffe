@@ -21,6 +21,7 @@ import io.kgraph.kgiraffe.server.notifier.VertxNotifier;
 import io.kgraph.kgiraffe.utils.ClusterTestHarness;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.WebSocketConnectOptions;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.core.Vertx;
@@ -43,9 +44,10 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
     private static final Logger LOG = LoggerFactory.getLogger(RemoteClusterTestHarness.class);
 
     protected Integer serverPort;
-    
-    protected HttpClient httpClient;
+
     protected WebClient webClient;
+    protected HttpClient wsClient;
+    protected WebSocketConnectOptions wsOptions;
 
     protected Properties props;
     protected KGiraffeMain verticle;
@@ -79,10 +81,14 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
     }
 
     private void setUpClient(Vertx vertx) {
-        httpClient = vertx.createHttpClient(new HttpClientOptions()
+        HttpClient client = vertx.createHttpClient(new HttpClientOptions()
             .setDefaultPort(serverPort)
             .setDefaultHost("localhost"));
-        webClient = WebClient.wrap(httpClient);
+        webClient = WebClient.wrap(client);
+
+        wsClient = vertx.createHttpClient();
+        wsOptions = new WebSocketConnectOptions().setPort(serverPort)
+            .addSubProtocol("graphql-ws").setURI("/graphql");
     }
 
     private void setUpServer(Vertx vertx) {

@@ -2,7 +2,10 @@ package io.kgraph.kgiraffe.server;
 
 import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.server.utils.RemoteClusterTestHarness;
+import io.reactivex.rxjava3.core.Completable;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.WebSocket;
+import io.vertx.core.http.WebSocketConnectOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.handler.graphql.ApolloWSMessageType;
 import io.vertx.junit5.VertxExtension;
@@ -23,9 +26,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.kgraph.kgiraffe.server.utils.ChainRequestHelper.requestWithFuture;
+import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(VertxExtension.class)
@@ -116,17 +122,18 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
             "  }\n" +
             "}");
 
-        JsonObject subscription = new JsonObject()
-            .put("id", "1")
-            .put("type", ApolloWSMessageType.START.getText())
-            .put("payload", new JsonObject())
-            .put("query", "subscription {\n" +
+        JsonObject subscription = new JsonObject().put("query", "subscription {\n" +
                 "  t1 {\n" +
                 "    value {\n" +
                 "    \tf1\n" +
                 "    }\n" +
                 "  }\n" +
                 "}");
+
+        JsonObject wsStart = new JsonObject()
+            .put("id", "1")
+            .put("type", ApolloWSMessageType.START.getText())
+            .put("payload", subscription);
 
         JsonObject mutation2 = new JsonObject().put("query", "mutation {\n" +
             "  t1(value: { f1: \"world\"}) {\n" +
@@ -135,6 +142,8 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
             "    }\n" +
             "  }\n" +
             "}");
+
+        CompletableFuture<JsonObject> eventFuture = new CompletableFuture<>();
 
         requestWithFuture(webClient, "/graphql", mutation)
             .thenCompose(response -> {
@@ -160,23 +169,36 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
                     assertThat(f1).isEqualTo("hello");
                 });
 
-                return requestWithFuture(webClient, "/graphql", query);
+                return ws(wsClient, wsOptions, wsStart, eventFuture);
+            })
+            .thenCompose(response -> {
+                System.out.println("*** response " + response) ;
+                return requestWithFuture(webClient, "/graphql", mutation2);
             })
             .whenComplete((response, t) -> {
                 if (t != null) {
                     testContext.failNow(t);
                 }
-                /*
+
                 Map<String, Object> executionResult = response.body().getMap();
                 Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
+                Map<String, Object> t1 = (Map<String, Object>) result.get("t1");
+                Map<String, Object> value = (Map<String, Object>) t1.get("value");
+                String f1 = (String) value.get("f1");
                 testContext.verify(() -> {
-                    assertThat(result.get("__schema")).isNotNull();
+                    assertThat(f1).isEqualTo("world");
                 });
-
-                 */
-
+            });
+        JsonObject event;
+        try {
+            event = eventFuture.get(60, TimeUnit.SECONDS);
+            testContext.verify(() -> {
+                assertThat(event).isNotNull();
                 testContext.completeNow();
             });
+        } catch (Exception e) {
+            testContext.failNow(e);
+        }
     }
 
         /*
@@ -310,6 +332,60 @@ public class AbstractSchemaTest extends RemoteClusterTestHarness {
 
     }
          */
+
+
+    private CompletableFuture<String> ws(HttpClient wsClient,
+        WebSocketConnectOptions wsOptions, JsonObject graphql,
+                                             CompletableFuture<JsonObject> event) {
+
+        /*
+         * Protocol:
+         * --> connection_init -->
+         * <-- connection_ack <--
+         * <-- ka (keep-alive) <--
+         * -----> start ------>
+         * <----- data <-------
+         */
+
+
+        CompletableFuture<String> wsFuture = new CompletableFuture<>();
+        JsonObject init = new JsonObject().put("type", ApolloWSMessageType.CONNECTION_INIT.getText());
+        wsClient.webSocket(wsOptions, ws -> {
+            AtomicReference<ApolloWSMessageType> lastReceivedType = new AtomicReference<>();
+            if (ws.succeeded()) {
+                WebSocket webSocket = ws.result();
+                webSocket.handler(message -> {
+                    JsonObject json = message.toJsonObject();
+                    ApolloWSMessageType type = ApolloWSMessageType.from(json.getString("type"));
+                    switch (type) {
+                        case CONNECTION_ACK:
+                            webSocket.write(graphql.toBuffer());
+                            break;
+                        case CONNECTION_KEEP_ALIVE:
+                            if (lastReceivedType.get() == ApolloWSMessageType.CONNECTION_KEEP_ALIVE) {
+                                wsFuture.complete("done");
+                            }
+                            break;
+                        case DATA:
+                            event.complete(json);
+                            break;
+                        default:
+                            System.out.println("*** fouhd type " + type);
+                            break;
+                        }
+
+                    lastReceivedType.set(type);
+                });
+                webSocket.write(init.toBuffer());
+            } else {
+                wsFuture.completeExceptionally(ws.cause());
+            }
+        });
+
+        return wsFuture;
+    }
+
+
     @Override
     protected void injectKGiraffeProperties(Properties props) {
         super.injectKGiraffeProperties(props);
