@@ -19,7 +19,7 @@ kgiraffe is like kcat (formerly kafkacat), but with a GraphQL interface
 
 ## Getting Started
 
-To run KGiraffe, download a [release](https://github.com/rayokota/kgiraffe/releases), unpack it, 
+To run kgiraffe, download a [release](https://github.com/rayokota/kgiraffe/releases), unpack it, 
 and then modify `config/kgiraffe.properties` to point to an existing Kafka broker.  Then run 
 the following:
 
@@ -32,7 +32,7 @@ $ bin/kgiraffe -F config/kgiraffe.properties
 
 ## Basic Configuration
 
-KGiraffe has a number of configuration properties that can be specified.  
+kgiraffe has a number of configuration properties that can be specified.  
 
 - `listeners` - List of listener URLs that include the scheme, host, and port.  Defaults to `http://0.0.0.0:2379`.  
 - `cluster.group.id` - The group ID to be used for leader election.  Defaults to `kgiraffe`.
@@ -41,7 +41,7 @@ KGiraffe has a number of configuration properties that can be specified.
 - `kafkacache.data.dir` - The root directory for backing cache storage.  Defaults to `/tmp`.
 - `kafkacache.bootstrap.servers` - A list of host and port pairs to use for establishing the initial connection to Kafka.
 - `kafkacache.group.id` - The group ID to use for the internal consumers, which needs to be unique for each node.  Defaults to `kgiraffe-1`.
-- `kafkacache.topic.replication.factor` - The replication factor for the internal topics created by KGiraffe.  Defaults to 3.
+- `kafkacache.topic.replication.factor` - The replication factor for the internal topics created by kgiraffe.  Defaults to 3.
 - `kafkacache.init.timeout.ms` - The timeout for initialization of the Kafka cache, including creation of internal topics.  Defaults to 300 seconds.
 - `kafkacache.timeout.ms` - The timeout for an operation on the Kafka cache.  Defaults to 60 seconds.
 
@@ -62,7 +62,7 @@ ssl.truststore.password=changeme
 
 ### Authentication and Role-Based Access Control
 
-KGiraffe supports the same authentication and role-based access control (RBAC) APIs as etcd.  For more info, see the etcd documentation [here](https://etcd.io/docs/v3.4.0/op-guide/authentication/).
+kgiraffe supports the same authentication and role-based access control (RBAC) APIs as etcd.  For more info, see the etcd documentation [here](https://etcd.io/docs/v3.4.0/op-guide/authentication/).
 
 
 ### Kafka Authentication
@@ -73,4 +73,4 @@ Authentication to a secure Kafka cluster is described [here](https://github.com/
 
 
 
-For more info on KGiraffe, see this [blog post](...).
+For more info on kgiraffe, see this [blog post](...).
