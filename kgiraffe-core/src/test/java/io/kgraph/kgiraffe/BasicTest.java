@@ -3,8 +3,6 @@ package io.kgraph.kgiraffe;
 import graphql.ExecutionResult;
 import graphql.GraphQL;
 import io.kgraph.kgiraffe.utils.LocalClusterTestHarness;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

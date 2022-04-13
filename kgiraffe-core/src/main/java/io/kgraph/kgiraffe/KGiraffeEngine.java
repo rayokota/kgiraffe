@@ -355,7 +355,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 doc = rootDoc;
             }
             return HValue.initFromDocument(doc);
-        } if (schema.getLeft() == Type.BINARY) {
+        } else if (schema.getLeft() == Type.BINARY) {
             object = Base64.getEncoder().encodeToString(((Bytes) object).get());
         }
 

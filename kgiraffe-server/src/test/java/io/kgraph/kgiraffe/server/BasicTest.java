@@ -1,24 +1,18 @@
 package io.kgraph.kgiraffe.server;
 
 import io.kgraph.kgiraffe.server.utils.RemoteClusterTestHarness;
-import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpClient;
-import io.vertx.ext.web.client.WebClient;
-
-import java.util.Map;
-
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.util.Map;
+
 import static io.kgraph.kgiraffe.server.utils.ChainRequestHelper.requestWithFuture;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
 
 @ExtendWith(VertxExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
