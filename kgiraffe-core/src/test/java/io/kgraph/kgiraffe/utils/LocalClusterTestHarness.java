@@ -24,6 +24,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
+
 /**
  * Test harness to run against a real, local Kafka cluster. This is essentially
  * Kafka's ZookeeperTestHarness and KafkaServerTestHarness traits combined.
@@ -75,6 +77,7 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
         props.put(KGiraffeConfig.LISTENER_CONFIG, "http://0.0.0.0:" + serverPort);
         props.put(KGiraffeConfig.KAFKACACHE_BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://test");
+        props.put(AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, "true");
         props.put(KGiraffeConfig.TOPICS_CONFIG, "t1");
     }
 

@@ -15,12 +15,12 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class AvroTest extends AbstractSchemaTest {
+public class JsonSchemaTest extends AbstractSchemaTest {
 
     @Override
     protected void injectKGiraffeProperties(Properties props) {
         super.injectKGiraffeProperties(props);
-        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, "'t1=avro:{\"type\":\"record\"," +
-            "\"name\":\"myrecord\",\"fields\":[{\"name\":\"f1\",\"type\":\"string\"}]}'");
+        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, "'t1=json:{\"type\":\"object\","
+            + "\"properties\":{\"f1\":{\"type\":\"string\"}}}'");
     }
 }
