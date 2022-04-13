@@ -35,6 +35,7 @@ import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
 import io.kgraph.kgiraffe.schema.converters.GraphQLProtobufConverter;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
+import org.apache.commons.lang.SerializationException;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
@@ -71,10 +72,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -108,6 +113,7 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.EPOCH_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.HEADERS_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ERROR_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_SCHEMA_ID;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PARTITION_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_ATTR_NAME;
@@ -115,6 +121,7 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_TYPE_ATTR
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TOPIC_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ERROR_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_SCHEMA_ID;
 
 public class KGiraffeEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeEngine.class);
@@ -225,7 +232,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     private Either<Type, ParsedSchema> getSchema(String subject, KGiraffeConfig.Serde serde) {
-        switch (serde.getSerdeType()) {
+        KGiraffeConfig.SerdeType serdeType = serde.getSerdeType();
+        switch (serdeType) {
             case SHORT:
                 return Either.left(Type.SHORT);
             case INT:
@@ -240,6 +248,23 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 return Either.left(Type.STRING);
             case BINARY:
                 return Either.left(Type.BINARY);
+            case AVRO:
+            case JSON:
+            case PROTO:
+                String schemaType = serdeType == KGiraffeConfig.SerdeType.PROTO
+                    ? "PROTOBUF" : serdeType.name();
+                String schema = serde.getSchema();
+                if (schema.startsWith("@")) {
+                    String file = schema.substring(1);
+                    try {
+                        schema = Files.readString(Paths.get(file));
+                    } catch (IOException e) {
+                        throw new IllegalArgumentException("Couldn't read file: " + file);
+                    }
+                }
+                return schemaRegistry.parseSchema(schemaType, schema, Collections.emptyList())
+                    .<Either<Type, ParsedSchema>>map(Either::right)
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid schema: " + serde.getSchema()));
             case LATEST:
                 return getLatestSchema(subject).<Either<Type, ParsedSchema>>map(Either::right)
                     .orElseGet(() -> {
@@ -382,11 +407,11 @@ public class KGiraffeEngine implements Configurable, Closeable {
             ParsedSchema parsedSchema = schema.get();
             switch (parsedSchema.schemaType()) {
                 case "AVRO":
-                    return new KafkaAvroSerializer(schemaRegistry);
+                    return new KafkaAvroSerializer(schemaRegistry, config.originals());
                 case "JSON":
-                    return new KafkaJsonSchemaSerializer<>(schemaRegistry);
+                    return new KafkaJsonSchemaSerializer<>(schemaRegistry, config.originals());
                 case "PROTOBUF":
-                    return new KafkaProtobufSerializer<>(schemaRegistry);
+                    return new KafkaProtobufSerializer<>(schemaRegistry, config.originals());
                 default:
                     throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
             }
@@ -417,11 +442,11 @@ public class KGiraffeEngine implements Configurable, Closeable {
             ParsedSchema parsedSchema = schema.get();
             switch (parsedSchema.schemaType()) {
                 case "AVRO":
-                    return new KafkaAvroDeserializer(schemaRegistry);
+                    return new KafkaAvroDeserializer(schemaRegistry, config.originals());
                 case "JSON":
-                    return new KafkaJsonSchemaDeserializer<>(schemaRegistry);
+                    return new KafkaJsonSchemaDeserializer<>(schemaRegistry, config.originals());
                 case "PROTOBUF":
-                    return new KafkaProtobufDeserializer<>(schemaRegistry);
+                    return new KafkaProtobufDeserializer<>(schemaRegistry, config.originals());
                 default:
                     throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
             }
@@ -501,12 +526,20 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 if (key != null && key.get() != Bytes.EMPTY) {
                     try {
                         doc.set(KEY_ATTR_NAME, deserializeKey(topic, key.get()));
+                        if (getKeySchema(topic).isRight()) {
+                            int schemaId = schemaIdFor(key.get());
+                            doc.set(KEY_SCHEMA_ID, schemaId);
+                        }
                     } catch (IOException e) {
                         doc.set(KEY_ERROR_ATTR_NAME, trace(e));
                     }
                 }
                 try {
                     doc.set(VALUE_ATTR_NAME, deserializeValue(topic, value.get()));
+                    if (getValueSchema(topic).isRight()) {
+                        int schemaId = schemaIdFor(value.get());
+                        doc.set(VALUE_SCHEMA_ID, schemaId);
+                    }
                 } catch (IOException e) {
                     doc.set(VALUE_ERROR_ATTR_NAME, trace(e));
                 }
@@ -555,6 +588,16 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 });
             }
             return map;
+        }
+
+        private static final int MAGIC_BYTE = 0x0;
+
+        private int schemaIdFor(byte[] payload) {
+            ByteBuffer buffer = ByteBuffer.wrap(payload);
+            if (buffer.get() != MAGIC_BYTE) {
+                throw new SerializationException("Unknown magic byte!");
+            }
+            return buffer.getInt();
         }
 
         private String trace(Throwable t) {

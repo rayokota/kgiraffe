@@ -16,6 +16,14 @@
  */
 package io.kgraph.kgiraffe;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.dataformat.csv.CsvGenerator;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import com.fasterxml.jackson.dataformat.csv.CsvParser;
+import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import io.kcache.KafkaCacheConfig;
 import io.vavr.Tuple2;
 import org.apache.kafka.common.config.ConfigDef;
@@ -32,12 +40,14 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class KGiraffeConfig extends KafkaCacheConfig {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeConfig.class);
@@ -216,6 +226,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     public static final int TOKEN_TTL_SECS_DEFAULT = 300;
     public static final String TOKEN_TTL_SECS_DOC = "Time-to-live for tokens.";
 
+    private static final MapPropertyParser mapPropertyParser = new MapPropertyParser();
     private static final ConfigDef config;
 
     static {
@@ -237,12 +248,12 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                 Importance.HIGH,
                 TOPICS_DOC
             ).define(KEY_SERDES_CONFIG,
-                Type.LIST,
+                Type.STRING, // use custom list parsing
                 "",
                 Importance.HIGH,
                 KEY_SERDES_DOC
             ).define(VALUE_SERDES_CONFIG,
-                Type.LIST,
+                Type.STRING, // use custom list parsing
                 "",
                 Importance.HIGH,
                 VALUE_SERDES_DOC
@@ -400,35 +411,37 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     }
 
     public List<String> getSchemaRegistryUrls() {
-        return getList(SCHEMA_REGISTRY_URL_CONFIG);
+        List<String> urls = getList(SCHEMA_REGISTRY_URL_CONFIG);
+        if (urls == null || urls.isEmpty()) {
+            throw new ConfigException("Missing schema registry URL");
+        }
+        return urls;
     }
 
     public List<String> getTopics() {
         List<String> topics = getList(TOPICS_CONFIG);
         if (topics == null || topics.isEmpty()) {
-            throw new ConfigException("Specify at least one topic");
+            throw new ConfigException("Missing topic(s)");
         }
         return topics;
     }
 
     public Map<String, Serde> getKeySerdes() {
-        List<String> serdes = getList(KEY_SERDES_CONFIG);
-        return serdes.stream()
-            .map(s -> {
-                int index = s.indexOf("=");
-                return new Tuple2<>(s.substring(0, index), new Serde(s.substring(index + 1)));
-            })
-            .collect(Collectors.toMap(t -> t._1, t -> t._2));
+        String serdes = getString(KEY_SERDES_CONFIG);
+        return mapPropertyParser.parse(serdes).entrySet().stream()
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                e -> new Serde(e.getValue())
+            ));
     }
 
     public Map<String, Serde> getValueSerdes() {
-        List<String> serdes = getList(VALUE_SERDES_CONFIG);
-        return serdes.stream()
-            .map(s -> {
-                int index = s.indexOf("=");
-                return new Tuple2<>(s.substring(0, index), new Serde(s.substring(index + 1)));
-            })
-            .collect(Collectors.toMap(t -> t._1, t -> t._2));
+        String serdes = getString(VALUE_SERDES_CONFIG);
+        return mapPropertyParser.parse(serdes).entrySet().stream()
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                e -> new Serde(e.getValue())
+            ));
     }
 
     public int getGraphQLMaxComplexity() {
@@ -472,6 +485,9 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         DOUBLE,
         STRING,
         BINARY,
+        AVRO,
+        JSON,
+        PROTO,
         LATEST,
         ID;
 
@@ -496,13 +512,24 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     public static class Serde {
         private final SerdeType serdeType;
         private final int id;
+        private final String schema;
 
-        public static final Serde KEY_DEFAULT = new Serde(SerdeType.BINARY, 0);
-        public static final Serde VALUE_DEFAULT = new Serde(SerdeType.LATEST, 0);
+        public static final Serde KEY_DEFAULT = new Serde(SerdeType.BINARY, 0, null);
+        public static final Serde VALUE_DEFAULT = new Serde(SerdeType.LATEST, 0, null);
 
         public Serde(String value) {
             int id = 0;
-            SerdeType serdeType = SerdeType.get(value);
+            String schema = null;
+            String prefix = value;
+            int index = value.indexOf(':');
+            if (index > 0) {
+                prefix = value.substring(0, index);
+                schema = value.substring(index + 1);
+                if (schema.isEmpty()) {
+                    throw new ConfigException("Missing schema or file: " + value);
+                }
+            }
+            SerdeType serdeType = SerdeType.get(prefix);
             if (serdeType == null) {
                 try {
                     id = Integer.parseInt(value);
@@ -513,11 +540,13 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             }
             this.serdeType = serdeType;
             this.id = id;
+            this.schema = schema;
         }
 
-        public Serde(SerdeType serdeType, int id) {
+        public Serde(SerdeType serdeType, int id, String schema) {
             this.serdeType = serdeType;
             this.id = id;
+            this.schema = schema;
         }
 
         public SerdeType getSerdeType() {
@@ -528,29 +557,83 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             return id;
         }
 
+        public String getSchema() {
+            return schema;
+        }
+
         @Override
         public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
             Serde serde = (Serde) o;
-            return id == serde.id && serdeType == serde.serdeType;
+            return id == serde.id
+                && serdeType == serde.serdeType
+                && Objects.equals(schema, serde.schema);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(serdeType, id);
+            return Objects.hash(serdeType, id, schema);
         }
 
         @Override
         public String toString() {
-            if (serdeType == SerdeType.ID) {
-                return String.valueOf(id);
-            } else {
-                return serdeType.toString();
+            switch (serdeType) {
+                case ID:
+                    return String.valueOf(id);
+                case AVRO:
+                case JSON:
+                case PROTO:
+                    return serdeType + ":" + schema;
+                default:
+                    return serdeType.toString();
+            }
+        }
+    }
+
+    public static class MapPropertyParser {
+        private static final char DELIM_CHAR = ',';
+        private static final char QUOTE_CHAR = '\'';
+
+        private final CsvMapper mapper;
+        private final CsvSchema schema;
+
+        public MapPropertyParser() {
+            mapper = new CsvMapper()
+                .enable(CsvGenerator.Feature.STRICT_CHECK_FOR_QUOTING)
+                .enable(CsvParser.Feature.WRAP_AS_ARRAY);
+            schema = CsvSchema.builder()
+                .setColumnSeparator(DELIM_CHAR)
+                .setQuoteChar(QUOTE_CHAR)
+                .setLineSeparator("")
+                .build();
+        }
+
+        public Map<String, String> parse(String str) {
+            try {
+                ObjectReader reader = mapper.readerFor(String[].class).with(schema);
+                Iterator<String[]> iter = reader.readValues(str);
+                String[] strings = iter.hasNext() ? iter.next() : new String[0];
+                return Stream.of(strings)
+                    .collect(Collectors.toMap(
+                        s -> s.substring(0, s.indexOf('=')),
+                        s -> s.substring(s.indexOf('=') + 1))
+                    );
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Could not parse string " + str, e);
+            }
+        }
+
+        public String asString(Map<String, String> map) {
+            try {
+                String[] entries = map.entrySet().stream()
+                    .map(e -> e.getKey() + "=" + e.getValue())
+                    .toArray(String[]::new);
+
+                ObjectWriter writer = mapper.writerFor(Object[].class).with(schema);
+                return writer.writeValueAsString(entries);
+            } catch (JsonProcessingException e) {
+                throw new IllegalArgumentException("Could not parse map " + map, e);
             }
         }
     }

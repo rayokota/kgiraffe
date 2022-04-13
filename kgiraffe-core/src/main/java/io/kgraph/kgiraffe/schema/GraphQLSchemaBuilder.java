@@ -58,8 +58,10 @@ public class GraphQLSchemaBuilder {
 
     public static final String KEY_ATTR_NAME = "key";
     public static final String KEY_ERROR_ATTR_NAME = "key_error";
+    public static final String KEY_SCHEMA_ID = "key_schema_id";
     public static final String VALUE_ATTR_NAME = "value";
     public static final String VALUE_ERROR_ATTR_NAME = "value_error";
+    public static final String VALUE_SCHEMA_ID = "value_schema_id";
     public static final String HEADERS_ATTR_NAME = "headers";
     public static final String TOPIC_ATTR_NAME = "topic";
     public static final String PARTITION_ATTR_NAME = "partition";
@@ -421,6 +423,11 @@ public class GraphQLSchemaBuilder {
                 .type(Scalars.GraphQLString)
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
+                .name(KEY_SCHEMA_ID)
+                .description("Kafka record key schema id")
+                .type(Scalars.GraphQLInt)
+                .build())
+            .field(GraphQLFieldDefinition.newFieldDefinition()
                 .name(VALUE_ATTR_NAME)
                 .description("Kafka record value")
                 .type(valueObject)
@@ -429,6 +436,11 @@ public class GraphQLSchemaBuilder {
                 .name(VALUE_ERROR_ATTR_NAME)
                 .description("Kafka record value deserialization error")
                 .type(Scalars.GraphQLString)
+                .build())
+            .field(GraphQLFieldDefinition.newFieldDefinition()
+                .name(VALUE_SCHEMA_ID)
+                .description("Kafka record value schema id")
+                .type(Scalars.GraphQLInt)
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
                 .name(TOPIC_ATTR_NAME)

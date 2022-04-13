@@ -3,6 +3,7 @@ package io.kgraph.kgiraffe.server;
 import graphql.GraphQL;
 import io.kcache.KafkaCacheConfig;
 import io.kgraph.kgiraffe.KGiraffeConfig;
+import io.kgraph.kgiraffe.KGiraffeConfig.MapPropertyParser;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.server.notifier.VertxNotifier;
 import io.reactivex.rxjava3.core.Single;
@@ -45,6 +46,8 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeMain.class);
 
+    private static final MapPropertyParser mapPropertyParser = new MapPropertyParser();
+
     private KGiraffeConfig config;
 
     @Option(names = {"-t", "--topic"},
@@ -85,6 +88,9 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "Available serdes:\n"
             + "  short | int | long | float |\n"
             + "  double | string | binary |\n"
+            + "  avro:<schema|@file> |\n"
+            + "  json:<schema|@file> |\n"
+            + "  proto:<schema|@file> |\n"
             + "  latest (use latest version in SR) |\n"
             + "  <id>   (use schema id from SR)\n"
             + "  Default for key:   binary\n"
@@ -230,14 +236,20 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             props.put(KGiraffeConfig.KAFKACACHE_TOPIC_PARTITIONS_OFFSET_CONFIG, offset.toString());
         }
         if (keySerdes != null) {
-            props.put(KGiraffeConfig.KEY_SERDES_CONFIG, keySerdes.entrySet().stream()
-                .map(e -> e.getKey() + "=" + e.getValue())
-                .collect(Collectors.joining(",")));
+            props.put(KGiraffeConfig.KEY_SERDES_CONFIG,
+                mapPropertyParser.asString(keySerdes.entrySet().stream()
+                    .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> e.getValue().toString()))
+                ));
         }
         if (valueSerdes != null) {
-            props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, valueSerdes.entrySet().stream()
-                .map(e -> e.getKey() + "=" + e.getValue())
-                .collect(Collectors.joining(",")));
+            props.put(KGiraffeConfig.VALUE_SERDES_CONFIG,
+                mapPropertyParser.asString(valueSerdes.entrySet().stream()
+                    .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> e.getValue().toString()))
+                ));
         }
         if (schemaRegistryUrl != null) {
             props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
