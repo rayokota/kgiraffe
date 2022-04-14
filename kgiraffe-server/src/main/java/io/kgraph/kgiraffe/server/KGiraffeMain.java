@@ -92,13 +92,28 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "  latest (use latest version in SR) |\n"
             + "  <id>   (use schema id from SR)\n"
             + "  Default for key:   binary\n"
-            + "  Default for value: latest",
+            + "  Default for value: latest\n"
+            + "The avro/json/proto serde formats can\n"
+            + "also be specified with refs, e.g.\n"
+            + "  avro:<schema|@file>:<refs|@file>\n"
+            + "where refs are schema references\n"
+            + "of the form \n"
+            + "  [<name>,<subject>,<version>;..]",
         paramLabel = "<topic=serde>")
     private Map<String, KGiraffeConfig.Serde> valueSerdes;
 
     @Option(names = {"-r", "--schema-registry-url"},
         description = "SR (Schema Registry) URL", paramLabel = "<url>")
     private String schemaRegistryUrl;
+
+    @Option(names = {"-s", "--validate-schema"},
+        description = "Parse and validate the given schema(s).\n"
+            + "If more than one schema is specified, later\n"
+            + "ones are checked for backward compatibility\n"
+            + "against earlier ones. See avro/json/proto\n"
+            + "serde formats above.",
+        paramLabel = "<serde>")
+    private String schema;
 
     @Option(names = {"-X", "--property"},
         description = "Set kgiraffe configuration property.", paramLabel = "<prop=val>")

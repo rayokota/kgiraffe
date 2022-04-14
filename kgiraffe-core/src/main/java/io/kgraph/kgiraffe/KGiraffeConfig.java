@@ -17,12 +17,15 @@
 package io.kgraph.kgiraffe;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.csv.CsvGenerator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvParser;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
+import com.google.common.collect.ImmutableList;
 import io.kcache.KafkaCacheConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -36,6 +39,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -46,6 +50,8 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import io.confluent.kafka.schemaregistry.client.rest.entities.SchemaReference;
 
 public class KGiraffeConfig extends KafkaCacheConfig {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeConfig.class);
@@ -69,16 +75,30 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         "Comma-separated list of \"<topic>=<serde>\" "
             + "settings, where \"serde\" is the serde to use for topic keys, "
             + "which must be one of [short, int, long, float, double, string, "
-            + "binary, latest (use latest version in SR), <id> (use schema id from SR)]. "
-            + "Default: latest";
+            + "binary, avro:<schema|@file>, json:<schema|@file>, proto:<schema|@file>, "
+            + "latest (use latest version in SR), <id> (use schema id from SR)]. "
+            + "Default: binary";
 
     public static final String VALUE_SERDES_CONFIG = "value.serdes";
     public static final String VALUE_SERDES_DOC =
         "Comma-separated list of \"<topic>=<serde>\" "
             + "settings, where \"serde\" is the serde to use for topic values, "
             + "which must be one of [short, int, long, float, double, string, "
-            + "binary, latest (use latest version in SR), <id> (use schema id from SR)]. "
+            + "binary, avro:<schema|@file>, json:<schema|@file>, proto:<schema|@file>, "
+            + "latest (use latest version in SR), <id> (use schema id from SR)]. "
             + "Default: latest";
+
+    public static final String VALIDATE_SCHEMAS_CONFIG = "validate.schemas";
+    public static final String VALIDATE_SCHEMAS_DOC =
+        "Comma-separated list of schemas, one of avro:<schema|@file>, json:<schema|@file>, "
+            + "proto:<schema|@file>.  If more then one schema is specified, later ones are "
+            + "checked for backward compatibility against earlier ones.";
+
+    public static final String VALIDATE_REFS_CONFIG = "validate.refs";
+    public static final String VALIDATE_REFS_DOC =
+        "Comma-separated list of refs of the form [<name>:<subject>:<version>,..]. "
+            + "If more than one ref is specified, then the count of refs must match "
+            + "(in order) the count of schemas to be validated.";
 
     public static final String GRAPHQL_MAX_COMPLEXITY_CONFIG = "graphql.max.complexity";
     public static final int GRAPHQL_MAX_COMPLEXITY_DEFAULT = Integer.MAX_VALUE;
@@ -224,7 +244,9 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     public static final int TOKEN_TTL_SECS_DEFAULT = 300;
     public static final String TOKEN_TTL_SECS_DOC = "Time-to-live for tokens.";
 
+    private static final ListPropertyParser listPropertyParser = new ListPropertyParser();
     private static final MapPropertyParser mapPropertyParser = new MapPropertyParser();
+    private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final ConfigDef config;
 
     static {
@@ -255,6 +277,16 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                 "",
                 Importance.HIGH,
                 VALUE_SERDES_DOC
+            ).define(VALIDATE_SCHEMAS_CONFIG,
+                Type.STRING, // use custom list parsing
+                "",
+                Importance.LOW,
+                VALIDATE_SCHEMAS_DOC
+            ).define(VALIDATE_REFS_CONFIG,
+                Type.STRING, // use custom list parsing
+                "",
+                Importance.LOW,
+                VALIDATE_REFS_DOC
             ).define(
                 GRAPHQL_MAX_COMPLEXITY_CONFIG,
                 Type.INT,
@@ -438,6 +470,76 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             ));
     }
 
+    public List<String> getValidationSchemas() {
+        String schemas = getString(VALIDATE_SCHEMAS_CONFIG);
+        return listPropertyParser.parse(schemas);
+    }
+
+    public List<List<SchemaReference>> getValidationRefs() {
+        String refs = getString(VALIDATE_REFS_CONFIG);
+        return parseRefsList(refs);
+    }
+
+    private static List<List<SchemaReference>> parseRefsList(String str) {
+        return listPropertyParser.parse(str).stream()
+            .map(KGiraffeConfig::parseRefs)
+            .collect(Collectors.toList());
+    }
+
+    private static List<SchemaReference> parseRefs(String str) {
+        List<SchemaReference> refs;
+        try {
+            refs = objectMapper.readValue(str, new TypeReference<>() { });
+        } catch (Exception e) {
+            int start = str.indexOf('[');
+            int end = str.lastIndexOf(']');
+            if (start < 0 || end < 0) {
+                throw new ConfigException("Invalid refs spec " + str);
+            }
+            refs = listPropertyParser.parse(str.substring(start + 1, end)).stream()
+                .map(KGiraffeConfig::parseRef)
+                .collect(Collectors.toList());
+        }
+        return refs;
+    }
+
+    private static SchemaReference parseRef(String str) {
+        try {
+            String[] parts = str.split(":");
+            if (parts.length != 3) {
+                throw new ConfigException("Invalid refs spec " + str);
+            }
+            return new SchemaReference(parts[0], parts[1], Integer.parseInt(parts[2]));
+        } catch (NumberFormatException e) {
+            throw new ConfigException("Invalid refs spec " + str);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        List<SchemaReference> list1 = ImmutableList.of(
+            new SchemaReference("1", "2", 3)
+        );
+        List<SchemaReference> list2 = ImmutableList.of(
+            new SchemaReference("4", "5", 6),
+            new SchemaReference("7", "8", 9)
+        );
+        List<SchemaReference> list3 = ImmutableList.of(
+            new SchemaReference("10", "11", 12),
+            new SchemaReference("13", "14", 15)
+        );
+        List<String> lists = ImmutableList.of(
+            objectMapper.writeValueAsString(list1),
+            objectMapper.writeValueAsString(list2),
+            objectMapper.writeValueAsString(list3)
+        );
+        String s = listPropertyParser.asString(lists);
+        System.out.println(s);
+
+        String s2 = "'[hi:there:3,bye:where:4]',[no:way:0],[]";
+        System.out.println(parseRefsList(s));
+        System.out.println(parseRefsList(s2));
+    }
+
     public int getGraphQLMaxComplexity() {
         return getInt(GRAPHQL_MAX_COMPLEXITY_CONFIG);
     }
@@ -585,14 +687,14 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         }
     }
 
-    public static class MapPropertyParser {
+    public static class ListPropertyParser {
         private static final char DELIM_CHAR = ',';
         private static final char QUOTE_CHAR = '\'';
 
         private final CsvMapper mapper;
         private final CsvSchema schema;
 
-        public MapPropertyParser() {
+        public ListPropertyParser() {
             mapper = new CsvMapper()
                 .enable(CsvGenerator.Feature.STRICT_CHECK_FOR_QUOTING)
                 .enable(CsvParser.Feature.WRAP_AS_ARRAY);
@@ -603,32 +705,49 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                 .build();
         }
 
-        public Map<String, String> parse(String str) {
+        public List<String> parse(String str) {
             try {
                 ObjectReader reader = mapper.readerFor(String[].class).with(schema);
                 Iterator<String[]> iter = reader.readValues(str);
                 String[] strings = iter.hasNext() ? iter.next() : new String[0];
-                return Stream.of(strings)
-                    .collect(Collectors.toMap(
-                        s -> s.substring(0, s.indexOf('=')),
-                        s -> s.substring(s.indexOf('=') + 1))
-                    );
+                return Arrays.asList(strings);
             } catch (IOException e) {
                 throw new IllegalArgumentException("Could not parse string " + str, e);
             }
         }
 
-        public String asString(Map<String, String> map) {
+        public String asString(List<String> list) {
             try {
-                String[] entries = map.entrySet().stream()
-                    .map(e -> e.getKey() + "=" + e.getValue())
-                    .toArray(String[]::new);
-
+                String[] array = list.toArray(new String[0]);
                 ObjectWriter writer = mapper.writerFor(Object[].class).with(schema);
-                return writer.writeValueAsString(entries);
+                return writer.writeValueAsString(array);
             } catch (JsonProcessingException e) {
-                throw new IllegalArgumentException("Could not parse map " + map, e);
+                throw new IllegalArgumentException("Could not parse list " + list, e);
             }
+        }
+    }
+
+    public static class MapPropertyParser {
+        private final ListPropertyParser parser;
+
+        public MapPropertyParser() {
+            parser = new ListPropertyParser();
+        }
+
+        public Map<String, String> parse(String str) {
+            List<String> strings = parser.parse(str);
+            return strings.stream()
+                .collect(Collectors.toMap(
+                    s -> s.substring(0, s.indexOf('=')),
+                    s -> s.substring(s.indexOf('=') + 1))
+                );
+        }
+
+        public String asString(Map<String, String> map) {
+            List<String> entries = map.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.toList());
+            return parser.asString(entries);
         }
     }
 }
