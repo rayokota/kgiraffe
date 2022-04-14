@@ -28,6 +28,7 @@ import io.vertx.junit5.VertxTestContext;
 import jdk.jfr.Category;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +41,7 @@ import java.util.Properties;
  * Test harness to run against a real, local Kafka cluster. This is essentially
  * Kafka's ZookeeperTestHarness and KafkaServerTestHarness traits combined.
  */
-@Category(IntegrationTest.class)
+@Tag("IntegrationTest")
 public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
 
     private static final Logger LOG = LoggerFactory.getLogger(RemoteClusterTestHarness.class);
