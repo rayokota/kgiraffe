@@ -28,6 +28,7 @@ import io.hdocdb.store.InMemoryHDocumentDB;
 import io.kcache.CacheUpdateHandler;
 import io.kcache.KafkaCache;
 import io.kcache.KafkaCacheConfig;
+import io.kcache.caffeine.CaffeineCache;
 import io.kgraph.kgiraffe.notifier.Notifier;
 import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
@@ -76,6 +77,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -496,7 +498,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
             Serdes.Bytes(),
             Serdes.Bytes(),
             new UpdateHandler(),
-            null
+            new CaffeineCache<>(100, Duration.ofMillis(10000), null)
         );
         cache.init();
         caches.put(topic, cache);

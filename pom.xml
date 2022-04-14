@@ -111,6 +111,11 @@
                 <version>${kcache.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.kcache</groupId>
+                <artifactId>kcache-caffeine</artifactId>
+                <version>${kcache.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>io.hdocdb</groupId>
                 <artifactId>hdocdb</artifactId>
                 <version>${hdocdb.version}</version>
