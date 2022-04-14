@@ -5,6 +5,8 @@ import graphql.ExecutionResult;
 import graphql.GraphQL;
 import graphql.analysis.MaxQueryComplexityInstrumentation;
 import graphql.analysis.MaxQueryDepthInstrumentation;
+import graphql.execution.AsyncExecutionStrategy;
+import graphql.execution.AsyncSerialExecutionStrategy;
 import graphql.execution.SubscriptionExecutionStrategy;
 import graphql.execution.instrumentation.ChainedInstrumentation;
 import graphql.execution.instrumentation.Instrumentation;
@@ -12,6 +14,7 @@ import graphql.schema.GraphQLSchema;
 import graphql.schema.idl.SchemaPrinter;
 import io.kgraph.kgiraffe.KGiraffeConfig;
 import io.kgraph.kgiraffe.schema.timeout.MaxQueryDurationInstrumentation;
+import io.kgraph.kgiraffe.schema.util.DefaultDataFetcherExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,9 +46,13 @@ public class GraphQLExecutor {
                     GraphQLSchema graphQLSchema = graphQLSchemaBuilder.getGraphQLSchema();
                     String sdl = new SchemaPrinter().print(graphQLSchema);
                     LOG.debug("SDL: " + sdl);
+                    DefaultDataFetcherExceptionHandler handler =
+                        new DefaultDataFetcherExceptionHandler();
                     this.graphQL = GraphQL
                         .newGraphQL(graphQLSchema)
-                        .subscriptionExecutionStrategy(new SubscriptionExecutionStrategy())
+                        .queryExecutionStrategy(new AsyncExecutionStrategy(handler))
+                        .mutationExecutionStrategy(new AsyncSerialExecutionStrategy(handler))
+                        .subscriptionExecutionStrategy(new SubscriptionExecutionStrategy(handler))
                         .instrumentation(getInstrumentation())
                         .build();
                 }
