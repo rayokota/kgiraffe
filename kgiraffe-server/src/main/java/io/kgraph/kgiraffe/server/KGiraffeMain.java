@@ -86,19 +86,20 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "Available serdes:\n"
             + "  short | int | long | float |\n"
             + "  double | string | binary |\n"
-            + "  avro:<schema|@file> |\n"
-            + "  json:<schema|@file> |\n"
-            + "  proto:<schema|@file> |\n"
+            + "  avro=<schema|@file> |\n"
+            + "  json=<schema|@file> |\n"
+            + "  proto=<schema|@file> |\n"
             + "  latest (use latest version in SR) |\n"
             + "  <id>   (use schema id from SR)\n"
             + "  Default for key:   binary\n"
             + "  Default for value: latest\n"
             + "The avro/json/proto serde formats can\n"
             + "also be specified with refs, e.g.\n"
-            + "  avro:<schema|@file>:<refs|@file>\n"
+            + "  avro=<schema|@file>;refs=<refs|@file>\n"
             + "where refs are schema references\n"
             + "of the form \n"
-            + "  [<name>,<subject>,<version>;..]",
+            + "  [{name=<name>,subject=<subject>,\n"
+            + "    version=<version>},..]",
         paramLabel = "<topic=serde>")
     private Map<String, KGiraffeConfig.Serde> valueSerdes;
 

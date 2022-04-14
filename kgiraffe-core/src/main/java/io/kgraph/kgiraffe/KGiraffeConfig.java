@@ -17,10 +17,12 @@
 package io.kgraph.kgiraffe;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvGenerator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvParser;
@@ -39,7 +41,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -93,12 +98,6 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         "Comma-separated list of schemas, one of avro:<schema|@file>, json:<schema|@file>, "
             + "proto:<schema|@file>.  If more then one schema is specified, later ones are "
             + "checked for backward compatibility against earlier ones.";
-
-    public static final String VALIDATE_REFS_CONFIG = "validate.refs";
-    public static final String VALIDATE_REFS_DOC =
-        "Comma-separated list of refs of the form [<name>:<subject>:<version>,..]. "
-            + "If more than one ref is specified, then the count of refs must match "
-            + "(in order) the count of schemas to be validated.";
 
     public static final String GRAPHQL_MAX_COMPLEXITY_CONFIG = "graphql.max.complexity";
     public static final int GRAPHQL_MAX_COMPLEXITY_DEFAULT = Integer.MAX_VALUE;
@@ -246,7 +245,9 @@ public class KGiraffeConfig extends KafkaCacheConfig {
 
     private static final ListPropertyParser listPropertyParser = new ListPropertyParser();
     private static final MapPropertyParser mapPropertyParser = new MapPropertyParser();
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = JsonMapper.builder()
+        .enable(JsonReadFeature.ALLOW_UNQUOTED_FIELD_NAMES)
+        .build();
     private static final ConfigDef config;
 
     static {
@@ -282,11 +283,6 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                 "",
                 Importance.LOW,
                 VALIDATE_SCHEMAS_DOC
-            ).define(VALIDATE_REFS_CONFIG,
-                Type.STRING, // use custom list parsing
-                "",
-                Importance.LOW,
-                VALIDATE_REFS_DOC
             ).define(
                 GRAPHQL_MAX_COMPLEXITY_CONFIG,
                 Type.INT,
@@ -470,74 +466,11 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             ));
     }
 
-    public List<String> getValidationSchemas() {
+    public List<Serde> getValidationSchemas() {
         String schemas = getString(VALIDATE_SCHEMAS_CONFIG);
-        return listPropertyParser.parse(schemas);
-    }
-
-    public List<List<SchemaReference>> getValidationRefs() {
-        String refs = getString(VALIDATE_REFS_CONFIG);
-        return parseRefsList(refs);
-    }
-
-    private static List<List<SchemaReference>> parseRefsList(String str) {
-        return listPropertyParser.parse(str).stream()
-            .map(KGiraffeConfig::parseRefs)
+        return listPropertyParser.parse(schemas).stream()
+            .map(Serde::new)
             .collect(Collectors.toList());
-    }
-
-    private static List<SchemaReference> parseRefs(String str) {
-        List<SchemaReference> refs;
-        try {
-            refs = objectMapper.readValue(str, new TypeReference<>() { });
-        } catch (Exception e) {
-            int start = str.indexOf('[');
-            int end = str.lastIndexOf(']');
-            if (start < 0 || end < 0) {
-                throw new ConfigException("Invalid refs spec " + str);
-            }
-            refs = listPropertyParser.parse(str.substring(start + 1, end)).stream()
-                .map(KGiraffeConfig::parseRef)
-                .collect(Collectors.toList());
-        }
-        return refs;
-    }
-
-    private static SchemaReference parseRef(String str) {
-        try {
-            String[] parts = str.split(":");
-            if (parts.length != 3) {
-                throw new ConfigException("Invalid refs spec " + str);
-            }
-            return new SchemaReference(parts[0], parts[1], Integer.parseInt(parts[2]));
-        } catch (NumberFormatException e) {
-            throw new ConfigException("Invalid refs spec " + str);
-        }
-    }
-
-    public static void main(String[] args) throws Exception {
-        List<SchemaReference> list1 = ImmutableList.of(
-            new SchemaReference("1", "2", 3)
-        );
-        List<SchemaReference> list2 = ImmutableList.of(
-            new SchemaReference("4", "5", 6),
-            new SchemaReference("7", "8", 9)
-        );
-        List<SchemaReference> list3 = ImmutableList.of(
-            new SchemaReference("10", "11", 12),
-            new SchemaReference("13", "14", 15)
-        );
-        List<String> lists = ImmutableList.of(
-            objectMapper.writeValueAsString(list1),
-            objectMapper.writeValueAsString(list2),
-            objectMapper.writeValueAsString(list3)
-        );
-        String s = listPropertyParser.asString(lists);
-        System.out.println(s);
-
-        String s2 = "'[hi:there:3,bye:where:4]',[no:way:0],[]";
-        System.out.println(parseRefsList(s));
-        System.out.println(parseRefsList(s2));
     }
 
     public int getGraphQLMaxComplexity() {
@@ -609,23 +542,31 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         private final SerdeType serdeType;
         private final int id;
         private final String schema;
+        private final String refs;
 
-        public static final Serde KEY_DEFAULT = new Serde(SerdeType.BINARY, 0, null);
-        public static final Serde VALUE_DEFAULT = new Serde(SerdeType.LATEST, 0, null);
+        public static final Serde KEY_DEFAULT = new Serde(SerdeType.BINARY, 0, null, null);
+        public static final Serde VALUE_DEFAULT = new Serde(SerdeType.LATEST, 0, null, null);
 
         public Serde(String value) {
             int id = 0;
             String schema = null;
-            String prefix = value;
-            int index = value.indexOf(':');
+            String format = value;
+            String refs = null;
+            int index = value.indexOf('=');
             if (index > 0) {
-                prefix = value.substring(0, index);
-                schema = value.substring(index + 1);
+                format = value.substring(0, index);
+                int lastIndex = value.lastIndexOf(";refs=");
+                if (lastIndex > 0) {
+                    schema = value.substring(index + 1, lastIndex);
+                    refs = value.substring(lastIndex + ";refs=".length());
+                } else {
+                    schema = value.substring(index + 1);
+                }
                 if (schema.isEmpty()) {
                     throw new ConfigException("Missing schema or file: " + value);
                 }
             }
-            SerdeType serdeType = SerdeType.get(prefix);
+            SerdeType serdeType = SerdeType.get(format);
             if (serdeType == null) {
                 try {
                     id = Integer.parseInt(value);
@@ -637,12 +578,14 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             this.serdeType = serdeType;
             this.id = id;
             this.schema = schema;
+            this.refs = refs;
         }
 
-        public Serde(SerdeType serdeType, int id, String schema) {
+        public Serde(SerdeType serdeType, int id, String schema, String refs) {
             this.serdeType = serdeType;
             this.id = id;
             this.schema = schema;
+            this.refs = refs;
         }
 
         public SerdeType getSerdeType() {
@@ -653,8 +596,48 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             return id;
         }
 
+        public String getSchemaType() {
+            return serdeType == KGiraffeConfig.SerdeType.PROTO ? "PROTOBUF" : serdeType.name();
+        }
+
         public String getSchema() {
-            return schema;
+            if (schema.startsWith("@")) {
+                String file = schema.substring(1);
+                try {
+                    return Files.readString(Paths.get(file));
+                } catch (IOException e) {
+                    throw new IllegalArgumentException("Could not read file: " + file);
+                }
+            } else {
+                return schema;
+            }
+        }
+
+        public List<SchemaReference> getSchemaReferences() {
+            String str;
+            if (refs == null || refs.isEmpty()) {
+                return Collections.emptyList();
+            } else if (refs.startsWith("@")) {
+                String file = schema.substring(1);
+                try {
+                    str = Files.readString(Paths.get(file));
+                } catch (IOException e) {
+                    throw new IllegalArgumentException("Could not read file: " + file);
+                }
+            } else {
+                str = refs;
+            }
+            return parseRefs(str);
+        }
+
+        private static List<SchemaReference> parseRefs(String str) {
+            List<SchemaReference> list;
+            try {
+                list = objectMapper.readValue(str, new TypeReference<>() { });
+            } catch (Exception e) {
+                throw new ConfigException("Could not parse refs " + str, e);
+            }
+            return list;
         }
 
         @Override
@@ -664,12 +647,13 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             Serde serde = (Serde) o;
             return id == serde.id
                 && serdeType == serde.serdeType
-                && Objects.equals(schema, serde.schema);
+                && Objects.equals(schema, serde.schema)
+                && Objects.equals(refs, serde.refs);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(serdeType, id, schema);
+            return Objects.hash(serdeType, id, schema, refs);
         }
 
         @Override
@@ -680,7 +664,15 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                 case AVRO:
                 case JSON:
                 case PROTO:
-                    return serdeType + ":" + schema;
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(serdeType);
+                    sb.append("=");
+                    sb.append(schema);
+                    if (refs != null && !refs.isEmpty()) {
+                        sb.append(";refs=");
+                        sb.append(refs);
+                    }
+                    return sb.toString();
                 default:
                     return serdeType.toString();
             }

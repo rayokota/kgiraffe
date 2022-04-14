@@ -257,18 +257,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
             case AVRO:
             case JSON:
             case PROTO:
-                String schemaType = serdeType == KGiraffeConfig.SerdeType.PROTO
-                    ? "PROTOBUF" : serdeType.name();
-                String schema = serde.getSchema();
-                if (schema.startsWith("@")) {
-                    String file = schema.substring(1);
-                    try {
-                        schema = Files.readString(Paths.get(file));
-                    } catch (IOException e) {
-                        throw new IllegalArgumentException("Could not read file: " + file);
-                    }
-                }
-                return getSchemaRegistry().parseSchema(schemaType, schema, Collections.emptyList())
+                return getSchemaRegistry().parseSchema(
+                    serde.getSchemaType(), serde.getSchema(), serde.getSchemaReferences())
                     .<Either<Type, ParsedSchema>>map(Either::right)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid schema: " + serde.getSchema()));
             case LATEST:
