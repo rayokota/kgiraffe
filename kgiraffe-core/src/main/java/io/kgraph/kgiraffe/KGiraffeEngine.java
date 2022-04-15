@@ -33,6 +33,7 @@ import io.kgraph.kgiraffe.notifier.Notifier;
 import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
 import io.kgraph.kgiraffe.schema.converters.GraphQLProtobufConverter;
+import io.kgraph.kgiraffe.util.CustomSchemaProvider;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import org.apache.commons.lang.SerializationException;
@@ -185,15 +186,20 @@ public class KGiraffeEngine implements Configurable, Closeable {
         this.notifier = notifier;
 
         List<String> urls = config.getSchemaRegistryUrls();
-        List<String> topics = config.getTopics();
-        keySerdes = config.getKeySerdes();
-        valueSerdes = config.getValueSerdes();
         List<SchemaProvider> providers = Arrays.asList(
             new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
         );
         if (urls != null && !urls.isEmpty()) {
             schemaRegistry = createSchemaRegistry(urls, providers);
         }
+
+        validateSchemas();
+
+        List<String> topics = config.getTopics();
+
+        keySerdes = config.getKeySerdes();
+        valueSerdes = config.getValueSerdes();
+
         GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, topics);
         this.executor = new GraphQLExecutor(config, schemaBuilder);
 
@@ -225,6 +231,53 @@ public class KGiraffeEngine implements Configurable, Closeable {
             throw new ConfigException("Missing schema registry URL");
         }
         return schemaRegistry;
+    }
+
+
+    private void validateSchemas() {
+        List<KGiraffeConfig.Serde> schemas = config.getValidationSchemas();
+        CustomSchemaProvider provider = new CustomSchemaProvider(this);
+        if (!schemas.isEmpty()) {
+            ParsedSchema prevSchema = null;
+            for (int i = 0; i < schemas.size(); i++) {
+                ParsedSchema schema = validateSchema(provider, schemas.get(i), i);
+                if (prevSchema != null) {
+                    checkSchemas(prevSchema, schema, i);
+                }
+                prevSchema = schema;
+            }
+            System.exit(0);
+        }
+    }
+
+    private ParsedSchema validateSchema(CustomSchemaProvider provider,
+                                KGiraffeConfig.Serde serde,
+                                int index) {
+        try {
+            ParsedSchema schema = provider.parseSchema(
+                serde.getSchemaType(), serde.getSchema(), serde.getSchemaReferences());
+            schema.validate();
+            System.out.println("Schema " + (index + 1) + " is valid");
+            return schema;
+        } catch (Exception e) {
+            System.out.println("Schema " + (index + 1) + " is NOT valid");
+            System.out.println("  " + e.getLocalizedMessage());
+            return null;
+        }
+    }
+
+    private void checkSchemas(ParsedSchema prevSchema, ParsedSchema schema, int index) {
+        List<String> errors = schema.isBackwardCompatible(prevSchema);
+        if (!errors.isEmpty()) {
+            System.out.println("Schema " + (index + 1) + " is NOT backward compatible "
+                + "with schema " + index);
+            for (String error : errors) {
+                System.out.println("  " + error);
+            }
+        } else {
+            System.out.println("Schema " + (index + 1) + " is backward compatible "
+                + "with schema " + index);
+        }
     }
 
     public Either<Type, ParsedSchema> getKeySchema(String topic) {
@@ -281,6 +334,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     private Optional<ParsedSchema> getLatestSchema(String subject) {
+        if (subject == null) {
+            return Optional.empty();
+        }
         try {
             SchemaMetadata schemaMetadata = getSchemaRegistry().getLatestSchemaMetadata(subject);
             Optional<ParsedSchema> optSchema =

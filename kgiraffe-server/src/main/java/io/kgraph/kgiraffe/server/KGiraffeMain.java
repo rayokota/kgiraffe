@@ -3,6 +3,7 @@ package io.kgraph.kgiraffe.server;
 import graphql.GraphQL;
 import io.kcache.KafkaCacheConfig;
 import io.kgraph.kgiraffe.KGiraffeConfig;
+import io.kgraph.kgiraffe.KGiraffeConfig.ListPropertyParser;
 import io.kgraph.kgiraffe.KGiraffeConfig.MapPropertyParser;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.server.notifier.VertxNotifier;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -44,6 +46,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeMain.class);
 
+    private static final ListPropertyParser listPropertyParser = new ListPropertyParser();
     private static final MapPropertyParser mapPropertyParser = new MapPropertyParser();
 
     private KGiraffeConfig config;
@@ -114,7 +117,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "against earlier ones. See avro/json/proto\n"
             + "serde formats above.",
         paramLabel = "<serde>")
-    private String schema;
+    private List<KGiraffeConfig.Serde> schemas;
 
     @Option(names = {"-X", "--property"},
         description = "Set kgiraffe configuration property.", paramLabel = "<prop=val>")
@@ -265,6 +268,12 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         }
         if (schemaRegistryUrl != null) {
             props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
+        }
+        if (schemas != null) {
+            props.put(KGiraffeConfig.VALIDATE_SCHEMAS_CONFIG,
+                listPropertyParser.asString(schemas.stream()
+                    .map(KGiraffeConfig.Serde::toString)
+                    .collect(Collectors.toList())));
         }
         if (properties != null) {
             props.putAll(properties);
