@@ -112,9 +112,9 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
 
     @Option(names = {"-s", "--validate-schema"},
         description = "Parse and validate the given schema(s).\n"
-            + "If more than one schema is specified, later\n"
-            + "ones are checked for backward compatibility\n"
-            + "against earlier ones. See avro/json/proto\n"
+            + "If more than one schema is specified, each\n"
+            + "schema is checked for backward compatibility\n"
+            + "with the previous one. See avro/json/proto\n"
             + "serde formats above.",
         paramLabel = "<serde>")
     private List<KGiraffeConfig.Serde> schemas;
