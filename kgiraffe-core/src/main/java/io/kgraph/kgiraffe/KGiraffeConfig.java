@@ -552,13 +552,13 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             String schema = null;
             String format = value;
             String refs = null;
-            int index = value.indexOf('=');
+            int index = value.indexOf(':');
             if (index > 0) {
                 format = value.substring(0, index);
-                int lastIndex = value.lastIndexOf(";refs=");
+                int lastIndex = value.lastIndexOf(";refs:");
                 if (lastIndex > 0) {
                     schema = value.substring(index + 1, lastIndex);
-                    refs = value.substring(lastIndex + ";refs=".length());
+                    refs = value.substring(lastIndex + ";refs:".length());
                 } else {
                     schema = value.substring(index + 1);
                 }
@@ -669,7 +669,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                     sb.append("=");
                     sb.append(schema);
                     if (refs != null && !refs.isEmpty()) {
-                        sb.append(";refs=");
+                        sb.append(";refs:");
                         sb.append(refs);
                     }
                     return sb.toString();
