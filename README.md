@@ -90,7 +90,7 @@ A GraphQL Interface for Apache Kafka.
 
 kgiraffe shares many command-line options with kcat.  In addition, a file
 containing configuration properties can be used.  Simply modify 
-config/kgiraffe.properties to point to an existing Kafka broker and Schema
+`config/kgiraffe.properties` to point to an existing Kafka broker and Schema
 Registry. Then run the following:
 
 ```bash
@@ -140,7 +140,8 @@ Validate and stage the given Avro schema. The validation result will be in the
 `validation_error` field.
 
 ```bash
-$ kcat -r http://schema-registry-url:8080 -s avro:@schema.avro
+$ kcat -r http://schema-registry-url:8080 -s 'avro:{"type":"record","name":"myrecord","fields":[
+{"name":"field1","type":"string"}]}'
 ```
 
 Validate and stage the given Avro schema file.
