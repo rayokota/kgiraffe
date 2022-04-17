@@ -232,6 +232,7 @@ mutation {
 ) {
     id
     schema
+    status
     validation_error
   }
 }
@@ -245,6 +246,7 @@ query {
     id
     schema
     status
+    validation_error
   }
 }
 ```
@@ -278,6 +280,8 @@ query {
   _query_registered_schemas(subject: "mysubject") {
     id
     schema
+    subject
+    version
   }
 }
 ```
@@ -303,15 +307,26 @@ query {
 }
 ```
 
-Register a staged schema.
+Register a staged schema.  The staged schema will be dropped.
 
 ```graphql
 mutation {
-  _register_schema(id: -1, subject: "mysubject"){
+  _register_schema(id: -1, subject: "mysubject") {
     id
     schema
-    version
     subject
+    version
+  }
+}
+```
+
+Unstage a staged schema.
+
+```graphql
+mutation {
+  _unstage_schema(id: -1) {
+    id
+    schema
   }
 }
 ```
