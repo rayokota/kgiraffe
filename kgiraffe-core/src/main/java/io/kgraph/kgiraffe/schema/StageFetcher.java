@@ -38,13 +38,6 @@ public class StageFetcher implements DataFetcher {
             List<Map<String, Object>> list =
                 env.getArgumentOrDefault(REFERENCES_ATTR_NAME, Collections.emptyList());
 
-            if (schemaType == null) {
-                throw new IllegalArgumentException("Missing schema type");
-            }
-            if (schema == null) {
-                throw new IllegalArgumentException("Missing schema");
-            }
-
             List<SchemaReference> refs = MAPPER.convertValue(list, new TypeReference<>() {
             });
             return engine.stageSchemas(schemaType, schema, refs)._1;

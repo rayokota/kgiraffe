@@ -36,6 +36,7 @@ import java.util.stream.Stream;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 
+import static graphql.schema.GraphQLNonNull.nonNull;
 import static io.kgraph.kgiraffe.KGiraffeEngine.STAGED_SCHEMAS_COLLECTION_NAME;
 
 /**
@@ -823,7 +824,7 @@ public class GraphQLSchemaBuilder {
         return GraphQLArgument.newArgument()
             .name(NEXT_ID_PARAM_NAME)
             .description("Next schema id")
-            .type(Scalars.GraphQLInt)
+            .type(nonNull(Scalars.GraphQLInt))
             .build();
     }
 
@@ -873,11 +874,27 @@ public class GraphQLSchemaBuilder {
             .build();
     }
 
+    private GraphQLArgument getNonNullSchemaIdArgument() {
+        return GraphQLArgument.newArgument()
+            .name(ID_ATTR_NAME)
+            .description("Schema id")
+            .type(nonNull(Scalars.GraphQLInt))
+            .build();
+    }
+
     private GraphQLArgument getSubjectArgument() {
         return GraphQLArgument.newArgument()
             .name(SUBJECT_ATTR_NAME)
             .description("Schema subject")
             .type(Scalars.GraphQLString)
+            .build();
+    }
+
+    private GraphQLArgument getNonNullSubjectArgument() {
+        return GraphQLArgument.newArgument()
+            .name(SUBJECT_ATTR_NAME)
+            .description("Schema subject")
+            .type(nonNull(Scalars.GraphQLString))
             .build();
     }
 
@@ -917,8 +934,8 @@ public class GraphQLSchemaBuilder {
             .name("_register_schema")
             .type(objectType)
             .dataFetcher(new RegistrationFetcher(engine))
-            .argument(getSchemaIdArgument())
-            .argument(getSubjectArgument())
+            .argument(getNonNullSchemaIdArgument())
+            .argument(getNonNullSubjectArgument())
             .argument(getNormalizeArgument())
             .build();
     }
@@ -949,7 +966,7 @@ public class GraphQLSchemaBuilder {
         return GraphQLArgument.newArgument()
             .name(SCHEMA_TYPE_ATTR_NAME)
             .description("Schema type")
-            .type(Scalars.GraphQLString)
+            .type(nonNull(Scalars.GraphQLString))
             .build();
     }
 
@@ -957,7 +974,7 @@ public class GraphQLSchemaBuilder {
         return GraphQLArgument.newArgument()
             .name(SCHEMA_ATTR_NAME)
             .description("Schema definition")
-            .type(Scalars.GraphQLString)
+            .type(nonNull(Scalars.GraphQLString))
             .build();
     }
 
@@ -1002,7 +1019,7 @@ public class GraphQLSchemaBuilder {
             .name("_unstage_schema")
             .type(objectType)
             .dataFetcher(new UnstageFetcher(engine))
-            .argument(getSchemaIdArgument())
+            .argument(getNonNullSchemaIdArgument())
             .build();
     }
 }

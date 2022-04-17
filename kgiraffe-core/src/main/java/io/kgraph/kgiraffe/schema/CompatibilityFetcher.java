@@ -36,9 +36,6 @@ public class CompatibilityFetcher implements DataFetcher {
             Integer prevSchemaId = env.getArgument(PREV_ID_PARAM_NAME);
             String prevSubject = env.getArgument(PREV_SUBJECT_PARAM_NAME);
             int prevVersion = env.getArgumentOrDefault(PREV_VERSION_PARAM_NAME, -1);
-            if (nextSchemaId == null) {
-                throw new IllegalArgumentException("Missing next schema id");
-            }
             if (prevSchemaId == null && prevSubject == null) {
                 throw new IllegalArgumentException("Missing previous schema id or subject");
             }

@@ -31,12 +31,6 @@ public class RegistrationFetcher implements DataFetcher {
             Integer id = env.getArgument(ID_ATTR_NAME);
             String subject = env.getArgument(SUBJECT_ATTR_NAME);
             boolean normalize = env.getArgumentOrDefault(NORMALIZE_PARAM_NAME, false);
-            if (id == null) {
-                throw new IllegalArgumentException("Missing id'");
-            }
-            if (subject == null) {
-                throw new IllegalArgumentException("Missing subject'");
-            }
             Tuple2<Document, Optional<ParsedSchema>> optSchema =
                 engine.registerSchema(subject, id, normalize);
             if (optSchema._2.isEmpty()) {
