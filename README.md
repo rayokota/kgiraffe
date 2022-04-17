@@ -16,6 +16,72 @@
 
 kgiraffe is like [kcat](https://github.com/edenhill/kcat) (formerly kafkacat), but with a GraphQL interface
 
+## Features
+
+kgiraffe wraps the following functionality with a GraphQL interface:
+
+### Topic Management
+
+- Query topics
+- Publish to topics
+- Subscribe to topics
+- Full support for Avro, Json Schema, and Protobuf records
+
+### Schema Management
+
+- Validate and stage schemas
+- Query schemas and subjects
+- Register schemas
+- Test schema compatibility
+
+###
+
+```
+
+Usage: kgiraffe [-hV] [-F=<config-file>] [-m=<ms>] [-o=<offset>] [-r=<url>]
+                [-b=<broker>]... [-k=<topic=serde>]... [-p=<partition>]...
+                [-s=<serde>]... [-t=<topic>]... [-v=<topic=serde>]...
+                [-X=<prop=val>]...
+A GraphQL Interface for Apache Kafka.
+  -t, --topic=<topic>               Topic(s) to consume from and produce to
+  -p, --partition=<partition>       Partition(s)
+  -b, --bootstrap-server=<broker>   Bootstrap broker(s) (host:[port])
+  -m, --metadata-timeout=<ms>       Metadata (et.al.) request timeout
+  -F, --file=<config-file>          Read configuration properties from file
+  -o, --offset=<offset>             Offset to start consuming from:
+                                      beginning | end |
+                                      <value>  (absolute offset) |
+                                      -<value> (relative offset from end)
+                                      @<value> (timestamp in ms to start at)
+                                      Default: beginning
+  -k, --key-serde=<topic=serde>     (De)serialize keys using <serde>
+  -v, --value-serde=<topic=serde>   (De)serialize values using <serde>
+                                    Available serdes:
+                                      short | int | long | float |
+                                      double | string | binary |
+                                      avro:<schema|@file> |
+                                      json:<schema|@file> |
+                                      proto:<schema|@file> |
+                                      latest (use latest version in SR) |
+                                      <id>   (use schema id from SR)
+                                      Default for key:   binary
+                                      Default for value: latest
+                                    The avro/json/proto serde formats can
+                                    also be specified with refs, e.g.
+                                      avro:<schema|@file>;refs:<refs|@file>
+                                    where refs are schema references
+                                    of the form
+                                      [{name=<name>,subject=<subject>,
+                                        version=<version>},..]
+  -r, --schema-registry-url=<url>   SR (Schema Registry) URL
+  -s, --stage-schema=<serde>        Validate and stage the given schema(s).
+                                    See avro/json/proto serde formats above.
+  -X, --property=<prop=val>         Set kgiraffe configuration property.
+  -h, --help                        Show this help message and exit.
+  -V, --version                     Print version information and exit.
+
+```
+
 ## Getting Started
 
 To run kgiraffe, download a [release](https://github.com/rayokota/kgiraffe/releases), unpack it, 
