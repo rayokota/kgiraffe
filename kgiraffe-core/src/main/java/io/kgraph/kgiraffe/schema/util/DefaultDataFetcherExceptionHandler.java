@@ -38,7 +38,6 @@ public class DefaultDataFetcherExceptionHandler implements DataFetcherExceptionH
      * Called to unwrap an exception to a more suitable cause if required.
      *
      * @param exception the exception to unwrap
-     *
      * @return the suitable exception
      */
     protected Throwable unwrap(Throwable exception) {

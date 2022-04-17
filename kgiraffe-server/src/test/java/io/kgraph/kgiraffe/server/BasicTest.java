@@ -33,9 +33,7 @@ public class BasicTest extends RemoteClusterTestHarness {
             .thenCompose(response -> {
                 Map<String, Object> executionResult = response.body().getMap();
                 Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
-                testContext.verify(() -> {
-                    assertThat(result.get("__schema")).isNotNull();
-                });
+                testContext.verify(() -> assertThat(result.get("__schema")).isNotNull());
 
                 return requestWithFuture(webClient, "/graphql", request);
             })
@@ -45,9 +43,7 @@ public class BasicTest extends RemoteClusterTestHarness {
                 }
                 Map<String, Object> executionResult = response.body().getMap();
                 Map<String, Object> result = (Map<String, Object>) executionResult.get("data");
-                testContext.verify(() -> {
-                    assertThat(result.get("__schema")).isNotNull();
-                });
+                testContext.verify(() -> assertThat(result.get("__schema")).isNotNull());
 
                 testContext.completeNow();
             });

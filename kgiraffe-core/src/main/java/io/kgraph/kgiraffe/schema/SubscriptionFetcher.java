@@ -5,13 +5,9 @@ import graphql.schema.DataFetchingEnvironment;
 import io.hdocdb.store.HQueryCondition;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.reactivex.rxjava3.core.Flowable;
-import io.vavr.control.Either;
 import org.ojai.Document;
-import org.ojai.Value.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import io.confluent.kafka.schemaregistry.ParsedSchema;
 
 public class SubscriptionFetcher implements DataFetcher {
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionFetcher.class);

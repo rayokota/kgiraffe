@@ -14,7 +14,7 @@ public class ExtendElem {
     public ExtendElem(ExtendElement elem) {
         name = elem.getName();
         fields = elem.getFields().stream()
-            .map(o -> new FieldElem(o))
+            .map(FieldElem::new)
             .collect(Collectors.toList());
     }
 }

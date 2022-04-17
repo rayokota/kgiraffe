@@ -80,9 +80,7 @@ public abstract class AbstractSchemaTest extends RemoteClusterTestHarness {
                 Map<String, Object> t1 = (Map<String, Object>) result.get("t1");
                 Map<String, Object> value = (Map<String, Object>) t1.get("value");
                 String f1 = (String) value.get("f1");
-                testContext.verify(() -> {
-                    assertThat(f1).isEqualTo("hello");
-                });
+                testContext.verify(() -> assertThat(f1).isEqualTo("hello"));
 
                 return requestWithFuture(webClient, "/graphql", query);
             })
@@ -93,9 +91,7 @@ public abstract class AbstractSchemaTest extends RemoteClusterTestHarness {
                 Map<String, Object> t1 = t1s.get(0);
                 Map<String, Object> value = (Map<String, Object>) t1.get("value");
                 String f1 = (String) value.get("f1");
-                testContext.verify(() -> {
-                    assertThat(f1).isEqualTo("hello");
-                });
+                testContext.verify(() -> assertThat(f1).isEqualTo("hello"));
 
                 return websocketRequest(wsClient, wsOptions, wsStart, eventFuture);
             })
@@ -108,9 +104,7 @@ public abstract class AbstractSchemaTest extends RemoteClusterTestHarness {
                 Map<String, Object> t1 = (Map<String, Object>) result.get("t1");
                 Map<String, Object> value = (Map<String, Object>) t1.get("value");
                 String f1 = (String) value.get("f1");
-                testContext.verify(() -> {
-                    assertThat(f1).isEqualTo("world");
-                });
+                testContext.verify(() -> assertThat(f1).isEqualTo("world"));
             });
 
         JsonObject event = eventFuture.get(60, TimeUnit.SECONDS);

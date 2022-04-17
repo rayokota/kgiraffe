@@ -18,7 +18,6 @@ package io.kgraph.kgiraffe;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -104,7 +103,6 @@ import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.entities.SchemaReference;
-import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
@@ -327,7 +325,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     public Tuple2<Document, Optional<ParsedSchema>> getSchemaByVersion(String subject,
-                                                                       int version)  {
+                                                                       int version) {
         if (subject == null) {
             return new Tuple2<>(new HDocument(), Optional.empty());
         }
@@ -424,7 +422,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
             List<Object> list = doc.getList(REFERENCES_ATTR_NAME);
             List<SchemaReference> refs = list != null
                 ? MAPPER.convertValue(
-                doc.getList(REFERENCES_ATTR_NAME), new TypeReference<>() { })
+                doc.getList(REFERENCES_ATTR_NAME), new TypeReference<>() {
+                })
                 : Collections.emptyList();
             ParsedSchema schema = schemaProvider.parseSchema(
                 doc.getString(SCHEMA_TYPE_ATTR_NAME),
@@ -437,7 +436,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     private Document cacheSchema(int id, String subject, int version,
-                             Status status, ParsedSchema schema)
+                                 Status status, ParsedSchema schema)
         throws JsonProcessingException {
         HDocumentCollection coll = docdb.getCollection(SCHEMAS_COLLECTION_NAME);
         HDocument doc = new HDocument();
@@ -454,15 +453,16 @@ public class KGiraffeEngine implements Configurable, Closeable {
         doc.set(SCHEMA_ATTR_NAME, schemaToMap(schema.schemaType(), schema));
         doc.set(SCHEMA_RAW_ATTR_NAME, schema.canonicalString());
         doc.set(REFERENCES_ATTR_NAME, MAPPER.convertValue(schema.references(),
-                new TypeReference<List<Map<String, Object>>>() { }));
+            new TypeReference<List<Map<String, Object>>>() {
+            }));
         coll.insertOrReplace(doc);
         coll.flush();
         return doc;
     }
 
     private Document cacheErroredSchema(int id, String schemaType,
-                                    String schema, List<SchemaReference> references,
-                                    Exception e) {
+                                        String schema, List<SchemaReference> references,
+                                        Exception e) {
         HDocumentCollection coll = docdb.getCollection(SCHEMAS_COLLECTION_NAME);
         HDocument doc = new HDocument();
         doc.setId(String.valueOf(id));
@@ -486,17 +486,18 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     private Map<String, Object> schemaToMap(String schemaType, ParsedSchema schema)
-        throws JsonProcessingException, JsonMappingException {
+        throws JsonProcessingException {
         JsonNode jsonNode;
         switch (schemaType) {
             case "AVRO":
                 jsonNode = MAPPER.readTree(schema.canonicalString());
-                if (!(jsonNode instanceof ObjectNode)) {
+                if (!jsonNode.isObject()) {
                     ObjectNode objectNode = JsonNodeFactory.instance.objectNode();
                     objectNode.set("type", jsonNode);
                     jsonNode = objectNode;
                 }
-                return MAPPER.convertValue(jsonNode, Map.class);
+                return MAPPER.convertValue(jsonNode, new TypeReference<>() {
+                });
             case "JSON":
                 jsonNode = ((JsonSchema) schema).toJsonNode();
                 return MAPPER.convertValue(jsonNode, new TypeReference<>() {

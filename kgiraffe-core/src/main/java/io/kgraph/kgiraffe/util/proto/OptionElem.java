@@ -28,7 +28,7 @@ public class OptionElem {
             Map<String, Object> map = (Map<String, Object>) value;
             return convertMap(map);
         } else if (value instanceof List) {
-            List<Object> list =  (List<Object>) value;
+            List<Object> list = (List<Object>) value;
             return convertList(list);
         } else if (value instanceof OptionElement.OptionPrimitive) {
             OptionElement.OptionPrimitive p = (OptionElement.OptionPrimitive) value;
@@ -40,12 +40,12 @@ public class OptionElem {
 
     private List<Object> convertList(List<Object> list) {
         return list.stream()
-            .map(o -> convertValue(o))
+            .map(this::convertValue)
             .collect(Collectors.toList());
     }
 
     private Map<String, Object> convertMap(Map<String, Object> map) {
         return map.entrySet().stream()
-            .collect(Collectors.toMap(e -> e.getKey(), e -> convertValue(e.getValue())));
+            .collect(Collectors.toMap(Map.Entry::getKey, e -> convertValue(e.getValue())));
     }
 }

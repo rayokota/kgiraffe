@@ -82,9 +82,9 @@ public class DefaultGraphQLError implements GraphQLError {
     @Override
     public String toString() {
         return "DefaultGraphQLError{" +
-                "path=" + path +
-                ", locations=" + locations +
-                '}';
+            "path=" + path +
+            ", locations=" + locations +
+            '}';
     }
 
     @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")

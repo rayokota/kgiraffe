@@ -17,12 +17,10 @@
 package io.kgraph.kgiraffe;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvGenerator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvParser;
@@ -630,7 +628,8 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         private static List<SchemaReference> parseRefs(String str) {
             List<SchemaReference> list;
             try {
-                list = objectMapper.convertValue(str, new TypeReference<>() { });
+                list = objectMapper.convertValue(str, new TypeReference<>() {
+                });
             } catch (Exception e) {
                 throw new ConfigException("Could not parse refs " + str, e);
             }

@@ -16,10 +16,10 @@ public class EnumElem {
     public EnumElem(EnumElement elem) {
         name = elem.getName();
         options = elem.getOptions().stream()
-            .map(o -> new OptionElem(o))
+            .map(OptionElem::new)
             .collect(Collectors.toList());
         constants = elem.getConstants().stream()
-            .map(o -> new EnumConstantElem(o))
+            .map(EnumConstantElem::new)
             .collect(Collectors.toList());
         /* TODO upgrade wire once CP 7.2.0 is out
         reserveds = elem.getReserveds().stream()

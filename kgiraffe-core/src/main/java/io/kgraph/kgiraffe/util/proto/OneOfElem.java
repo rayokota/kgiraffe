@@ -16,13 +16,13 @@ public class OneOfElem {
     public OneOfElem(OneOfElement elem) {
         name = elem.getName();
         fields = elem.getFields().stream()
-            .map(o -> new FieldElem(o))
+            .map(FieldElem::new)
             .collect(Collectors.toList());
         groups = elem.getGroups().stream()
-            .map(o -> new GroupElem(o))
+            .map(GroupElem::new)
             .collect(Collectors.toList());
         options = elem.getOptions().stream()
-            .map(o -> new OptionElem(o))
+            .map(OptionElem::new)
             .collect(Collectors.toList());
     }
 }

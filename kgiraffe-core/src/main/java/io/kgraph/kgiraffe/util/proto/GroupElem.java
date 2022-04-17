@@ -8,7 +8,7 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public class GroupElem{
+public class GroupElem {
     public String label;
     public String name;
     public int tag;
@@ -20,7 +20,7 @@ public class GroupElem{
         name = elem.getName();
         tag = elem.getTag();
         fields = elem.getFields().stream()
-            .map(o -> new FieldElem(o))
+            .map(FieldElem::new)
             .collect(Collectors.toList());
     }
 }

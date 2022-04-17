@@ -18,7 +18,7 @@ public class RpcElem {
         requestType = elem.getRequestType();
         responseType = elem.getResponseType();
         options = elem.getOptions().stream()
-            .map(o -> new OptionElem(o))
+            .map(OptionElem::new)
             .collect(Collectors.toList());
     }
 }

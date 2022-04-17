@@ -26,7 +26,7 @@ public class FieldElem {
         jsonName = elem.getJsonName();
         tag = elem.getTag();
         options = elem.getOptions().stream()
-            .map(o -> new OptionElem(o))
+            .map(OptionElem::new)
             .collect(Collectors.toList());
     }
 }

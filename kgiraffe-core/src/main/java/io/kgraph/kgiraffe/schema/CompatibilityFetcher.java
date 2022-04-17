@@ -68,12 +68,11 @@ public class CompatibilityFetcher implements DataFetcher {
             List<String> errors = nextSchema.get().isBackwardCompatible(prevSchema.get());
             if (errors.isEmpty()) {
                 doc.set(IS_BACKWARD_COMPATIBLE_ATTR_NAME, true);
-                return doc;
             } else {
                 doc.set(IS_BACKWARD_COMPATIBLE_ATTR_NAME, false);
                 doc.set(MESSAGES_ATTR_NAME, errors);
-                return doc;
             }
+            return doc;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

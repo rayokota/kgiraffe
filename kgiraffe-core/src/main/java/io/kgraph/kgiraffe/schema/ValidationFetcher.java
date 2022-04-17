@@ -45,7 +45,8 @@ public class ValidationFetcher implements DataFetcher {
                 throw new IllegalArgumentException("Missing schema");
             }
 
-            List<SchemaReference> refs = MAPPER.convertValue(list, new TypeReference<>() { });
+            List<SchemaReference> refs = MAPPER.convertValue(list, new TypeReference<>() {
+            });
             return engine.validateSchemas(schemaType, schema, refs)._1;
         } catch (Exception e) {
             throw new RuntimeException(e);

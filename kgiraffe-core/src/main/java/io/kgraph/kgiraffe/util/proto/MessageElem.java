@@ -30,22 +30,22 @@ public class MessageElem {
             .map(o -> new EnumElem((EnumElement) o))
             .collect(Collectors.toList());
         options = elem.getOptions().stream()
-            .map(o -> new OptionElem(o))
+            .map(OptionElem::new)
             .collect(Collectors.toList());
         reserveds = elem.getReserveds().stream()
-            .map(o -> new ReservedElem(o))
+            .map(ReservedElem::new)
             .collect(Collectors.toList());
         fields = elem.getFields().stream()
-            .map(o -> new FieldElem(o))
+            .map(FieldElem::new)
             .collect(Collectors.toList());
         oneofs = elem.getOneOfs().stream()
-            .map(o -> new OneOfElem(o))
+            .map(OneOfElem::new)
             .collect(Collectors.toList());
         extensions = elem.getExtensions().stream()
-            .map(o -> new ExtensionsElem(o))
+            .map(ExtensionsElem::new)
             .collect(Collectors.toList());
         groups = elem.getGroups().stream()
-            .map(o -> new GroupElem(o))
+            .map(GroupElem::new)
             .collect(Collectors.toList());
     }
 }

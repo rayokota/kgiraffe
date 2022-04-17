@@ -36,13 +36,13 @@ public class ProtoFileElem {
             .map(o -> new EnumElem((EnumElement) o))
             .collect(Collectors.toList());
         services = elem.getServices().stream()
-            .map(o -> new ServiceElem(o))
+            .map(ServiceElem::new)
             .collect(Collectors.toList());
         extendDeclarations = elem.getExtendDeclarations().stream()
-            .map(o -> new ExtendElem(o))
+            .map(ExtendElem::new)
             .collect(Collectors.toList());
         options = elem.getOptions().stream()
-            .map(o -> new OptionElem(o))
+            .map(OptionElem::new)
             .collect(Collectors.toList());
     }
 }

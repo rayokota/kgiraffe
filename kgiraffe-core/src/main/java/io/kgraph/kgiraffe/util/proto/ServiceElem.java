@@ -15,10 +15,10 @@ public class ServiceElem {
     public ServiceElem(ServiceElement elem) {
         name = elem.getName();
         rpcs = elem.getRpcs().stream()
-            .map(o -> new RpcElem(o))
+            .map(RpcElem::new)
             .collect(Collectors.toList());
         options = elem.getOptions().stream()
-            .map(o -> new OptionElem(o))
+            .map(OptionElem::new)
             .collect(Collectors.toList());
     }
 

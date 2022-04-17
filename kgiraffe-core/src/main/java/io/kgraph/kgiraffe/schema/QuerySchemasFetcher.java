@@ -8,14 +8,11 @@ import org.ojai.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
-import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
-import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.ID_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.SUBJECT_ATTR_NAME;
@@ -68,7 +65,7 @@ public class QuerySchemasFetcher implements DataFetcher {
             engine.getSchemaByVersion(subject, version);
         if (schema._2.isEmpty()) {
             throw new IllegalArgumentException("Could not find schema with subject " + subject
-            + ", version " + version);
+                + ", version " + version);
         }
         return schema._1;
     }
