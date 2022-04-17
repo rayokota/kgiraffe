@@ -109,21 +109,21 @@ the GraphQL Playground.
 Generate a GraphQL schema for Kafka `mytopic` topic using Schema Registry.
 
 ```bash
-$ kcat -b mybroker -t mytopic -r http://schema-registry-url:8080
+$ kgiraffe -b mybroker -t mytopic -r http://schema-registry-url:8080
 ```
 
 Generate a GraphQL schema for Kafka `mytopic` topic, where the schema for the
 value is constructed from schema 123 in Schema Registry.
 
 ```bash
-$ kcat -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic=123
+$ kgiraffe -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic=123
 ```
 
 Generate a GraphQL schema for Kafka `mytopic` topic, where the schema for the
 value is constructed from the given Avro schema.
 
 ```bash
-$ kcat -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic='avro:{"type":"record","name":"myrecord","fields":[
+$ kgiraffe -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic='avro:{"type":"record","name":"myrecord","fields":[
 {"name":"field1","type":"string"}]}'
 ```
 
@@ -131,7 +131,7 @@ Generate a GraphQL schema for Kafka `mytopic` topic, where the schema for the
 value is constructed from the given Avro schema file.
 
 ```bash
-$ kcat -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic=avro:@schema.avro
+$ kgiraffe -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic=avro:@schema.avro
 ```
 
 ### Schema Management
@@ -140,14 +140,14 @@ Validate and stage the given Avro schema. The validation result will be in the
 `validation_error` field.
 
 ```bash
-$ kcat -r http://schema-registry-url:8080 -s 'avro:{"type":"record","name":"myrecord","fields":[
+$ kgiraffe -r http://schema-registry-url:8080 -s 'avro:{"type":"record","name":"myrecord","fields":[
 {"name":"field1","type":"string"}]}'
 ```
 
 Validate and stage the given Avro schema file.
 
 ```bash
-$ kcat -r http://schema-registry-url:8080 -s avro:@schema.avro
+$ kgiraffe -r http://schema-registry-url:8080 -s avro:@schema.avro
 ````
 
 ## GraphQL Examples
