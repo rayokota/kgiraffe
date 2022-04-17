@@ -217,12 +217,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
             stageSchemas(serde);
         }
 
-        List<String> topics = config.getTopics();
-
         keySerdes = config.getKeySerdes();
         valueSerdes = config.getValueSerdes();
 
-        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, topics);
+        GraphQLSchemaBuilder schemaBuilder = new GraphQLSchemaBuilder(this, config.getTopics());
         this.executor = new GraphQLExecutor(config, schemaBuilder);
 
         initCaches();

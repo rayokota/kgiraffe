@@ -170,8 +170,10 @@ public class GraphQLSchemaBuilder {
     public GraphQLSchema getGraphQLSchema() {
         GraphQLSchema.Builder schema = GraphQLSchema.newSchema()
             .query(getQueryType())
-            .mutation(getMutationType())
-            .subscription(getSubscriptionType());
+            .mutation(getMutationType());
+        if (!topics.isEmpty()) {
+            schema.subscription(getSubscriptionType());
+        }
         return schema.build();
     }
 
@@ -181,14 +183,16 @@ public class GraphQLSchemaBuilder {
 
         GraphQLObjectType.Builder queryType = GraphQLObjectType.newObject()
             .name(QUERY_ROOT)
-            .description("Queries for Kafka topics");
+            .description("Queries for Kafka and Schema Registry");
         queryType.field(queryStagedSchemasFieldDefinition(codeRegistry));
         queryType.field(queryRegisteredSchemasFieldDefinition(codeRegistry));
         queryType.field(querySubjectsFieldDefinition(codeRegistry));
         queryType.field(testSchemaCompatibilityFieldDefinition(codeRegistry));
-        queryType.fields(topics.stream()
-            .flatMap(t -> getQueryFieldDefinition(codeRegistry, t))
-            .collect(Collectors.toList()));
+        if (!topics.isEmpty()) {
+            queryType.fields(topics.stream()
+                .flatMap(t -> getQueryFieldDefinition(codeRegistry, t))
+                .collect(Collectors.toList()));
+        }
 
         codeRegistry.build();
 
@@ -503,13 +507,15 @@ public class GraphQLSchemaBuilder {
 
         GraphQLObjectType.Builder mutationType = GraphQLObjectType.newObject()
             .name(MUTATION_ROOT)
-            .description("Mutations for Kafka topics");
+            .description("Mutations for Kafka and Schema Registry");
         mutationType.field(registerSchemaFieldDefinition(codeRegistry));
         mutationType.field(stageSchemaFieldDefinition(codeRegistry));
         mutationType.field(unstageSchemaFieldDefinition(codeRegistry));
-        mutationType.fields(topics.stream()
-            .flatMap(t -> getMutationFieldDefinition(codeRegistry, t))
-            .collect(Collectors.toList()));
+        if (!topics.isEmpty()) {
+            mutationType.fields(topics.stream()
+                .flatMap(t -> getMutationFieldDefinition(codeRegistry, t))
+                .collect(Collectors.toList()));
+        }
 
         codeRegistry.build();
 

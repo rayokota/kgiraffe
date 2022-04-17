@@ -260,7 +260,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                 SCHEMA_REGISTRY_URL_DOC
             ).define(TOPICS_CONFIG,
                 Type.LIST,
-                null,
+                "",
                 Importance.HIGH,
                 TOPICS_DOC
             ).define(KEY_SERDES_CONFIG,
@@ -436,11 +436,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
     }
 
     public List<String> getTopics() {
-        List<String> topics = getList(TOPICS_CONFIG);
-        if (topics == null || topics.isEmpty()) {
-            throw new ConfigException("Missing topic(s)");
-        }
-        return topics;
+        return getList(TOPICS_CONFIG);
     }
 
     public Map<String, Serde> getKeySerdes() {

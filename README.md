@@ -34,10 +34,17 @@ kgiraffe wraps the following functionality with a GraphQL interface:
 - Register schemas
 - Test schema compatibility
 
+
 ###
 
-```
 
+## Getting Started
+
+To run kgiraffe, download a [release](https://github.com/rayokota/kgiraffe/releases), unpack it. Then run 
+the following to see all the command-line options:
+
+```bash
+$ bin/kgiraffe -h
 Usage: kgiraffe [-hV] [-F=<config-file>] [-m=<ms>] [-o=<offset>] [-r=<url>]
                 [-b=<broker>]... [-k=<topic=serde>]... [-p=<partition>]...
                 [-s=<serde>]... [-t=<topic>]... [-v=<topic=serde>]...
@@ -79,63 +86,208 @@ A GraphQL Interface for Apache Kafka.
   -X, --property=<prop=val>         Set kgiraffe configuration property.
   -h, --help                        Show this help message and exit.
   -V, --version                     Print version information and exit.
-
 ```
 
-## Getting Started
-
-To run kgiraffe, download a [release](https://github.com/rayokota/kgiraffe/releases), unpack it, 
-and then modify `config/kgiraffe.properties` to point to an existing Kafka broker.  Then run 
-the following:
+kgiraffe shares many command-line options with kcat.  In addition, a file
+containing configuration properties can be used.  Simply modify 
+config/kgiraffe.properties to point to an existing Kafka broker and Schema
+Registry. Then run the following:
 
 ```bash
+# Run with properties file
 $ bin/kgiraffe -F config/kgiraffe.properties
 ```
 
 
+Once kgiraffe is running, browse to http://localhost:8765/kgiraffe to launch
+the GraphQL Playground.
 
+## Command Line Examples
 
-## Basic Configuration
+### Topic Management
 
-kgiraffe has a number of configuration properties that can be specified.  
+Generate a GraphQL schema for Kafka `mytopic` topic using Schema Registry.
 
-- `listeners` - List of listener URLs that include the scheme, host, and port.  Defaults to `http://0.0.0.0:2379`.  
-- `cluster.group.id` - The group ID to be used for leader election.  Defaults to `kgiraffe`.
-- `leader.eligibility` - Whether this node can participate in leader election.  Defaults to true.
-- `kafkacache.backing.cache` - The backing cache for KCache, one of `memory` (default), `bdbje`, `lmdb`, `mapdb`, or `rocksdb`.
-- `kafkacache.data.dir` - The root directory for backing cache storage.  Defaults to `/tmp`.
-- `kafkacache.bootstrap.servers` - A list of host and port pairs to use for establishing the initial connection to Kafka.
-- `kafkacache.group.id` - The group ID to use for the internal consumers, which needs to be unique for each node.  Defaults to `kgiraffe-1`.
-- `kafkacache.topic.replication.factor` - The replication factor for the internal topics created by kgiraffe.  Defaults to 3.
-- `kafkacache.init.timeout.ms` - The timeout for initialization of the Kafka cache, including creation of internal topics.  Defaults to 300 seconds.
-- `kafkacache.timeout.ms` - The timeout for an operation on the Kafka cache.  Defaults to 60 seconds.
-
-## Security
-
-### HTTPS
-
-To use HTTPS, first configure the `listeners` with an `https` prefix, then specify the following properties with the appropriate values.
-
-```
-ssl.keystore.location=/var/private/ssl/custom.keystore
-ssl.keystore.password=changeme
-ssl.key.password=changeme
-ssl.truststore.location=/var/private/ssl/custom.truststore
-ssl.truststore.password=changeme
+```bash
+$ kcat -b mybroker -t mytopic -r http://schema-registry-url:8080
 ```
 
+Generate a GraphQL schema for Kafka `mytopic` topic, where the schema for the
+value is constructed from schema 123 in Schema Registry.
 
-### Authentication and Role-Based Access Control
+```bash
+$ kcat -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic=123
+```
 
-kgiraffe supports the same authentication and role-based access control (RBAC) APIs as etcd.  For more info, see the etcd documentation [here](https://etcd.io/docs/v3.4.0/op-guide/authentication/).
+Generate a GraphQL schema for Kafka `mytopic` topic, where the schema for the
+value is constructed from the given Avro schema.
+
+```bash
+$ kcat -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic='avro:{"type":"record","name":"myrecord","fields":[
+{"name":"field1","type":"string"}]}'
+```
+
+Generate a GraphQL schema for Kafka `mytopic` topic, where the schema for the
+value is constructed from the given Avro schema file.
+
+```bash
+$ kcat -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic=avro:@schema.avro
+```
+
+### Schema Management
+
+Validate and stage the given Avro schema. The validation result will be in the 
+`validation_error` field.
+
+```bash
+$ kcat -r http://schema-registry-url:8080 -s avro:@schema.avro
+```
+
+Validate and stage the given Avro schema file.
+
+```bash
+$ kcat -r http://schema-registry-url:8080 -s avro:@schema.avro
+````
+
+## GraphQL Examples
 
 
-### Kafka Authentication
+### Topic Management
 
-Authentication to a secure Kafka cluster is described [here](https://github.com/rayokota/kcache#security).
- 
-## Implementation Notes
+Query records for Kafka `mytopic` topic, using the generated schema.
+
+```graphql
+query {
+  mytopic {
+    value {
+      field1 
+    }
+    topic
+    offset
+    partition
+    ts
+  }
+}
+```
+Query records for Kafka `mytopic` topic with the given field value.
+
+```graphql
+query {
+  mytopic (where: {value: {field1: {_eq: "hello"}}}) {
+    value {
+      field1 
+    }
+    topic
+    offset
+    partition
+    ts
+  }
+}
+```
+
+Publish records to Kafka `mytopic` topic.
+
+```graphql
+mutation {
+  mytopic(value: {field1: "world"}) {
+    value {
+      field1 
+    }
+    topic
+    offset
+    partition
+    ts
+  }
+}
+```
+
+Subscribe to Kafka `mytopic` topic.
+
+```graphql
+subscription {
+  mytopic {
+    value {
+    	field1
+    }
+    topic
+    offset
+    partition
+    ts
+  }
+}
+
+```
 
 
+### Schema Management
 
-For more info on kgiraffe, see this [blog post](...).
+Stage a schema.  Staged schemas will have negative ids.
+
+```graphql
+mutation {
+  _stage_schema(
+    schema_type: "AVRO", 
+    schema: "{\"type\":\"record\",\"name\":\"myrecord\",\"fields\":[{\"name\":\"field1\",\"type\":\"string\"}]}"
+) {
+    id
+    schema
+    validation_error
+  }
+}
+```
+
+Query staged schemas.
+
+```graphql
+query {
+  _query_staged_schemas  {
+    id
+    schema
+    status
+  }
+}
+```
+
+Query registered schemas.
+
+```graphql
+query {
+  _query_registered_schemas(id: 123) {
+    id
+    schema
+  }
+}
+```
+
+Query subjects.
+
+```graphql
+query {
+  _query_subjects
+}
+```
+
+Test schema compatibility.
+
+```graphql
+
+query {
+  _test_schema_compatibility(next_id: -1, prev_id: 123) {
+    is_backward_compatible
+    messages
+  }
+}
+```
+
+Register a schema.
+
+```graphql
+mutation {
+  _register_schema(id: -1, subject: "mysubject"){
+    id
+    schema
+    version
+    subject
+  }
+}
+```
