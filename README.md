@@ -240,7 +240,7 @@ Query staged schemas.
 
 ```graphql
 query {
-  _query_staged_schemas  {
+  _query_staged_schemas {
     id
     schema
     status
@@ -267,7 +267,8 @@ query {
 }
 ```
 
-Test schema compatibility.
+Test schema compatibility.  Both staged schemas, with negative ids, 
+and registered schemas can be compared.
 
 ```graphql
 
@@ -279,7 +280,7 @@ query {
 }
 ```
 
-Register a schema.
+Register a staged schema.
 
 ```graphql
 mutation {
