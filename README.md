@@ -41,7 +41,7 @@ kgiraffe wraps the following functionality with a GraphQL interface:
 ## Getting Started
 
 To run kgiraffe, download a [release](https://github.com/rayokota/kgiraffe/releases), unpack it. Then run 
-the following to see all the command-line options:
+the following to see the command-line options:
 
 ```bash
 $ bin/kgiraffe -h
@@ -222,7 +222,7 @@ subscription {
 
 ### Schema Management
 
-Stage a schema.  Staged schemas will have negative ids.
+Validate and stage a schema.  Staged schemas will have negative ids.
 
 ```graphql
 mutation {
@@ -249,11 +249,33 @@ query {
 }
 ```
 
-Query registered schemas.
+Query a registered schema with the given id.
 
 ```graphql
 query {
   _query_registered_schemas(id: 123) {
+    id
+    schema
+  }
+}
+```
+
+Query a registered schema with the given subject and version.
+
+```graphql
+query {
+  _query_registered_schemas(subject: "mysubject", version: 1) {
+    id
+    schema
+  }
+}
+```
+
+Query all registered schemas with the given subject.
+
+```graphql
+query {
+  _query_registered_schemas(subject: "mysubject") {
     id
     schema
   }
