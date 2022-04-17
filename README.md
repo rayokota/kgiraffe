@@ -294,13 +294,25 @@ query {
 }
 ```
 
-Test schema compatibility.  Both staged schemas, with negative ids, 
+Test schema compatibility against a given schema.  Both staged schemas, with negative ids, 
 and registered schemas can be compared.
 
 ```graphql
 
 query {
   _test_schema_compatibility(next_id: -1, prev_id: 123) {
+    is_backward_compatible
+    messages
+  }
+}
+```
+
+Test schema compatibility against the latest version in a given subject.
+
+```graphql
+
+query {
+  _test_schema_compatibility(next_id: -1, prev_subject: "mysubject") {
     is_backward_compatible
     messages
   }
