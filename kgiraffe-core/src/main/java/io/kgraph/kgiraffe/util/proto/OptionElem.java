@@ -10,9 +10,9 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class OptionElem {
-    public String name;
-    public String kind;
-    public Object value;
+    public final String name;
+    public final String kind;
+    public final Object value;
 
     public OptionElem(OptionElement elem) {
         name = elem.isParenthesized() ? "(" + elem.getName() + ")" : elem.getName();

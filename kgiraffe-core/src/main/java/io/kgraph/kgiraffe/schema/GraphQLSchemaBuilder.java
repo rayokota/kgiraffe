@@ -36,7 +36,7 @@ import java.util.stream.Stream;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 
-import static io.kgraph.kgiraffe.KGiraffeEngine.SCHEMAS_COLLECTION_NAME;
+import static io.kgraph.kgiraffe.KGiraffeEngine.STAGED_SCHEMAS_COLLECTION_NAME;
 
 /**
  * A wrapper for the {@link graphql.schema.GraphQLSchema.Builder}.
@@ -181,11 +181,10 @@ public class GraphQLSchemaBuilder {
         GraphQLObjectType.Builder queryType = GraphQLObjectType.newObject()
             .name(QUERY_ROOT)
             .description("Queries for Kafka topics");
-        queryType.field(testSchemaCompatibilityFieldDefinition(codeRegistry));
-        queryType.field(queryCachedSchemasFieldDefinition(codeRegistry));
+        queryType.field(queryStagedSchemasFieldDefinition(codeRegistry));
         queryType.field(queryRegisteredSchemasFieldDefinition(codeRegistry));
         queryType.field(querySubjectsFieldDefinition(codeRegistry));
-        queryType.field(validationSchemaFieldDefinition(codeRegistry));
+        queryType.field(testSchemaCompatibilityFieldDefinition(codeRegistry));
         queryType.fields(topics.stream()
             .flatMap(t -> getQueryFieldDefinition(codeRegistry, t))
             .collect(Collectors.toList()));
@@ -505,6 +504,8 @@ public class GraphQLSchemaBuilder {
             .name(MUTATION_ROOT)
             .description("Mutations for Kafka topics");
         mutationType.field(registerSchemaFieldDefinition(codeRegistry));
+        mutationType.field(stageSchemaFieldDefinition(codeRegistry));
+        mutationType.field(unstageSchemaFieldDefinition(codeRegistry));
         mutationType.fields(topics.stream()
             .flatMap(t -> getMutationFieldDefinition(codeRegistry, t))
             .collect(Collectors.toList()));
@@ -596,16 +597,16 @@ public class GraphQLSchemaBuilder {
             .build());
     }
 
-    private GraphQLFieldDefinition queryCachedSchemasFieldDefinition(
+    private GraphQLFieldDefinition queryStagedSchemasFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry) {
 
         GraphQLObjectType objectType = getSchemaObjectType();
 
         GraphQLQueryFactory queryFactory
-            = new GraphQLQueryFactory(engine, SCHEMAS_COLLECTION_NAME, objectType);
+            = new GraphQLQueryFactory(engine, STAGED_SCHEMAS_COLLECTION_NAME, objectType);
 
         return GraphQLFieldDefinition.newFieldDefinition()
-            .name("_query_cached_schemas")
+            .name("_query_staged_schemas")
             .type(new GraphQLList(objectType))
             .dataFetcher(new EntityFetcher(queryFactory))
             .argument(getSchemasWhereArgument())
@@ -930,14 +931,14 @@ public class GraphQLSchemaBuilder {
             .build();
     }
 
-    private GraphQLFieldDefinition validationSchemaFieldDefinition(
+    private GraphQLFieldDefinition stageSchemaFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry) {
         GraphQLObjectType objectType = getSchemaObjectType();
 
         return GraphQLFieldDefinition.newFieldDefinition()
-            .name("_validate_schema")
+            .name("_stage_schema")
             .type(objectType)
-            .dataFetcher(new ValidationFetcher(engine))
+            .dataFetcher(new StageFetcher(engine))
             .argument(getSchemaTypeArgument())
             .argument(getSchemaArgument())
             .argument(getReferencesArgument())
@@ -993,4 +994,15 @@ public class GraphQLSchemaBuilder {
         return refType;
     }
 
+    private GraphQLFieldDefinition unstageSchemaFieldDefinition(
+        GraphQLCodeRegistry.Builder codeRegistry) {
+        GraphQLObjectType objectType = getSchemaObjectType();
+
+        return GraphQLFieldDefinition.newFieldDefinition()
+            .name("_unstage_schema")
+            .type(objectType)
+            .dataFetcher(new UnstageFetcher(engine))
+            .argument(getSchemaIdArgument())
+            .build();
+    }
 }

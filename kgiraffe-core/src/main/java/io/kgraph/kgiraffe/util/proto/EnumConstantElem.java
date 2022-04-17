@@ -8,9 +8,9 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class EnumConstantElem {
-    public String name;
-    public int tag;
-    public List<OptionElem> options;
+    public final String name;
+    public final int tag;
+    public final List<OptionElem> options;
 
     public EnumConstantElem(EnumConstantElement elem) {
         name = elem.getName();

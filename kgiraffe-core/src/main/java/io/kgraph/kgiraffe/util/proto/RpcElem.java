@@ -8,10 +8,10 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class RpcElem {
-    public String name;
-    public String requestType;
-    public String responseType;
-    public List<OptionElem> options;
+    public final String name;
+    public final String requestType;
+    public final String responseType;
+    public final List<OptionElem> options;
 
     public RpcElem(RpcElement elem) {
         name = elem.getName();

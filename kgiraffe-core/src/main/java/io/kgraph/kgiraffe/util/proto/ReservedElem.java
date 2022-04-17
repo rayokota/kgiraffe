@@ -7,7 +7,7 @@ import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class ReservedElem {
-    public List<Object> values;
+    public final List<Object> values;
 
     public ReservedElem(ReservedElement elem) {
         values = elem.getValues();

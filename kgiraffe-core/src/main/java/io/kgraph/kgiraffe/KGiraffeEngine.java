@@ -143,7 +143,8 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VERSION_ATTR_NAME;
 public class KGiraffeEngine implements Configurable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeEngine.class);
 
-    public static final String SCHEMAS_COLLECTION_NAME = "_cached_schemas";
+    public static final String REGISTERED_SCHEMAS_COLLECTION_NAME = "_registered_schemas";
+    public static final String STAGED_SCHEMAS_COLLECTION_NAME = "_staged_schemas";
 
     private static final ObjectMapper MAPPER = Jackson.newObjectMapper();
 
@@ -156,7 +157,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private Map<String, KGiraffeConfig.Serde> valueSerdes;
     private final Map<String, Either<Type, ParsedSchema>> keySchemas = new HashMap<>();
     private final Map<String, Either<Type, ParsedSchema>> valueSchemas = new HashMap<>();
-    private final Map<Tuple2<String, ProtobufSchema>, ProtobufSchema> schemaCache = new HashMap<>();
+    private final Map<Tuple2<String, ProtobufSchema>, ProtobufSchema> protSchemaCache = new HashMap<>();
     private final Map<String, KafkaCache<Bytes, Bytes>> caches;
     private final HDocumentDB docdb;
     private final AtomicBoolean initialized;
@@ -212,8 +213,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
             schemaRegistry = createSchemaRegistry(urls, providers);
         }
         schemaProvider = new CustomSchemaProvider(this);
-        for (KGiraffeConfig.Serde serde : config.getValidationSchemas()) {
-            validateSchemas(serde);
+        for (KGiraffeConfig.Serde serde : config.getStagedSchemas()) {
+            stageSchemas(serde);
         }
 
         List<String> topics = config.getTopics();
@@ -292,7 +293,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
             case AVRO:
             case JSON:
             case PROTO:
-                return validateSchemas(serde)
+                return stageSchemas(serde)
                     .<Either<Type, ParsedSchema>>map(Either::right)
                     .orElseGet(() -> Either.left(Type.BINARY));
             case LATEST:
@@ -306,12 +307,12 @@ public class KGiraffeEngine implements Configurable, Closeable {
         }
     }
 
-    private Optional<ParsedSchema> validateSchemas(KGiraffeConfig.Serde serde) {
-        return validateSchemas(serde.getSchemaType(), serde.getSchema(), serde.getSchemaReferences())._2;
+    private Optional<ParsedSchema> stageSchemas(KGiraffeConfig.Serde serde) {
+        return stageSchemas(serde.getSchemaType(), serde.getSchema(), serde.getSchemaReferences())._2;
     }
 
-    public Tuple2<Document, Optional<ParsedSchema>> validateSchemas(String schemaType, String schema,
-                                                                    List<SchemaReference> references) {
+    public Tuple2<Document, Optional<ParsedSchema>> stageSchemas(String schemaType, String schema,
+                                                                 List<SchemaReference> references) {
         try {
             ParsedSchema parsedSchema = schemaProvider.parseSchema(schemaType, schema, references);
             parsedSchema.validate();
@@ -322,6 +323,15 @@ public class KGiraffeEngine implements Configurable, Closeable {
             Document doc = cacheErroredSchema(nextId(), schemaType, schema, references, e);
             return new Tuple2<>(doc, Optional.empty());
         }
+    }
+
+    public Tuple2<Document, Optional<ParsedSchema>> unstageSchema(int id) {
+        Tuple2<Document, Optional<ParsedSchema>> optSchema =
+            getCachedSchemaById(id, STAGED_SCHEMAS_COLLECTION_NAME);
+        if (optSchema._2.isPresent()) {
+            uncacheSchema(id, STAGED_SCHEMAS_COLLECTION_NAME);
+        }
+        return optSchema;
     }
 
     public Tuple2<Document, Optional<ParsedSchema>> getSchemaByVersion(String subject,
@@ -382,9 +392,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
 
     public Tuple2<Document, Optional<ParsedSchema>> getSchemaById(int id) {
         try {
-            Tuple2<Document, Optional<ParsedSchema>> tuple = getCachedSchemaById(id);
-            if (tuple._2.isPresent()) {
-                return tuple;
+            Tuple2<Document, Optional<ParsedSchema>> optSchema = getCachedSchemaById(id);
+            if (optSchema._2.isPresent()) {
+                return optSchema;
             }
             ParsedSchema schema = getSchemaRegistry().getSchemaById(id);
             Document doc = cacheSchema(id, null, 0, Status.REGISTERED, schema);
@@ -398,17 +408,18 @@ public class KGiraffeEngine implements Configurable, Closeable {
     public Tuple2<Document, Optional<ParsedSchema>> registerSchema(String subject, int id,
                                                                    boolean normalize) {
         try {
-            Optional<ParsedSchema> optSchema = getSchemaById(id)._2;
-            if (optSchema.isEmpty()) {
-                return new Tuple2<>(new HDocument(), optSchema);
+            Tuple2<Document, Optional<ParsedSchema>> optSchema = getSchemaById(id);
+            if (optSchema._2.isEmpty()) {
+                return new Tuple2<>(new HDocument(), optSchema._2);
             }
-            ParsedSchema schema = optSchema.get();
+            Document doc = optSchema._1;
+            ParsedSchema schema = optSchema._2.get();
             int newId = getSchemaRegistry().register(subject, schema, normalize);
             int newVersion = getSchemaRegistry().getVersion(subject, schema, normalize);
-            Document doc = cacheSchema(
+            Document newDoc = cacheSchema(
                 newId, subject, newVersion, Status.REGISTERED, schema);
-            uncacheSchema(id);
-            return new Tuple2<>(doc, optSchema);
+            uncacheSchema(id, STAGED_SCHEMAS_COLLECTION_NAME);
+            return new Tuple2<>(newDoc, optSchema._2);
         } catch (Exception e) {
             LOG.error("Could not register schema with id " + id, e);
             return new Tuple2<>(new HDocument(), Optional.empty());
@@ -416,7 +427,17 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     private Tuple2<Document, Optional<ParsedSchema>> getCachedSchemaById(int id) {
-        HDocumentCollection coll = docdb.getCollection(SCHEMAS_COLLECTION_NAME);
+        Tuple2<Document, Optional<ParsedSchema>> optSchema =
+            getCachedSchemaById(id, STAGED_SCHEMAS_COLLECTION_NAME);
+        if (optSchema._2.isPresent()) {
+            return optSchema;
+        }
+        return getCachedSchemaById(id, REGISTERED_SCHEMAS_COLLECTION_NAME);
+    }
+
+    private Tuple2<Document, Optional<ParsedSchema>> getCachedSchemaById(int id,
+                                                                         String collName) {
+        HDocumentCollection coll = docdb.getCollection(collName);
         try {
             Document doc = coll.findById(String.valueOf(id));
             List<Object> list = doc.getList(REFERENCES_ATTR_NAME);
@@ -438,7 +459,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private Document cacheSchema(int id, String subject, int version,
                                  Status status, ParsedSchema schema)
         throws JsonProcessingException {
-        HDocumentCollection coll = docdb.getCollection(SCHEMAS_COLLECTION_NAME);
+        String collName = status == Status.REGISTERED
+            ? REGISTERED_SCHEMAS_COLLECTION_NAME
+            : STAGED_SCHEMAS_COLLECTION_NAME;
+        HDocumentCollection coll = docdb.getCollection(collName);
         HDocument doc = new HDocument();
         doc.setId(String.valueOf(id));
         doc.set(ID_ATTR_NAME, id);
@@ -463,7 +487,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private Document cacheErroredSchema(int id, String schemaType,
                                         String schema, List<SchemaReference> references,
                                         Exception e) {
-        HDocumentCollection coll = docdb.getCollection(SCHEMAS_COLLECTION_NAME);
+        HDocumentCollection coll = docdb.getCollection(STAGED_SCHEMAS_COLLECTION_NAME);
         HDocument doc = new HDocument();
         doc.setId(String.valueOf(id));
         doc.set(ID_ATTR_NAME, id);
@@ -480,8 +504,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
         return doc;
     }
 
-    private void uncacheSchema(int id) {
-        HDocumentCollection coll = docdb.getCollection(SCHEMAS_COLLECTION_NAME);
+    private void uncacheSchema(int id, String collName) {
+        HDocumentCollection coll = docdb.getCollection(collName);
         coll.remove(String.valueOf(id));
     }
 
@@ -605,7 +629,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     private ProtobufSchema schemaWithName(ProtobufSchema schema, String name) {
-        return schemaCache.computeIfAbsent(new Tuple2<>(name, schema), k -> schema.copy(name));
+        return protSchemaCache.computeIfAbsent(new Tuple2<>(name, schema), k -> schema.copy(name));
     }
 
     public Serializer<?> getSerializer(Either<Type, ParsedSchema> schema) {

@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class ExtendElem {
-    public String name;
-    public List<FieldElem> fields;
+    public final String name;
+    public final List<FieldElem> fields;
 
     public ExtendElem(ExtendElement elem) {
         name = elem.getName();

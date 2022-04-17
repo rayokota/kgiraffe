@@ -109,12 +109,9 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
         description = "SR (Schema Registry) URL", paramLabel = "<url>")
     private String schemaRegistryUrl;
 
-    @Option(names = {"-s", "--validate-schema"},
-        description = "Parse and validate the given schema(s).\n"
-            + "If more than one schema is specified, each\n"
-            + "schema is checked for backward compatibility\n"
-            + "with the previous one. See avro/json/proto\n"
-            + "serde formats above.",
+    @Option(names = {"-s", "--stage-schema"},
+        description = "Validate and stage the given schema(s).\n"
+            + "See avro/json/proto serde formats above.",
         paramLabel = "<serde>")
     private List<KGiraffeConfig.Serde> schemas;
 
@@ -269,7 +266,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
         }
         if (schemas != null) {
-            props.put(KGiraffeConfig.VALIDATE_SCHEMAS_CONFIG,
+            props.put(KGiraffeConfig.STAGE_SCHEMAS_CONFIG,
                 listPropertyParser.asString(schemas.stream()
                     .map(KGiraffeConfig.Serde::toString)
                     .collect(Collectors.toList())));

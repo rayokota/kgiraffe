@@ -90,8 +90,8 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             + "latest (use latest version in SR), <id> (use schema id from SR)]. "
             + "Default: latest";
 
-    public static final String VALIDATE_SCHEMAS_CONFIG = "validate.schemas";
-    public static final String VALIDATE_SCHEMAS_DOC =
+    public static final String STAGE_SCHEMAS_CONFIG = "stage.schemas";
+    public static final String STAGE_SCHEMAS_DOC =
         "Comma-separated list of schemas, one of avro:<schema|@file>, json:<schema|@file>, "
             + "proto:<schema|@file>.  If more then one schema is specified, later ones are "
             + "checked for backward compatibility against earlier ones.";
@@ -273,11 +273,11 @@ public class KGiraffeConfig extends KafkaCacheConfig {
                 "",
                 Importance.HIGH,
                 VALUE_SERDES_DOC
-            ).define(VALIDATE_SCHEMAS_CONFIG,
+            ).define(STAGE_SCHEMAS_CONFIG,
                 Type.STRING, // use custom list parsing
                 "",
                 Importance.LOW,
-                VALIDATE_SCHEMAS_DOC
+                STAGE_SCHEMAS_DOC
             ).define(
                 GRAPHQL_MAX_COMPLEXITY_CONFIG,
                 Type.INT,
@@ -461,8 +461,8 @@ public class KGiraffeConfig extends KafkaCacheConfig {
             ));
     }
 
-    public List<Serde> getValidationSchemas() {
-        String schemas = getString(VALIDATE_SCHEMAS_CONFIG);
+    public List<Serde> getStagedSchemas() {
+        String schemas = getString(STAGE_SCHEMAS_CONFIG);
         return listPropertyParser.parse(schemas).stream()
             .map(Serde::new)
             .collect(Collectors.toList());

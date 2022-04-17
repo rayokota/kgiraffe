@@ -9,10 +9,10 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class GroupElem {
-    public String label;
-    public String name;
-    public int tag;
-    public List<FieldElem> fields;
+    public final String label;
+    public final String name;
+    public final int tag;
+    public final List<FieldElem> fields;
 
     public GroupElem(GroupElement elem) {
         label = elem.getLabel() != null

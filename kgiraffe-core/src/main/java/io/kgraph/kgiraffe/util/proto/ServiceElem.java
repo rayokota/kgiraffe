@@ -8,9 +8,9 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class ServiceElem {
-    public String name;
-    public List<RpcElem> rpcs;
-    public List<OptionElem> options;
+    public final String name;
+    public final List<RpcElem> rpcs;
+    public final List<OptionElem> options;
 
     public ServiceElem(ServiceElement elem) {
         name = elem.getName();

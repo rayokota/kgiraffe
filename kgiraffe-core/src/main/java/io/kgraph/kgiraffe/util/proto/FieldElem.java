@@ -9,13 +9,13 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class FieldElem {
-    public String label;
-    public String type;
-    public String name;
-    public String defaultValue;
-    public String jsonName;
-    public int tag;
-    public List<OptionElem> options;
+    public final String label;
+    public final String type;
+    public final String name;
+    public final String defaultValue;
+    public final String jsonName;
+    public final int tag;
+    public final List<OptionElem> options;
 
     public FieldElem(FieldElement elem) {
         label = elem.getLabel() != null

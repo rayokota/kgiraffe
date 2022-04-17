@@ -37,12 +37,12 @@ public class RegistrationFetcher implements DataFetcher {
             if (subject == null) {
                 throw new IllegalArgumentException("Missing subject'");
             }
-            Tuple2<Document, Optional<ParsedSchema>> schema =
+            Tuple2<Document, Optional<ParsedSchema>> optSchema =
                 engine.registerSchema(subject, id, normalize);
-            if (schema._2.isEmpty()) {
+            if (optSchema._2.isEmpty()) {
                 throw new IllegalArgumentException("Could not register schema with id " + id);
             }
-            return schema._1;
+            return optSchema._1;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

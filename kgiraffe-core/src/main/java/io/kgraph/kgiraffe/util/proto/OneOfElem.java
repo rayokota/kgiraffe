@@ -8,10 +8,10 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class OneOfElem {
-    public String name;
-    public List<FieldElem> fields;
-    public List<GroupElem> groups;
-    public List<OptionElem> options;
+    public final String name;
+    public final List<FieldElem> fields;
+    public final List<GroupElem> groups;
+    public final List<OptionElem> options;
 
     public OneOfElem(OneOfElement elem) {
         name = elem.getName();

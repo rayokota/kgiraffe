@@ -7,7 +7,7 @@ import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class ExtensionsElem {
-    public List<Object> values;
+    public final List<Object> values;
 
     public ExtensionsElem(ExtensionsElement elem) {
         values = elem.getValues();

@@ -9,15 +9,15 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class MessageElem {
-    public String name;
-    public List<MessageElem> messages;
-    public List<EnumElem> enums;
-    public List<OptionElem> options;
-    public List<ReservedElem> reserveds;
-    public List<FieldElem> fields;
-    public List<OneOfElem> oneofs;
-    public List<ExtensionsElem> extensions;
-    public List<GroupElem> groups;
+    public final String name;
+    public final List<MessageElem> messages;
+    public final List<EnumElem> enums;
+    public final List<OptionElem> options;
+    public final List<ReservedElem> reserveds;
+    public final List<FieldElem> fields;
+    public final List<OneOfElem> oneofs;
+    public final List<ExtensionsElem> extensions;
+    public final List<GroupElem> groups;
 
     public MessageElem(MessageElement elem) {
         name = elem.getName();

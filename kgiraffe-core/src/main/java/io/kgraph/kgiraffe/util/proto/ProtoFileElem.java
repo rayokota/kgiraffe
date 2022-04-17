@@ -11,16 +11,16 @@ import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class ProtoFileElem {
-    public String packageName;
-    public String syntax;
-    public List<String> imports;
-    public List<String> publicImports;
-    public List<MessageElem> messages;
-    public List<EnumElem> enums;
-    public List<ServiceElem> services;
+    public final String packageName;
+    public final String syntax;
+    public final List<String> imports;
+    public final List<String> publicImports;
+    public final List<MessageElem> messages;
+    public final List<EnumElem> enums;
+    public final List<ServiceElem> services;
     @JsonProperty("extends")
-    public List<ExtendElem> extendDeclarations;
-    public List<OptionElem> options;
+    public final List<ExtendElem> extendDeclarations;
+    public final List<OptionElem> options;
 
     public ProtoFileElem(ProtoFileElement elem) {
         packageName = elem.getPackageName();

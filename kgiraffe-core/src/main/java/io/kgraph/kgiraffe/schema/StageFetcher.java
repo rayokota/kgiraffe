@@ -19,14 +19,14 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.REFERENCES_ATTR_NAM
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.SCHEMA_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.SCHEMA_TYPE_ATTR_NAME;
 
-public class ValidationFetcher implements DataFetcher {
-    private static final Logger LOG = LoggerFactory.getLogger(ValidationFetcher.class);
+public class StageFetcher implements DataFetcher {
+    private static final Logger LOG = LoggerFactory.getLogger(StageFetcher.class);
 
     private static final ObjectMapper MAPPER = Jackson.newObjectMapper();
 
     private final KGiraffeEngine engine;
 
-    public ValidationFetcher(KGiraffeEngine engine) {
+    public StageFetcher(KGiraffeEngine engine) {
         this.engine = engine;
     }
 
@@ -47,7 +47,7 @@ public class ValidationFetcher implements DataFetcher {
 
             List<SchemaReference> refs = MAPPER.convertValue(list, new TypeReference<>() {
             });
-            return engine.validateSchemas(schemaType, schema, refs)._1;
+            return engine.stageSchemas(schemaType, schema, refs)._1;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
