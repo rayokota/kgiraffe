@@ -190,7 +190,7 @@ Publish records to Kafka `mytopic` topic with the given value.
 
 ```graphql
 mutation {
-  mytopic(value: {field1: "world"}) {
+  mytopic (value: {field1: "world"}) {
     value {
       field1 
     }
@@ -207,7 +207,7 @@ Publish records to Kafka `mytopic` topic, with the given headers, key, and value
 
 ```graphql
 mutation {
-  mytopic( 
+  mytopic ( 
     headers: { header1: "myheader" }, 
     key: "mykey", 
     value: { field1: "goodbye"}
@@ -243,7 +243,7 @@ Validate and stage a schema.  Staged schemas will be assigned negative ids.
 
 ```graphql
 mutation {
-  _stage_schema(
+  _stage_schema (
     schema_type: "AVRO", 
     schema: "{\"type\":\"record\",\"name\":\"myrecord\",\"fields\":[{\"name\":\"field1\",\"type\":\"string\"}]}"
   ) {
@@ -272,7 +272,7 @@ Query a registered schema with the given id.
 
 ```graphql
 query {
-  _query_registered_schemas(id: 123) {
+  _query_registered_schemas (id: 123) {
     id
     schema
   }
@@ -283,7 +283,7 @@ Query a registered schema with the given subject and version.
 
 ```graphql
 query {
-  _query_registered_schemas(subject: "mysubject", version: 1) {
+  _query_registered_schemas (subject: "mysubject", version: 1) {
     id
     schema
   }
@@ -294,7 +294,7 @@ Query all registered schemas with the given subject.
 
 ```graphql
 query {
-  _query_registered_schemas(subject: "mysubject") {
+  _query_registered_schemas (subject: "mysubject") {
     id
     schema
     subject
@@ -317,7 +317,7 @@ and registered schemas can be compared.
 ```graphql
 
 query {
-  _test_schema_compatibility(next_id: -1, prev_id: 123) {
+  _test_schema_compatibility (next_id: -1, prev_id: 123) {
     is_backward_compatible
     messages
   }
@@ -329,7 +329,7 @@ Test schema compatibility against the latest version in a given subject.
 ```graphql
 
 query {
-  _test_schema_compatibility(next_id: -1, prev_subject: "mysubject") {
+  _test_schema_compatibility (next_id: -1, prev_subject: "mysubject") {
     is_backward_compatible
     messages
   }
@@ -340,7 +340,7 @@ Register a staged schema.  The staged schema will be dropped.
 
 ```graphql
 mutation {
-  _register_schema(id: -1, subject: "mysubject") {
+  _register_schema (id: -1, subject: "mysubject") {
     id
     schema
     subject
@@ -353,7 +353,7 @@ Unstage a staged schema.
 
 ```graphql
 mutation {
-  _unstage_schema(id: -1) {
+  _unstage_schema (id: -1) {
     id
     schema
   }
