@@ -30,9 +30,9 @@ kgiraffe wraps the following functionality with a GraphQL interface:
 ### Schema Management
 
 - Validate and stage schemas
+- Test schema compatibility
 - Query schemas and subjects
 - Register schemas
-- Test schema compatibility
 
 
 ###
@@ -98,6 +98,10 @@ Registry. Then run the following:
 $ bin/kgiraffe -F config/kgiraffe.properties
 ```
 
+When kgiraffe starts, it will generate a GraphQL schema that can be used to read,
+write, and subscribe to your topics.  In addition, kgiraffe will allow you to
+validate and stage schemas, as well as test them for compatibility, before you
+register them to Schema Registry.
 
 Once kgiraffe is running, browse to http://localhost:8765/kgiraffe to launch
 the GraphQL Playground.
@@ -254,6 +258,31 @@ mutation {
 }
 ```
 
+Test schema compatibility against a given schema.  Both staged schemas, with negative ids,
+and registered schemas can be compared.
+
+```graphql
+
+query {
+  _test_schema_compatibility (next_id: -1, prev_id: 123) {
+    is_backward_compatible
+    compatibility_errors
+  }
+}
+```
+
+Test schema compatibility against the latest version in a given subject.
+
+```graphql
+
+query {
+  _test_schema_compatibility (next_id: -1, prev_subject: "mysubject") {
+    is_backward_compatible
+    compatibility_errors
+  }
+}
+```
+
 Query staged schemas.
 
 ```graphql
@@ -307,31 +336,6 @@ Query subjects.
 ```graphql
 query {
   _query_subjects
-}
-```
-
-Test schema compatibility against a given schema.  Both staged schemas, with negative ids, 
-and registered schemas can be compared.
-
-```graphql
-
-query {
-  _test_schema_compatibility (next_id: -1, prev_id: 123) {
-    is_backward_compatible
-    compatibility_errors
-  }
-}
-```
-
-Test schema compatibility against the latest version in a given subject.
-
-```graphql
-
-query {
-  _test_schema_compatibility (next_id: -1, prev_subject: "mysubject") {
-    is_backward_compatible
-    compatibility_errors
-  }
 }
 ```
 
