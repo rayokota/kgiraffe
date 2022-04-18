@@ -8,7 +8,8 @@
         <format>zip</format>
         <format>tar.gz</format>
     </formats>
-    <includeBaseDirectory>false</includeBaseDirectory>
+    <baseDirectory>kgiraffe-${version}</baseDirectory>
+    <includeBaseDirectory>true</includeBaseDirectory>
     <fileSets>
         <fileSet>
             <directory>${project.parent.basedir}</directory>
@@ -51,10 +52,6 @@
                  dependencies happen to be missing in the assembly you may want to
                  disable transitive filtering. -->
             <useTransitiveFiltering>true</useTransitiveFiltering>
-            <excludes>
-                <exclude>org.apache.hadoop:*</exclude>
-                <exclude>org.apache.hbase:*</exclude>
-            </excludes>
         </dependencySet>
     </dependencySets>
 </assembly>
