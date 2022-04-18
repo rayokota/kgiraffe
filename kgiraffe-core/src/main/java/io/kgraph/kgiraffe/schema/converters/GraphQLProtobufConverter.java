@@ -21,6 +21,7 @@ import graphql.schema.GraphQLTypeReference;
 import io.kgraph.kgiraffe.schema.AttributeFetcher;
 import io.kgraph.kgiraffe.schema.Logical;
 import io.kgraph.kgiraffe.schema.SchemaContext;
+import io.kgraph.kgiraffe.util.proto.NamedProtobufSchema;
 import io.vavr.control.Either;
 import org.ojai.Value.Type;
 import org.slf4j.Logger;
@@ -151,10 +152,9 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             return createInputType(ctx, unwrapped);
         }
         String name = ctx.qualify(schema.getFullName());
-        if (typeCache.contains(name)) {
-            return new GraphQLTypeReference(name);
-        } else {
-            typeCache.add(name);
+        String cachedName = ctx.cacheIfAbsent(new NamedProtobufSchema(schema), name);
+        if (cachedName != null) {
+            return new GraphQLTypeReference(cachedName);
         }
         boolean isRoot = ctx.isRoot();
         if (isRoot) {
@@ -302,10 +302,9 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             return createOutputType(ctx, unwrapped);
         }
         String name = ctx.qualify(schema.getFullName());
-        if (typeCache.contains(name)) {
-            return new GraphQLTypeReference(name);
-        } else {
-            typeCache.add(name);
+        String cachedName = ctx.cacheIfAbsent(new NamedProtobufSchema(schema), name);
+        if (cachedName != null) {
+            return new GraphQLTypeReference(cachedName);
         }
         List<GraphQLFieldDefinition> fields = schema.getFields().stream()
             .map(f -> createOutputField(ctx, f))

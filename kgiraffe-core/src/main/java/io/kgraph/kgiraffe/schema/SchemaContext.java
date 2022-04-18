@@ -1,16 +1,25 @@
 package io.kgraph.kgiraffe.schema;
 
+import io.vavr.Tuple2;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import io.confluent.kafka.schemaregistry.ParsedSchema;
+
 public class SchemaContext {
     private final String name;
     private final Mode mode;
     private boolean root;
     private int nameIndex = 0;
+    private final Map<Tuple2<Mode, ParsedSchema>, String> schemaCache;
 
     public SchemaContext(String name,
                          Mode mode) {
         this.name = name;
         this.mode = mode;
         this.root = true;
+        this.schemaCache = new HashMap<>();
     }
 
     public String name() {
@@ -66,6 +75,11 @@ public class SchemaContext {
 
     public int incrementNameIndex() {
         return ++nameIndex;
+    }
+
+    public String cacheIfAbsent(ParsedSchema schema, String name) {
+        Tuple2<Mode, ParsedSchema> key = new Tuple2<>(mode, schema);
+        return schemaCache.putIfAbsent(key, name);
     }
 
     public enum Mode {

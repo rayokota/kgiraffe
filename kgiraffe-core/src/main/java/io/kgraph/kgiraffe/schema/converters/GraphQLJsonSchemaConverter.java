@@ -52,8 +52,6 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.orderByEnum;
 public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
     private static final Logger LOG = LoggerFactory.getLogger(GraphQLJsonSchemaConverter.class);
 
-    protected final Map<Tuple2<Mode, JsonSchema>, String> schemaCache = new HashMap<>();
-
     @Override
     public GraphQLInputType createInputType(SchemaContext ctx, Either<Type, ParsedSchema> schema) {
         String scope = "";
@@ -121,12 +119,9 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
         // Wrap raw schema with JsonSchema as the latter avoids recursive equals/hashCode
-        Tuple2<Mode, JsonSchema> cacheKey = new Tuple2<>(ctx.mode(), new JsonSchema(schema));
-        String cachedName = schemaCache.get(cacheKey);
+        String cachedName = ctx.cacheIfAbsent(new JsonSchema(schema), name);
         if (cachedName != null) {
             return new GraphQLTypeReference(cachedName);
-        } else {
-            schemaCache.put(cacheKey, name);
         }
         boolean isRoot = ctx.isRoot();
         if (isRoot) {
@@ -270,12 +265,9 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
         // Wrap raw schema with JsonSchema as the latter avoids recursive equals/hashCode
-        Tuple2<Mode, JsonSchema> cacheKey = new Tuple2<>(ctx.mode(), new JsonSchema(schema));
-        String cachedName = schemaCache.get(cacheKey);
+        String cachedName = ctx.cacheIfAbsent(new JsonSchema(schema), name);
         if (cachedName != null) {
             return new GraphQLTypeReference(cachedName);
-        } else {
-            schemaCache.put(cacheKey, name);
         }
         List<GraphQLFieldDefinition> fields = schema.getPropertySchemas().entrySet().stream()
             .filter(f -> !isIgnored(schema))

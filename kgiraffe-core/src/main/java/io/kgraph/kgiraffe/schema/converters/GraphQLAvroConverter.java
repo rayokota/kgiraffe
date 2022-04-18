@@ -73,10 +73,9 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
 
     private GraphQLInputType createInputRecord(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
-        if (typeCache.contains(name)) {
-            return new GraphQLTypeReference(name);
-        } else {
-            typeCache.add(name);
+        String cachedName = ctx.cacheIfAbsent(new AvroSchema(schema), name);
+        if (cachedName != null) {
+            return new GraphQLTypeReference(cachedName);
         }
         boolean isRoot = ctx.isRoot();
         if (isRoot) {
@@ -201,10 +200,9 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
 
     private GraphQLOutputType createOutputRecord(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
-        if (typeCache.contains(name)) {
-            return new GraphQLTypeReference(name);
-        } else {
-            typeCache.add(name);
+        String cachedName = ctx.cacheIfAbsent(new AvroSchema(schema), name);
+        if (cachedName != null) {
+            return new GraphQLTypeReference(cachedName);
         }
         List<GraphQLFieldDefinition> fields = schema.getFields().stream()
             .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))

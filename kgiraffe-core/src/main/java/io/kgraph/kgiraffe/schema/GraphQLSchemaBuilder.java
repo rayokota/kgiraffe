@@ -102,7 +102,7 @@ public class GraphQLSchemaBuilder {
     private final GraphQLProtobufConverter protobufConverter;
     private final GraphQLPrimitiveConverter primitiveConverter;
 
-    protected final Set<String> typeCache = new HashSet<>();
+    private final Set<String> typeCache = new HashSet<>();
 
     public static final GraphQLEnumType orderByEnum =
         GraphQLEnumType.newEnum()
