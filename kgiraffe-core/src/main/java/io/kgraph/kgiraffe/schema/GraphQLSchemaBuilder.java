@@ -13,7 +13,7 @@ import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
-import graphql.schema.GraphQLType;
+import graphql.schema.GraphQLTypeReference;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.schema.PredicateFilter.Criteria;
 import io.kgraph.kgiraffe.schema.SchemaContext.Mode;
@@ -28,9 +28,9 @@ import org.ojai.Value.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -102,7 +102,7 @@ public class GraphQLSchemaBuilder {
     private final GraphQLProtobufConverter protobufConverter;
     private final GraphQLPrimitiveConverter primitiveConverter;
 
-    private final Map<String, GraphQLType> typeCache = new HashMap<>();
+    protected final Set<String> typeCache = new HashSet<>();
 
     public static final GraphQLEnumType orderByEnum =
         GraphQLEnumType.newEnum()
@@ -204,7 +204,7 @@ public class GraphQLSchemaBuilder {
         Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
         Either<Type, ParsedSchema> valueSchema = engine.getValueSchema(topic);
 
-        GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
+        GraphQLOutputType objectType = getObjectType(topic, keySchema, valueSchema);
 
         GraphQLQueryFactory queryFactory = new GraphQLQueryFactory(engine, topic, objectType);
 
@@ -232,7 +232,7 @@ public class GraphQLSchemaBuilder {
             valueObject = createInputFieldOp(ctx, KAFKA, VALUE_ATTR_NAME, valueObject);
         }
 
-        GraphQLInputObjectType whereInputObject = getWhereObject(ctx, topic, keyObject, valueObject);
+        GraphQLInputType whereInputObject = getWhereObject(ctx, topic, keyObject, valueObject);
 
         return GraphQLArgument.newArgument()
             .name(WHERE_PARAM_NAME)
@@ -241,17 +241,18 @@ public class GraphQLSchemaBuilder {
             .build();
     }
 
-    private GraphQLInputObjectType getWhereObject(SchemaContext ctx,
+    private GraphQLInputType getWhereObject(SchemaContext ctx,
                                                   String topic,
                                                   GraphQLInputType keyObject,
                                                   GraphQLInputType valueObject) {
         String name = topic + "_record_criteria";
-        GraphQLInputObjectType type = (GraphQLInputObjectType) typeCache.get(name);
-        if (type != null) {
-            return type;
+        if (typeCache.contains(name)) {
+            return new GraphQLTypeReference(name);
+        } else {
+            typeCache.add(name);
         }
 
-        type = GraphQLInputObjectType.newInputObject()
+        return GraphQLInputObjectType.newInputObject()
             .name(name)
             .description(topic + " record criteria")
             .field(GraphQLInputObjectField.newInputObjectField()
@@ -285,8 +286,6 @@ public class GraphQLSchemaBuilder {
                 .type(createInputFieldOp(ctx, KAFKA, TIMESTAMP_ATTR_NAME, ExtendedScalars.GraphQLLong))
                 .build())
             .build();
-        typeCache.put(name, type);
-        return type;
     }
 
     public static GraphQLInputType createInputFieldOp(SchemaContext ctx,
@@ -412,7 +411,7 @@ public class GraphQLSchemaBuilder {
 
     }
 
-    private GraphQLObjectType getObjectType(String topic,
+    private GraphQLOutputType getObjectType(String topic,
                                             Either<Type, ParsedSchema> keySchema,
                                             Either<Type, ParsedSchema> valueSchema) {
         SchemaContext ctx = new SchemaContext(topic, Mode.OUTPUT);
@@ -421,12 +420,13 @@ public class GraphQLSchemaBuilder {
         GraphQLOutputType valueObject = getSchemaBuilder(valueSchema).createOutputType(ctx, valueSchema);
 
         String name = topic;
-        GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
-        if (type != null) {
-            return type;
+        if (typeCache.contains(name)) {
+            return new GraphQLTypeReference(name);
+        } else {
+            typeCache.add(name);
         }
 
-        GraphQLObjectType objectType = GraphQLObjectType.newObject()
+        return GraphQLObjectType.newObject()
             .name(name)
             .description(topic)
             .field(GraphQLFieldDefinition.newFieldDefinition()
@@ -495,10 +495,6 @@ public class GraphQLSchemaBuilder {
                 .type(Scalars.GraphQLInt)
                 .build())
             .build();
-
-        typeCache.put(name, objectType);
-
-        return objectType;
     }
 
     private GraphQLObjectType getMutationType() {
@@ -527,7 +523,7 @@ public class GraphQLSchemaBuilder {
         Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
         Either<Type, ParsedSchema> valueSchema = engine.getValueSchema(topic);
 
-        GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
+        GraphQLOutputType objectType = getObjectType(topic, keySchema, valueSchema);
 
         return Stream.of(GraphQLFieldDefinition.newFieldDefinition()
             .name(topic)
@@ -592,7 +588,7 @@ public class GraphQLSchemaBuilder {
         Either<Type, ParsedSchema> keySchema = engine.getKeySchema(topic);
         Either<Type, ParsedSchema> valueSchema = engine.getValueSchema(topic);
 
-        GraphQLObjectType objectType = getObjectType(topic, keySchema, valueSchema);
+        GraphQLOutputType objectType = getObjectType(topic, keySchema, valueSchema);
 
         GraphQLQueryFactory queryFactory = new GraphQLQueryFactory(engine, topic, objectType);
 
@@ -607,7 +603,7 @@ public class GraphQLSchemaBuilder {
     private GraphQLFieldDefinition queryStagedSchemasFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry) {
 
-        GraphQLObjectType objectType = getSchemaObjectType();
+        GraphQLOutputType objectType = getSchemaObjectType();
 
         GraphQLQueryFactory queryFactory
             = new GraphQLQueryFactory(engine, STAGED_SCHEMAS_COLLECTION_NAME, objectType);
@@ -623,15 +619,16 @@ public class GraphQLSchemaBuilder {
             .build();
     }
 
-    private GraphQLObjectType getSchemaObjectType() {
+    private GraphQLOutputType getSchemaObjectType() {
         String name = "_schema_definition";
-        GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
-        if (type != null) {
-            return type;
+        if (typeCache.contains(name)) {
+            return new GraphQLTypeReference(name);
+        } else {
+            typeCache.add(name);
         }
         GraphQLObjectType refType = getSchemaReferenceObjectType();
 
-        GraphQLObjectType objectType = GraphQLObjectType.newObject()
+        return GraphQLObjectType.newObject()
             .name(name)
             .description("Schema definition")
             .field(GraphQLFieldDefinition.newFieldDefinition()
@@ -680,8 +677,6 @@ public class GraphQLSchemaBuilder {
                 .type(Scalars.GraphQLString)
                 .build())
             .build();
-        typeCache.put(name, objectType);
-        return objectType;
     }
 
     private GraphQLObjectType getSchemaReferenceObjectType() {
@@ -860,7 +855,7 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLFieldDefinition queryRegisteredSchemasFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry) {
-        GraphQLObjectType objectType = getSchemaObjectType();
+        GraphQLOutputType objectType = getSchemaObjectType();
 
         return GraphQLFieldDefinition.newFieldDefinition()
             .name("_query_registered_schemas")
@@ -914,7 +909,7 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLFieldDefinition querySubjectsFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry) {
-        GraphQLObjectType objectType = getSchemaObjectType();
+        GraphQLOutputType objectType = getSchemaObjectType();
 
         return GraphQLFieldDefinition.newFieldDefinition()
             .name("_query_subjects")
@@ -934,7 +929,7 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLFieldDefinition registerSchemaFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry) {
-        GraphQLObjectType objectType = getSchemaObjectType();
+        GraphQLOutputType objectType = getSchemaObjectType();
 
         return GraphQLFieldDefinition.newFieldDefinition()
             .name("_register_schema")
@@ -956,7 +951,7 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLFieldDefinition stageSchemaFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry) {
-        GraphQLObjectType objectType = getSchemaObjectType();
+        GraphQLOutputType objectType = getSchemaObjectType();
 
         return GraphQLFieldDefinition.newFieldDefinition()
             .name("_stage_schema")
@@ -1019,7 +1014,7 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLFieldDefinition unstageSchemaFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry) {
-        GraphQLObjectType objectType = getSchemaObjectType();
+        GraphQLOutputType objectType = getSchemaObjectType();
 
         return GraphQLFieldDefinition.newFieldDefinition()
             .name("_unstage_schema")

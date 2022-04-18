@@ -6,6 +6,7 @@ import io.hdocdb.HValue;
 import io.hdocdb.store.HQueryCondition;
 import org.ojai.store.QueryCondition.Op;
 
+import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -115,22 +116,22 @@ class PredicateFilter implements Comparable<PredicateFilter> {
         HQueryCondition attrCriteria = new HQueryCondition();
         switch (criteria) {
             case LT:
-                attrCriteria.is(field, Op.LESS, HValue.initFromObject(typedValue));
+                attrCriteria.is(field, Op.LESS, valueFromObject(typedValue));
                 break;
             case GT:
-                attrCriteria.is(field, Op.GREATER, HValue.initFromObject(typedValue));
+                attrCriteria.is(field, Op.GREATER, valueFromObject(typedValue));
                 break;
             case LTE:
-                attrCriteria.is(field, Op.LESS_OR_EQUAL, HValue.initFromObject(typedValue));
+                attrCriteria.is(field, Op.LESS_OR_EQUAL, valueFromObject(typedValue));
                 break;
             case GTE:
-                attrCriteria.is(field, Op.GREATER_OR_EQUAL, HValue.initFromObject(typedValue));
+                attrCriteria.is(field, Op.GREATER_OR_EQUAL, valueFromObject(typedValue));
                 break;
             case EQ:
-                attrCriteria.is(field, Op.EQUAL, HValue.initFromObject(typedValue));
+                attrCriteria.is(field, Op.EQUAL, valueFromObject(typedValue));
                 break;
             case NEQ:
-                attrCriteria.is(field, Op.NOT_EQUAL, HValue.initFromObject(typedValue));
+                attrCriteria.is(field, Op.NOT_EQUAL, valueFromObject(typedValue));
                 break;
             case IN:
                 attrCriteria.in(field, HValue.initFromList((List) typedValue));
@@ -140,6 +141,14 @@ class PredicateFilter implements Comparable<PredicateFilter> {
                 break;
         }
         return attrCriteria.close();
+    }
+
+    private HValue valueFromObject(Object value) {
+        if (value instanceof BigInteger) {
+            // TODO check
+            value = ((BigInteger) value).doubleValue();
+        }
+        return HValue.initFromObject(value);
     }
 
     private String getValueAsString() {

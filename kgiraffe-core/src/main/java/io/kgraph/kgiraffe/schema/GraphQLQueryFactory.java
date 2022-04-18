@@ -23,7 +23,7 @@ import graphql.schema.GraphQLFieldDefinition;
 import graphql.schema.GraphQLFieldsContainer;
 import graphql.schema.GraphQLImplementingType;
 import graphql.schema.GraphQLList;
-import graphql.schema.GraphQLObjectType;
+import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.InputValueWithState;
@@ -72,11 +72,11 @@ public class GraphQLQueryFactory {
 
     private final KGiraffeEngine engine;
     private final String name;
-    private final GraphQLObjectType objectType;
+    private final GraphQLOutputType objectType;
 
     public GraphQLQueryFactory(KGiraffeEngine engine,
                                String name,
-                               GraphQLObjectType objectType) {
+                               GraphQLOutputType objectType) {
         this.engine = engine;
         this.name = name;
         this.objectType = objectType;
@@ -623,7 +623,7 @@ public class GraphQLQueryFactory {
         throw new GraphQLException("unknown field " + field.getName());
     }
 
-    public GraphQLObjectType getObjectType() {
+    public GraphQLOutputType getObjectType() {
         return objectType;
     }
 }

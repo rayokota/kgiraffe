@@ -147,7 +147,7 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
 
     protected void injectKGiraffeProperties(Properties props) {
         super.injectKGiraffeProperties(props);
-        props.put(KGiraffeConfig.TOPICS_CONFIG, "t1,t2");
+        props.put(KGiraffeConfig.TOPICS_CONFIG, "t1,t2,cycle");
     }
 
 }

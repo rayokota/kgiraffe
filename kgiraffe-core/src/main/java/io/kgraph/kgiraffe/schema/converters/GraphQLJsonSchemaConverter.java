@@ -110,49 +110,45 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         }
     }
 
-    private GraphQLInputObjectType createInputRecord(SchemaContext ctx,
+    private GraphQLInputType createInputRecord(SchemaContext ctx,
                                                      String scope,
                                                      ObjectSchema schema) {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
-        GraphQLInputObjectType type = (GraphQLInputObjectType) typeCache.get(name);
-        if (type != null) {
-            return type;
+        if (typeCache.contains(name)) {
+            return new GraphQLTypeReference(name);
+        } else {
+            typeCache.add(name);
         }
-        try {
-            boolean isRoot = ctx.isRoot();
-            if (isRoot) {
-                ctx.setRoot(false);
-            }
-            List<GraphQLInputObjectField> fields = schema.getPropertySchemas().entrySet().stream()
-                .filter(f -> !isIgnored(schema))
-                .map(f -> createInputField(
-                    ctx, scopedName + "_", new Tuple2<>(f.getKey(), f.getValue())))
-                .collect(Collectors.toList());
-            GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
-                .name(name)
-                .description(schema.getDescription())
-                .fields(fields);
+        boolean isRoot = ctx.isRoot();
+        if (isRoot) {
+            ctx.setRoot(false);
+        }
+        List<GraphQLInputObjectField> fields = schema.getPropertySchemas().entrySet().stream()
+            .filter(f -> !isIgnored(schema))
+            .map(f -> createInputField(
+                ctx, scopedName + "_", new Tuple2<>(f.getKey(), f.getValue())))
+            .collect(Collectors.toList());
+        GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
+            .name(name)
+            .description(schema.getDescription())
+            .fields(fields);
 
-            if (isRoot) {
-                if (ctx.isWhere()) {
-                    builder.field(GraphQLInputObjectField.newInputObjectField()
-                            .name(Logical.OR.symbol())
-                            .description("Logical operation for expressions")
-                            .type(new GraphQLList(new GraphQLTypeReference(name)))
-                            .build())
-                        .field(GraphQLInputObjectField.newInputObjectField()
-                            .name(Logical.AND.symbol())
-                            .description("Logical operation for expressions")
-                            .type(new GraphQLList(new GraphQLTypeReference(name)))
-                            .build());
-                }
+        if (isRoot) {
+            if (ctx.isWhere()) {
+                builder.field(GraphQLInputObjectField.newInputObjectField()
+                        .name(Logical.OR.symbol())
+                        .description("Logical operation for expressions")
+                        .type(new GraphQLList(new GraphQLTypeReference(name)))
+                        .build())
+                    .field(GraphQLInputObjectField.newInputObjectField()
+                        .name(Logical.AND.symbol())
+                        .description("Logical operation for expressions")
+                        .type(new GraphQLList(new GraphQLTypeReference(name)))
+                        .build());
             }
-            type = builder.build();
-            return type;
-        } finally {
-            typeCache.put(name, type);
         }
+        return builder.build();
     }
 
     private GraphQLInputObjectField createInputField(SchemaContext ctx,
@@ -162,7 +158,9 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         String scopedName = scope + fieldName;
         String name = ctx.qualify(scopedName);
         GraphQLInputType fieldType = createInputType(ctx, scopedName + "_", field._2);
-        if (ctx.isWhere() && !(fieldType instanceof GraphQLInputObjectType)) {
+        if (ctx.isWhere()
+            && !(fieldType instanceof GraphQLInputObjectType)
+            && !(fieldType instanceof GraphQLTypeReference)) {
             fieldType = createInputFieldOp(name, fieldType);
         }
         return GraphQLInputObjectField.newInputObjectField()
@@ -258,30 +256,26 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         }
     }
 
-    private GraphQLObjectType createOutputRecord(SchemaContext ctx,
+    private GraphQLOutputType createOutputRecord(SchemaContext ctx,
                                                  String scope,
                                                  ObjectSchema schema) {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
-        GraphQLObjectType type = (GraphQLObjectType) typeCache.get(name);
-        if (type != null) {
-            return type;
+        if (typeCache.contains(name)) {
+            return new GraphQLTypeReference(name);
+        } else {
+            typeCache.add(name);
         }
-        try {
-            List<GraphQLFieldDefinition> fields = schema.getPropertySchemas().entrySet().stream()
-                .filter(f -> !isIgnored(schema))
-                .map(f -> createOutputField(
-                    ctx, scopedName + "_", new Tuple2<>(f.getKey(), f.getValue())))
-                .collect(Collectors.toList());
-            GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
-                .name(name)
-                .description(schema.getDescription())
-                .fields(fields);
-            type = builder.build();
-            return type;
-        } finally {
-            typeCache.put(name, type);
-        }
+        List<GraphQLFieldDefinition> fields = schema.getPropertySchemas().entrySet().stream()
+            .filter(f -> !isIgnored(schema))
+            .map(f -> createOutputField(
+                ctx, scopedName + "_", new Tuple2<>(f.getKey(), f.getValue())))
+            .collect(Collectors.toList());
+        GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
+            .name(name)
+            .description(schema.getDescription())
+            .fields(fields);
+        return builder.build();
     }
 
     private GraphQLFieldDefinition createOutputField(SchemaContext ctx,
