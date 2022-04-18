@@ -15,6 +15,7 @@ import graphql.schema.GraphQLTypeReference;
 import io.kgraph.kgiraffe.schema.AttributeFetcher;
 import io.kgraph.kgiraffe.schema.Logical;
 import io.kgraph.kgiraffe.schema.SchemaContext;
+import io.kgraph.kgiraffe.schema.SchemaContext.Mode;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import org.everit.json.schema.ArraySchema;
@@ -36,7 +37,9 @@ import org.ojai.Value.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -48,6 +51,8 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.orderByEnum;
 
 public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
     private static final Logger LOG = LoggerFactory.getLogger(GraphQLJsonSchemaConverter.class);
+
+    protected final Map<Tuple2<Mode, JsonSchema>, String> schemaCache = new HashMap<>();
 
     @Override
     public GraphQLInputType createInputType(SchemaContext ctx, Either<Type, ParsedSchema> schema) {
@@ -115,10 +120,13 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
                                                      ObjectSchema schema) {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
-        if (typeCache.contains(name)) {
-            return new GraphQLTypeReference(name);
+        // Wrap raw schema with JsonSchema as the latter avoids recursive equals/hashCode
+        Tuple2<Mode, JsonSchema> cacheKey = new Tuple2<>(ctx.mode(), new JsonSchema(schema));
+        String cachedName = schemaCache.get(cacheKey);
+        if (cachedName != null) {
+            return new GraphQLTypeReference(cachedName);
         } else {
-            typeCache.add(name);
+            schemaCache.put(cacheKey, name);
         }
         boolean isRoot = ctx.isRoot();
         if (isRoot) {
@@ -261,10 +269,13 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
                                                  ObjectSchema schema) {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
-        if (typeCache.contains(name)) {
-            return new GraphQLTypeReference(name);
+        // Wrap raw schema with JsonSchema as the latter avoids recursive equals/hashCode
+        Tuple2<Mode, JsonSchema> cacheKey = new Tuple2<>(ctx.mode(), new JsonSchema(schema));
+        String cachedName = schemaCache.get(cacheKey);
+        if (cachedName != null) {
+            return new GraphQLTypeReference(cachedName);
         } else {
-            typeCache.add(name);
+            schemaCache.put(cacheKey, name);
         }
         List<GraphQLFieldDefinition> fields = schema.getPropertySchemas().entrySet().stream()
             .filter(f -> !isIgnored(schema))
