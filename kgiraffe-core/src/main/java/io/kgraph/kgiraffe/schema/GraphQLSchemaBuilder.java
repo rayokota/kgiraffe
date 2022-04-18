@@ -89,7 +89,7 @@ public class GraphQLSchemaBuilder {
     public static final String SUBJECT_PREFIX_PARAM_NAME = "subject_prefix";
 
     public static final String IS_BACKWARD_COMPATIBLE_ATTR_NAME = "is_backward_compatible";
-    public static final String MESSAGES_ATTR_NAME = "messages";
+    public static final String COMPATIBILITY_ERRORS_ATTR_NAME = "compatibility_errors";
 
     // prefix used for internal field names
     private static final String KAFKA = "kafka";
@@ -817,8 +817,8 @@ public class GraphQLSchemaBuilder {
                 .type(Scalars.GraphQLBoolean)
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
-                .name(MESSAGES_ATTR_NAME)
-                .description("Compatibility messages")
+                .name(COMPATIBILITY_ERRORS_ATTR_NAME)
+                .description("Compatibility errors")
                 .type(new GraphQLList(Scalars.GraphQLString))
                 .build())
             .build();

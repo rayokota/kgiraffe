@@ -14,7 +14,7 @@ import java.util.Optional;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.IS_BACKWARD_COMPATIBLE_ATTR_NAME;
-import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.MESSAGES_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.COMPATIBILITY_ERRORS_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.NEXT_ID_PARAM_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PREV_ID_PARAM_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PREV_SUBJECT_PARAM_NAME;
@@ -51,13 +51,13 @@ public class CompatibilityFetcher implements DataFetcher {
             HDocument doc = new HDocument();
             if (prevSchema.isEmpty()) {
                 doc.set(IS_BACKWARD_COMPATIBLE_ATTR_NAME, false);
-                doc.set(MESSAGES_ATTR_NAME,
+                doc.set(COMPATIBILITY_ERRORS_ATTR_NAME,
                     Collections.singletonList("Could not parse previous schema"));
                 return doc;
             }
             if (nextSchema.isEmpty()) {
                 doc.set(IS_BACKWARD_COMPATIBLE_ATTR_NAME, false);
-                doc.set(MESSAGES_ATTR_NAME,
+                doc.set(COMPATIBILITY_ERRORS_ATTR_NAME,
                     Collections.singletonList("Could not parse next schema with id " + nextSchemaId));
                 return doc;
             }
@@ -67,7 +67,7 @@ public class CompatibilityFetcher implements DataFetcher {
                 doc.set(IS_BACKWARD_COMPATIBLE_ATTR_NAME, true);
             } else {
                 doc.set(IS_BACKWARD_COMPATIBLE_ATTR_NAME, false);
-                doc.set(MESSAGES_ATTR_NAME, errors);
+                doc.set(COMPATIBILITY_ERRORS_ATTR_NAME, errors);
             }
             return doc;
         } catch (Exception e) {

@@ -139,8 +139,7 @@ Validate and stage the given Avro schema. The validation result will be in the
 `validation_error` GraphQL field.
 
 ```bash
-$ kgiraffe -r http://schema-registry-url:8081 -s 'avro:{"type":"record","name":"myrecord","fields":[
-{"name":"field1","type":"string"}]}'
+$ kgiraffe -r http://schema-registry-url:8081 -s 'avro:{"type":"record","name":"myrecord","fields":[{"name":"field1","type":"string"}]}'
 ```
 
 Validate and stage the given Avro schema file.
@@ -211,6 +210,7 @@ mutation {
     key: "mykey", 
     value: { field1: "goodbye"}
   ) {
+    headers
     value {
       field1
     }
@@ -318,7 +318,7 @@ and registered schemas can be compared.
 query {
   _test_schema_compatibility (next_id: -1, prev_id: 123) {
     is_backward_compatible
-    messages
+    compatibility_errors
   }
 }
 ```
@@ -330,7 +330,7 @@ Test schema compatibility against the latest version in a given subject.
 query {
   _test_schema_compatibility (next_id: -1, prev_subject: "mysubject") {
     is_backward_compatible
-    messages
+    compatibility_errors
   }
 }
 ```
