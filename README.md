@@ -137,7 +137,7 @@ $ kgiraffe -b mybroker -t mytopic -r http://schema-registry-url:8080 -v mytopic=
 ### Schema Management
 
 Validate and stage the given Avro schema. The validation result will be in the 
-`validation_error` field.
+`validation_error` GraphQL field.
 
 ```bash
 $ kgiraffe -r http://schema-registry-url:8080 -s 'avro:{"type":"record","name":"myrecord","fields":[
@@ -186,7 +186,7 @@ query {
 }
 ```
 
-Publish records to Kafka `mytopic` topic.
+Publish records to Kafka `mytopic` topic with the given value.
 
 ```graphql
 mutation {
@@ -198,6 +198,23 @@ mutation {
     offset
     partition
     ts
+  }
+}
+```
+
+Publish records to Kafka `mytopic` topic, with the given headers, key, and value.
+
+
+```graphql
+mutation {
+  mytopic( 
+    headers: { header1: "myheader" }, 
+    key: "mykey", 
+    value: { field1: "goodbye"}
+  ) {
+    value {
+      field1
+    }
   }
 }
 ```
@@ -229,7 +246,7 @@ mutation {
   _stage_schema(
     schema_type: "AVRO", 
     schema: "{\"type\":\"record\",\"name\":\"myrecord\",\"fields\":[{\"name\":\"field1\",\"type\":\"string\"}]}"
-) {
+  ) {
     id
     schema
     status
