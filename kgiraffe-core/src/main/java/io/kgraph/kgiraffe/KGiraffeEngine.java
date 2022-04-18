@@ -707,7 +707,13 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     private void initCache(String topic) {
-        Map<String, Object> configs = new HashMap<>(config.originals());
+        Map<String, Object> originals = config.originals();
+        Map<String, Object> configs = new HashMap<>(originals);
+        for (Map.Entry<String, Object> config : originals.entrySet()) {
+            if (!config.getKey().startsWith("kafkacache.")) {
+                configs.put("kafkacache." + config.getKey(), config.getValue());
+            }
+        }
         String groupId = (String)
             configs.getOrDefault(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, "kgiraffe-1");
         configs.put(KafkaCacheConfig.KAFKACACHE_TOPIC_CONFIG, topic);
