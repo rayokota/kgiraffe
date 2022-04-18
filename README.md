@@ -49,7 +49,7 @@ Usage: kgiraffe [-hV] [-F=<config-file>] [-m=<ms>] [-o=<offset>] [-r=<url>]
                 [-b=<broker>]... [-k=<topic=serde>]... [-p=<partition>]...
                 [-s=<serde>]... [-t=<topic>]... [-v=<topic=serde>]...
                 [-X=<prop=val>]...
-A GraphQL Interface for Apache Kafka.
+A GraphQL Interface for Apache Kafka and Schema Registry.
   -t, --topic=<topic>               Topic(s) to consume from and produce to
   -p, --partition=<partition>       Partition(s)
   -b, --bootstrap-server=<broker>   Bootstrap broker(s) (host:[port])
@@ -222,7 +222,7 @@ subscription {
 
 ### Schema Management
 
-Validate and stage a schema.  Staged schemas will have negative ids.
+Validate and stage a schema.  Staged schemas will be assigned negative ids.
 
 ```graphql
 mutation {

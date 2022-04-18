@@ -40,7 +40,8 @@ import java.util.stream.Collectors;
 
 @Command(name = "kgiraffe", mixinStandardHelpOptions = true,
     versionProvider = KGiraffeMain.ManifestVersionProvider.class,
-    description = "A GraphQL Interface for Apache Kafka.", sortOptions = false)
+    description = "A GraphQL Interface for Apache Kafka and Schema Registry.",
+    sortOptions = false)
 public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeMain.class);
@@ -312,7 +313,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
                     if (isApplicableManifest(manifest)) {
                         Attributes attr = manifest.getMainAttributes();
                         return new String[]{
-                            "kgiraffe - A GraphQL Interface for Apache Kafka",
+                            "kgiraffe - A GraphQL Interface for Apache Kafka and Schema Registry",
                             "https://github.com/rayokota/kgiraffe",
                             "Copyright (c) 2022, Robert Yokota",
                             "Version " + get(attr, "Implementation-Version")
