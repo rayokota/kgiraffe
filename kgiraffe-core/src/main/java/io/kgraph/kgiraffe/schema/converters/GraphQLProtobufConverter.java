@@ -218,8 +218,13 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     }
 
     private GraphQLEnumType createInputEnum(SchemaContext ctx, EnumDescriptor schema) {
-        return GraphQLEnumType.newEnum()
-            .name(ctx.qualify(schema.getFullName()))
+        String name = ctx.qualify(schema.getFullName());
+        GraphQLEnumType enumType = enumCache.get(name);
+        if (enumType != null) {
+            return enumType;
+        }
+        enumType = GraphQLEnumType.newEnum()
+            .name(name)
             .values(schema.getValues().stream()
                 .map(v -> GraphQLEnumValueDefinition.newEnumValueDefinition()
                     .name(v.getName())
@@ -228,6 +233,8 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
                     .build())
                 .collect(Collectors.toList()))
             .build();
+        enumCache.put(name, enumType);
+        return enumType;
     }
 
     @Override
@@ -349,8 +356,13 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     }
 
     private GraphQLEnumType createOutputEnum(SchemaContext ctx, EnumDescriptor schema) {
-        return GraphQLEnumType.newEnum()
-            .name(ctx.qualify(schema.getFullName()))
+        String name = ctx.qualify(schema.getFullName());
+        GraphQLEnumType enumType = enumCache.get(name);
+        if (enumType != null) {
+            return enumType;
+        }
+        enumType = GraphQLEnumType.newEnum()
+            .name(name)
             .values(schema.getValues().stream()
                 .map(v -> GraphQLEnumValueDefinition.newEnumValueDefinition()
                     .name(v.getName())
@@ -359,6 +371,8 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
                     .build())
                 .collect(Collectors.toList()))
             .build();
+        enumCache.put(name, enumType);
+        return enumType;
     }
 
     private FieldDescriptor unwrapType(Descriptor schema) {

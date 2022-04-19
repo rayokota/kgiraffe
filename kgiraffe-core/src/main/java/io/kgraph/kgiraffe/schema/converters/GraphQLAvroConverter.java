@@ -126,8 +126,13 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
     }
 
     private GraphQLEnumType createInputEnum(SchemaContext ctx, Schema schema) {
-        return GraphQLEnumType.newEnum()
-            .name(ctx.qualify(schema.getFullName()))
+        String name = ctx.qualify(schema.getFullName());
+        GraphQLEnumType enumType = enumCache.get(name);
+        if (enumType != null) {
+            return enumType;
+        }
+        enumType = GraphQLEnumType.newEnum()
+            .name(name)
             .description(schema.getDoc())
             .values(schema.getEnumSymbols().stream()
                 .map(v -> GraphQLEnumValueDefinition.newEnumValueDefinition()
@@ -137,6 +142,8 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
                     .build())
                 .collect(Collectors.toList()))
             .build();
+        enumCache.put(name, enumType);
+        return enumType;
     }
 
     private GraphQLInputObjectType createInputUnion(SchemaContext ctx, Schema schema) {
@@ -224,8 +231,13 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
     }
 
     private GraphQLEnumType createOutputEnum(SchemaContext ctx, Schema schema) {
-        return GraphQLEnumType.newEnum()
-            .name(ctx.qualify(schema.getFullName()))
+        String name = ctx.qualify(schema.getFullName());
+        GraphQLEnumType enumType = enumCache.get(name);
+        if (enumType != null) {
+            return enumType;
+        }
+        enumType = GraphQLEnumType.newEnum()
+            .name(name)
             .description(schema.getDoc())
             .values(schema.getEnumSymbols().stream()
                 .map(v -> GraphQLEnumValueDefinition.newEnumValueDefinition()
@@ -235,6 +247,8 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
                     .build())
                 .collect(Collectors.toList()))
             .build();
+        enumCache.put(name, enumType);
+        return enumType;
     }
 
     private GraphQLObjectType createOutputUnion(SchemaContext ctx, Schema schema) {
