@@ -39,7 +39,7 @@ import java.util.Vector;
 public abstract class ClusterTestHarness {
 
     protected static final int DEFAULT_NUM_BROKERS = 1;
-    protected static final Option<Properties> EMPTY_SASL_PROPERTIES = Option$.MODULE$.<Properties>empty();
+    protected static final Option<Properties> EMPTY_SASL_PROPERTIES = Option$.MODULE$.empty();
 
     private final int numBrokers;
 
@@ -112,7 +112,7 @@ public abstract class ClusterTestHarness {
             TestUtils.RandomPort(),
             false,
             TestUtils.RandomPort(),
-            Option.<String>empty(),
+            Option.empty(),
             1,
             false,
             1,

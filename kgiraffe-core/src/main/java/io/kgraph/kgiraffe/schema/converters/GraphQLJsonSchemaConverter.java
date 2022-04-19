@@ -16,7 +16,6 @@ import io.kgraph.kgiraffe.schema.AttributeFetcher;
 import io.kgraph.kgiraffe.schema.JavaScalars;
 import io.kgraph.kgiraffe.schema.Logical;
 import io.kgraph.kgiraffe.schema.SchemaContext;
-import io.kgraph.kgiraffe.schema.SchemaContext.Mode;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import org.everit.json.schema.ArraySchema;
@@ -38,9 +37,7 @@ import org.ojai.Value.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 

@@ -1,13 +1,11 @@
 package io.kgraph.kgiraffe.schema;
 
 import com.google.common.collect.EnumHashBiMap;
-import graphql.language.NullValue;
 import graphql.schema.DataFetchingEnvironment;
 import io.hdocdb.HValue;
 import io.hdocdb.store.HQueryCondition;
 import org.ojai.store.QueryCondition.Op;
 
-import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;

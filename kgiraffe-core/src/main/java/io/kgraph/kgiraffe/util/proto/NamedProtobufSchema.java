@@ -15,8 +15,8 @@ import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 
 public class NamedProtobufSchema implements ParsedSchema {
 
-    private String name;
-    private ProtobufSchema schema;
+    private final String name;
+    private final ProtobufSchema schema;
 
     public NamedProtobufSchema(Descriptors.Descriptor descriptor) {
         this.name = descriptor.getFullName();
