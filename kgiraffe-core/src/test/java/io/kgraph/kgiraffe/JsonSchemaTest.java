@@ -22,12 +22,58 @@ public class JsonSchemaTest extends AbstractSchemaTest {
             + "  }\n"
             + "}'";
 
+        String types = ",'types=json:{\n" +
+                "  \"type\": \"object\",\n" +
+                "  \"properties\": {\n" +
+                "    \"mynull\": {\n" +
+                "      \"type\": \"null\"\n" +
+                "    },\n" +
+                "    \"myint\": {\n" +
+                "      \"type\": \"integer\"\n" +
+                "    },\n" +
+                "    \"mynumericlong\": {\n" +
+                "      \"type\": \"integer\"\n" +
+                "    },\n" +
+                "    \"mystringlong\": {\n" +
+                "      \"type\": \"string\"\n" +
+                "    },\n" +
+                "    \"myfloat\": {\n" +
+                "      \"type\": \"number\"\n" +
+                "    },\n" +
+                "    \"mydouble\": {\n" +
+                "      \"type\": \"number\"\n" +
+                "    },\n" +
+                "    \"myboolean\": {\n" +
+                "      \"type\": \"boolean\"\n" +
+                "    },\n" +
+                "    \"mystring\": {\n" +
+                "      \"type\": \"string\"\n" +
+                "    },\n" +
+                "    \"mybinary\": {\n" +
+                "      \"type\": \"string\"\n" +
+                "    },\n" +
+                "    \"mysuit\": {\n" +
+                "      \"type\": \"string\",\n" +
+                "      \"enum\": [\"SPADES\", \"HEARTS\", \"DIAMONDS\", \"CLUBS\"]\n" +
+                "    },\n" +
+                "    \"myarray\": {\n" +
+                "      \"type\": \"array\",\n" +
+                "      \"items\": {\n" +
+                "        \"type\": \"string\"\n" +
+                "      }\n" +
+                "    },\n" +
+                "    \"mymap\": {\n" +
+                "      \"type\": \"object\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "}\n'";
+
         String serdes = "'t1=json:{\"type\":\"object\"," +
             "\"properties\":{\"f1\":{\"type\":\"string\"}}}'," +
             "'t2=json:{ \"type\": \"object\", \"properties\": { \"f1\": { \"type\": \"string\" }," +
             " \"nested\": { \"type\": \"object\", \"properties\": { \"f2\": { \"type\": " +
             "\"string\" } } } } }'";
 
-        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + cycle);
+        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + types + cycle);
     }
 }

@@ -96,7 +96,12 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         } else if (schema instanceof FalseSchema) {
             return ctx.isOrderBy() ? orderByEnum : JavaScalars.GraphQLVoid;
         } else if (schema instanceof ObjectSchema) {
-            return createInputRecord(ctx, scope, (ObjectSchema) schema);
+            ObjectSchema objectSchema = (ObjectSchema) schema;
+            if (objectSchema.getPropertySchemas().isEmpty()) {
+                return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
+            } else {
+                return createInputRecord(ctx, scope, objectSchema);
+            }
         } else if (schema instanceof ArraySchema) {
             String name = scope + "array";
             return ctx.isOrderBy() ? orderByEnum : new GraphQLList(
@@ -242,7 +247,12 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         } else if (schema instanceof FalseSchema) {
             return JavaScalars.GraphQLVoid;
         } else if (schema instanceof ObjectSchema) {
-            return createOutputRecord(ctx, scope, (ObjectSchema) schema);
+            ObjectSchema objectSchema = (ObjectSchema) schema;
+            if (objectSchema.getPropertySchemas().isEmpty()) {
+                return ExtendedScalars.Json;
+            } else {
+                return createOutputRecord(ctx, scope, objectSchema);
+            }
         } else if (schema instanceof ArraySchema) {
             String name = scope + "array";
             return new GraphQLList(
