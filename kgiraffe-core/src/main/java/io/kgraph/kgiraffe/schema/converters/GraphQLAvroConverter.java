@@ -75,9 +75,9 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
 
     private GraphQLInputType createInputRecord(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
-        String cachedName = ctx.cacheIfAbsent(new AvroSchema(schema), name);
-        if (cachedName != null) {
-            return new GraphQLTypeReference(cachedName);
+        GraphQLTypeReference type = ctx.cacheIfAbsent(new AvroSchema(schema), name);
+        if (type != null) {
+            return type;
         }
         boolean isRoot = ctx.isRoot();
         if (isRoot) {
@@ -127,7 +127,8 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
 
     private GraphQLEnumType createInputEnum(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
-        GraphQLEnumType enumType = enumCache.get(name);
+        ParsedSchema parsedSchema = new AvroSchema(schema);
+        GraphQLEnumType enumType = (GraphQLEnumType) ctx.getCached(parsedSchema);
         if (enumType != null) {
             return enumType;
         }
@@ -142,7 +143,7 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
                     .build())
                 .collect(Collectors.toList()))
             .build();
-        enumCache.put(name, enumType);
+        ctx.cache(parsedSchema, enumType);
         return enumType;
     }
 
@@ -207,9 +208,9 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
 
     private GraphQLOutputType createOutputRecord(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
-        String cachedName = ctx.cacheIfAbsent(new AvroSchema(schema), name);
-        if (cachedName != null) {
-            return new GraphQLTypeReference(cachedName);
+        GraphQLTypeReference type = ctx.cacheIfAbsent(new AvroSchema(schema), name);
+        if (type != null) {
+            return type;
         }
         List<GraphQLFieldDefinition> fields = schema.getFields().stream()
             .map(f -> createOutputField(ctx, f))
@@ -232,7 +233,8 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
 
     private GraphQLEnumType createOutputEnum(SchemaContext ctx, Schema schema) {
         String name = ctx.qualify(schema.getFullName());
-        GraphQLEnumType enumType = enumCache.get(name);
+        ParsedSchema parsedSchema = new AvroSchema(schema);
+        GraphQLEnumType enumType = (GraphQLEnumType) ctx.getCached(parsedSchema);
         if (enumType != null) {
             return enumType;
         }
@@ -247,7 +249,7 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
                     .build())
                 .collect(Collectors.toList()))
             .build();
-        enumCache.put(name, enumType);
+        ctx.cache(parsedSchema, enumType);
         return enumType;
     }
 

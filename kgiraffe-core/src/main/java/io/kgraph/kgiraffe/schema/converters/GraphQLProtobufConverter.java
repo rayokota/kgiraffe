@@ -22,7 +22,6 @@ import io.kgraph.kgiraffe.schema.AttributeFetcher;
 import io.kgraph.kgiraffe.schema.JavaScalars;
 import io.kgraph.kgiraffe.schema.Logical;
 import io.kgraph.kgiraffe.schema.SchemaContext;
-import io.kgraph.kgiraffe.util.proto.EnumElem;
 import io.kgraph.kgiraffe.util.proto.NamedProtobufSchema;
 import io.vavr.control.Either;
 import org.ojai.Value.Type;
@@ -164,9 +163,9 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             return createInputType(ctx, unwrapped);
         }
         String name = ctx.qualify(schema.getFullName());
-        String cachedName = ctx.cacheIfAbsent(new NamedProtobufSchema(schema), name);
-        if (cachedName != null) {
-            return new GraphQLTypeReference(cachedName);
+        GraphQLTypeReference type = ctx.cacheIfAbsent(new NamedProtobufSchema(schema), name);
+        if (type != null) {
+            return type;
         }
         boolean isRoot = ctx.isRoot();
         if (isRoot) {
@@ -217,9 +216,10 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             .build();
     }
 
-    private GraphQLEnumType createInputEnum(SchemaContext ctx, EnumDescriptor schema) {
+    private GraphQLInputType createInputEnum(SchemaContext ctx, EnumDescriptor schema) {
         String name = ctx.qualify(schema.getFullName());
-        GraphQLEnumType enumType = enumCache.get(name);
+        ParsedSchema parsedSchema = new NamedProtobufSchema(schema);
+        GraphQLEnumType enumType = (GraphQLEnumType) ctx.getCached(parsedSchema);
         if (enumType != null) {
             return enumType;
         }
@@ -233,7 +233,7 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
                     .build())
                 .collect(Collectors.toList()))
             .build();
-        enumCache.put(name, enumType);
+        ctx.cache(parsedSchema, enumType);
         return enumType;
     }
 
@@ -329,9 +329,9 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             return createOutputType(ctx, unwrapped);
         }
         String name = ctx.qualify(schema.getFullName());
-        String cachedName = ctx.cacheIfAbsent(new NamedProtobufSchema(schema), name);
-        if (cachedName != null) {
-            return new GraphQLTypeReference(cachedName);
+        GraphQLTypeReference type = ctx.cacheIfAbsent(new NamedProtobufSchema(schema), name);
+        if (type != null) {
+            return type;
         }
         List<GraphQLFieldDefinition> fields = schema.getFields().stream()
             .map(f -> createOutputField(ctx, f))
@@ -357,7 +357,8 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
 
     private GraphQLEnumType createOutputEnum(SchemaContext ctx, EnumDescriptor schema) {
         String name = ctx.qualify(schema.getFullName());
-        GraphQLEnumType enumType = enumCache.get(name);
+        ParsedSchema parsedSchema = new NamedProtobufSchema(schema);
+        GraphQLEnumType enumType = (GraphQLEnumType) ctx.getCached(parsedSchema);
         if (enumType != null) {
             return enumType;
         }
@@ -371,7 +372,7 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
                     .build())
                 .collect(Collectors.toList()))
             .build();
-        enumCache.put(name, enumType);
+        ctx.cache(parsedSchema, enumType);
         return enumType;
     }
 

@@ -17,8 +17,6 @@ import io.confluent.kafka.schemaregistry.ParsedSchema;
 public abstract class GraphQLSchemaConverter {
     private static final Logger LOG = LoggerFactory.getLogger(GraphQLSchemaConverter.class);
 
-    protected Map<String, GraphQLEnumType> enumCache = new HashMap<>();
-
     public abstract GraphQLInputType createInputType(SchemaContext ctx,
                                                      Either<Type, ParsedSchema> schema);
 

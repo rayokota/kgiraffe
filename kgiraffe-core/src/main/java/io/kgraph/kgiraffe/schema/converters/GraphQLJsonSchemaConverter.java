@@ -121,9 +121,9 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
         // Wrap raw schema with JsonSchema as the latter avoids recursive equals/hashCode
-        String cachedName = ctx.cacheIfAbsent(new JsonSchema(schema), name);
-        if (cachedName != null) {
-            return new GraphQLTypeReference(cachedName);
+        GraphQLTypeReference type = ctx.cacheIfAbsent(new JsonSchema(schema), name);
+        if (type != null) {
+            return type;
         }
         boolean isRoot = ctx.isRoot();
         if (isRoot) {
@@ -271,9 +271,9 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         String scopedName = scope + "object";
         String name = ctx.qualify(scopedName);
         // Wrap raw schema with JsonSchema as the latter avoids recursive equals/hashCode
-        String cachedName = ctx.cacheIfAbsent(new JsonSchema(schema), name);
-        if (cachedName != null) {
-            return new GraphQLTypeReference(cachedName);
+        GraphQLTypeReference type = ctx.cacheIfAbsent(new JsonSchema(schema), name);
+        if (type != null) {
+            return type;
         }
         List<GraphQLFieldDefinition> fields = schema.getPropertySchemas().entrySet().stream()
             .map(f -> createOutputField(

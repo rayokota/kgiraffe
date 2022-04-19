@@ -1,5 +1,7 @@
 package io.kgraph.kgiraffe.schema;
 
+import graphql.schema.GraphQLType;
+import graphql.schema.GraphQLTypeReference;
 import io.vavr.Tuple2;
 
 import java.util.HashMap;
@@ -12,7 +14,7 @@ public class SchemaContext {
     private final Mode mode;
     private boolean root;
     private int nameIndex = 0;
-    private final Map<Tuple2<Mode, ParsedSchema>, String> schemaCache;
+    private final Map<Tuple2<Mode, ParsedSchema>, GraphQLType> schemaCache;
 
     public SchemaContext(String name,
                          Mode mode) {
@@ -77,9 +79,19 @@ public class SchemaContext {
         return ++nameIndex;
     }
 
-    public String cacheIfAbsent(ParsedSchema schema, String name) {
+    public GraphQLTypeReference cacheIfAbsent(ParsedSchema schema, String name) {
         Tuple2<Mode, ParsedSchema> key = new Tuple2<>(mode, schema);
-        return schemaCache.putIfAbsent(key, name);
+        return (GraphQLTypeReference) schemaCache.putIfAbsent(key, new GraphQLTypeReference(name));
+    }
+
+    public GraphQLType getCached(ParsedSchema schema) {
+        Tuple2<Mode, ParsedSchema> key = new Tuple2<>(mode, schema);
+        return schemaCache.get(key);
+    }
+
+    public GraphQLType cache(ParsedSchema schema, GraphQLType type) {
+        Tuple2<Mode, ParsedSchema> key = new Tuple2<>(mode, schema);
+        return schemaCache.put(key, type);
     }
 
     public enum Mode {
