@@ -226,8 +226,16 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
         assertThat(val).isEqualTo(123);
 
         String query = "query {\n" +
-            "  types (where: {value: {_or: [" +
-            "    {myint: {_eq: 123}}" +
+            "  types (where: {value: {_and: [" +
+            "    {mynull: {_eq: null}}," +
+            "    {myint: {_eq: 123}}," +
+            "    {mynumericlong: {_eq: 456}}," +
+            "    {mystringlong: {_eq: \"789\"}}," +
+            "    {myfloat: {_eq: 1.23}}," +
+            "    {mydouble: {_eq: 4.56}}," +
+            "    {mystring: {_eq: \"hi\"}}," +
+            "    {mybinary: {_eq: \"aGk=\"}}," +
+            "    {mysuit: {_eq: SPADES}}" +
             "  ]}}) {\n" +
             "    value {\n" +
             "      mynull\n" +

@@ -59,6 +59,7 @@ public class Jackson {
 
     private static ObjectMapper configure(ObjectMapper mapper, boolean sorted) {
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+        mapper.enable(DeserializationFeature.USE_LONG_FOR_INTS);
         mapper.disable(FAIL_ON_UNKNOWN_PROPERTIES);
         mapper.setNodeFactory(sorted
             ? new SortingNodeFactory(true)

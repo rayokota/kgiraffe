@@ -72,7 +72,6 @@ import org.apache.kafka.common.utils.Utils;
 import org.ojai.Document;
 import org.ojai.Value;
 import org.ojai.Value.Type;
-import org.ojai.json.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -569,7 +568,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 default:
                     throw new IllegalArgumentException("Illegal type " + parsedSchema.schemaType());
             }
-            Document doc = Json.newDocumentStream(new ByteArrayInputStream(json)).iterator().next();
+            Map<String, Object> map = MAPPER.readValue(
+                new ByteArrayInputStream(json), new TypeReference<>() {});
+            Document doc = HValue.initFromMap(map);
             if (typeName != null) {
                 HDocument rootDoc = new HDocument();
                 rootDoc.set(typeName, doc);

@@ -206,7 +206,7 @@ public class GraphQLQueryFactory {
         ObjectValue whereValue = getValue(argument, env);
 
         if (whereValue.getChildren().isEmpty()) {
-            return new HQueryCondition();
+            return new HQueryCondition().build();
         }
 
         Logical logical = extractLogical(argument);
@@ -228,7 +228,7 @@ public class GraphQLQueryFactory {
         ObjectValue whereValue = getValue(argument, env);
 
         if (whereValue.getChildren().isEmpty()) {
-            return new HQueryCondition();
+            return new HQueryCondition().build();
         }
 
         Logical logical = extractLogical(argument);
@@ -282,7 +282,7 @@ public class GraphQLQueryFactory {
         ArrayValue whereValue = getValue(argument, env);
 
         if (whereValue.getValues().isEmpty()) {
-            return new HQueryCondition();
+            return new HQueryCondition().build();
         }
 
         Logical logical = extractLogical(argument);
@@ -375,7 +375,7 @@ public class GraphQLQueryFactory {
         }
 
         if (expressionValue.getChildren().isEmpty()) {
-            return new HQueryCondition();
+            return new HQueryCondition().build();
         }
 
         Logical logical = extractLogical(argument);
@@ -426,7 +426,7 @@ public class GraphQLQueryFactory {
     }
 
     private HQueryCondition addNewParentToPaths(String parent, HQueryCondition predicate) {
-        return new HQueryCondition(addNewParentToPaths(parent, predicate.getRoot()));
+        return new HQueryCondition(addNewParentToPaths(parent, predicate.getRoot())).build();
     }
 
     private ConditionNode addNewParentToPaths(String parent, ConditionNode node) {
@@ -435,8 +435,8 @@ public class GraphQLQueryFactory {
             FieldPath fieldPath = leaf.getField().cloneWithNewParent(parent);
             return new ConditionLeaf(fieldPath, leaf.getOp(), leaf.getValue());
         } else {
-            ConditionParent parentNode = (ConditionParent) node;
-            for (ConditionNode child : parentNode.getChildren()) {
+            ConditionParent parentNode = new ConditionParent(((ConditionParent) node).getType());
+            for (ConditionNode child : ((ConditionParent) node).getChildren()) {
                 parentNode.add(addNewParentToPaths(parent, child));
             }
             return parentNode;
@@ -445,7 +445,7 @@ public class GraphQLQueryFactory {
 
     private HQueryCondition getCompoundPredicate(List<HQueryCondition> predicates, Logical logical) {
         if (predicates.isEmpty()) {
-            return new HQueryCondition();
+            return new HQueryCondition().build();
         }
 
         if (predicates.size() == 1) {
@@ -468,8 +468,7 @@ public class GraphQLQueryFactory {
                 criteria.condition(predicate);
             }
         }
-        criteria.close();
-        return criteria;
+        return criteria.close().build();
     }
 
     private PredicateFilter getPredicateFilter(ObjectField objectField,
@@ -521,7 +520,7 @@ public class GraphQLQueryFactory {
     protected Object convertValue(DataFetchingEnvironment env, Argument argument,
                                   Value value) {
         if (value instanceof NullValue) {
-            return value;
+            return null;
         } else if (value instanceof StringValue) {
             Object convertedValue = env.getArgument(argument.getName());
             if (convertedValue != null) {
@@ -567,7 +566,8 @@ public class GraphQLQueryFactory {
         } else if (value instanceof EnumValue) {
             return ((EnumValue) value).getName();
         } else if (value instanceof IntValue) {
-            return ((IntValue) value).getValue();
+            // USE_LONG_FOR_INTS
+            return ((IntValue) value).getValue().longValue();
         } else if (value instanceof BooleanValue) {
             return ((BooleanValue) value).isValue();
         } else if (value instanceof FloatValue) {

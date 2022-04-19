@@ -1,6 +1,7 @@
 package io.kgraph.kgiraffe.schema;
 
 import com.google.common.collect.EnumHashBiMap;
+import graphql.language.NullValue;
 import graphql.schema.DataFetchingEnvironment;
 import io.hdocdb.HValue;
 import io.hdocdb.store.HQueryCondition;
@@ -140,14 +141,10 @@ class PredicateFilter implements Comparable<PredicateFilter> {
                 attrCriteria.notIn(field, HValue.initFromList((List) typedValue));
                 break;
         }
-        return attrCriteria.close();
+        return attrCriteria.close().build();
     }
 
     private HValue valueFromObject(Object value) {
-        if (value instanceof BigInteger) {
-            // TODO check
-            value = ((BigInteger) value).doubleValue();
-        }
         return HValue.initFromObject(value);
     }
 
