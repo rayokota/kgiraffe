@@ -46,7 +46,9 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             case ENUM:
                 return ctx.isOrderBy() ? orderByEnum : createInputEnum(ctx, schema);
             case ARRAY:
-                return ctx.isOrderBy() ? orderByEnum : new GraphQLList(createInputType(ctx, schema));
+                return ctx.isOrderBy()
+                    ? orderByEnum
+                    : new GraphQLList(createInputType(ctx, schema.getElementType()));
             case MAP:
                 return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
             case UNION:
@@ -171,7 +173,7 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             case ENUM:
                 return createOutputEnum(ctx, schema);
             case ARRAY:
-                return new GraphQLList(createOutputType(ctx, schema));
+                return new GraphQLList(createOutputType(ctx, schema.getElementType()));
             case MAP:
                 return ExtendedScalars.Json;
             case UNION:

@@ -70,6 +70,20 @@ public class AvroTest extends AbstractSchemaTest {
                 "        \"name\": \"Suit\",\n" +
                 "        \"symbols\" : [\"SPADES\", \"HEARTS\", \"DIAMONDS\", \"CLUBS\"]\n" +
                 "      }\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"name\": \"myarray\",\n" +
+                "      \"type\": {\n" +
+                "        \"type\": \"array\",\n" +
+                "        \"items\": \"string\"\n" +
+                "      }\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"name\": \"mymap\",\n" +
+                "      \"type\": {\n" +
+                "        \"type\": \"map\",\n" +
+                "        \"values\": \"string\"\n" +
+                "      }\n" +
                 "    }\n" +
                 "  ]\n" +
                 "}'";

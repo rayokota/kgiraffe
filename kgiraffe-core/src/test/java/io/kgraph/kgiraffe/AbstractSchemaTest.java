@@ -202,8 +202,10 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
             "    myboolean: true," +
             "    mystring: \"hi\"," +
             "    mybinary: \"aGk=\"," +
-            "    mysuit: SPADES}" +
-            "  ) {\n" +
+            "    mysuit: SPADES," +
+            "    myarray: [ \"hello\", \"world\" ]," +
+            "    mymap: { key: \"value\" }" +
+            "  } ) {\n" +
             "    value {\n" +
             "      mynull\n" +
             "      myint\n" +
@@ -214,6 +216,8 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
             "      mystring\n" +
             "      mybinary\n" +
             "      mysuit\n" +
+            "      myarray\n" +
+            "      mymap\n" +
             "    }\n" +
             "  }\n" +
             "}";
@@ -235,7 +239,9 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
             "    {mydouble: {_eq: 4.56}}," +
             "    {mystring: {_eq: \"hi\"}}," +
             "    {mybinary: {_eq: \"aGk=\"}}," +
-            "    {mysuit: {_eq: SPADES}}" +
+            "    {mysuit: {_eq: SPADES}}," +
+            "    {myarray: {_eq: [ \"hello\", \"world\" ]}}," +
+            "    {mymap: {_eq: { key: \"value\" }}}" +
             "  ]}}) {\n" +
             "    value {\n" +
             "      mynull\n" +
@@ -247,6 +253,8 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
             "      mystring\n" +
             "      mybinary\n" +
             "      mysuit\n" +
+            "      myarray\n" +
+            "      mymap\n" +
             "    }\n" +
             "  }\n" +
             "}";
