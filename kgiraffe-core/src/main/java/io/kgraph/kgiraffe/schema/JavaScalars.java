@@ -22,11 +22,12 @@ public class JavaScalars {
     private static final Logger LOG = LoggerFactory.getLogger(JavaScalars.class);
 
     public static final GraphQLScalarType GraphQLDate;
+    public static final GraphQLScalarType GraphQLVoid;
 
     private static final String ISO_8601_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
 
     static {
-        Coercing<Date, String> coercing = new Coercing<>() {
+        Coercing<Date, String> dateCoercing = new Coercing<>() {
             public String serialize(Object input) throws CoercingSerializeException {
                 Date date;
                 if (input instanceof Date) {
@@ -96,7 +97,26 @@ public class JavaScalars {
         GraphQLDate = GraphQLScalarType.newScalar()
             .name("DateTime")
             .description("An RFC-3339 compliant DateTime Scalar")
-            .coercing(coercing)
+            .coercing(dateCoercing)
+            .build();
+
+        Coercing<Void, Void> voidCoercing = new Coercing<>() {
+            public Void serialize(Object input) throws CoercingSerializeException {
+                return null;
+            }
+
+            public Void parseValue(Object input) throws CoercingParseValueException {
+                return null;
+            }
+
+            public Void parseLiteral(Object input) throws CoercingParseLiteralException {
+                return null;
+            }
+        };
+        GraphQLVoid = GraphQLScalarType.newScalar()
+            .name("Void")
+            .description("A void value")
+            .coercing(voidCoercing)
             .build();
     }
 

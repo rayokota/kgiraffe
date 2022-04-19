@@ -186,9 +186,76 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
         assertThat(val).isEqualTo(123);
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testTypes() throws Exception {
+        GraphQL graphQL = getEngine().getGraphQL();
+
+        String mutation = "mutation {\n" +
+            "  types(value: { " +
+            "    mynull: null," +
+            "    myint: 123," +
+            "    mynumericlong: 456," +
+            "    mystringlong: \"789\"," +
+            "    myfloat: 1.23," +
+            "    mydouble: 4.56," +
+            "    myboolean: true," +
+            "    mystring: \"hi\"," +
+            "    mybinary: \"aGk=\"}" +
+            //"    mybinary: \"aGk=\"," +
+            //"    mysuit: SPADES}" +
+            "  ) {\n" +
+            "    value {\n" +
+            "      mynull\n" +
+            "      myint\n" +
+            "      mynumericlong\n" +
+            "      mystringlong\n" +
+            "      myfloat\n" +
+            "      mydouble\n" +
+            "      mystring\n" +
+            "      mybinary\n" +
+            //"      mysuit\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+
+        ExecutionResult executionResult = graphQL.execute(mutation);
+        Map<String, Object> result = executionResult.getData();
+        Map<String, Object> type = (Map<String, Object>) result.get("types");
+        Map<String, Object> value = (Map<String, Object>) type.get("value");
+        int val = (Integer) value.get("myint");
+        assertThat(val).isEqualTo(123);
+
+        String query = "query {\n" +
+            "  types (where: {value: {_or: [" +
+            "    {myint: {_eq: 123}}" +
+            "  ]}}) {\n" +
+            "    value {\n" +
+            "      mynull\n" +
+            "      myint\n" +
+            "      mynumericlong\n" +
+            "      mystringlong\n" +
+            "      myfloat\n" +
+            "      mydouble\n" +
+            "      mystring\n" +
+            "      mybinary\n" +
+            //"      mysuit\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+
+        executionResult = graphQL.execute(query);
+        result = executionResult.getData();
+        List<Map<String, Object>> types = (List<Map<String, Object>>) result.get("types");
+        type = types.get(0);
+        value = (Map<String, Object>) type.get("value");
+        val = (Integer) value.get("myint");
+        assertThat(val).isEqualTo(123);
+    }
+
     protected void injectKGiraffeProperties(Properties props) {
         super.injectKGiraffeProperties(props);
-        props.put(KGiraffeConfig.TOPICS_CONFIG, "t1,t2,cycle");
+        props.put(KGiraffeConfig.TOPICS_CONFIG, "t1,t2,types,cycle");
     }
 
 }

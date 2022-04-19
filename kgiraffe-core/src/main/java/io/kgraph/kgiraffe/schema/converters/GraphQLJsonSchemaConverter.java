@@ -13,6 +13,7 @@ import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLTypeReference;
 import io.kgraph.kgiraffe.schema.AttributeFetcher;
+import io.kgraph.kgiraffe.schema.JavaScalars;
 import io.kgraph.kgiraffe.schema.Logical;
 import io.kgraph.kgiraffe.schema.SchemaContext;
 import io.kgraph.kgiraffe.schema.SchemaContext.Mode;
@@ -70,8 +71,7 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         } else if (schema instanceof BooleanSchema) {
             return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
         } else if (schema instanceof NullSchema) {
-            // Return boolean as there is no null type
-            return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
+            return ctx.isOrderBy() ? orderByEnum : JavaScalars.GraphQLVoid;
         } else if (schema instanceof ConstSchema) {
             return ctx.isOrderBy() ? orderByEnum :
                 createInputConst(ctx, scope, (ConstSchema) schema);
@@ -94,8 +94,7 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         } else if (schema instanceof EmptySchema) {
             return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
         } else if (schema instanceof FalseSchema) {
-            // Return boolean as there is no null type
-            return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
+            return ctx.isOrderBy() ? orderByEnum : JavaScalars.GraphQLVoid;
         } else if (schema instanceof ObjectSchema) {
             return createInputRecord(ctx, scope, (ObjectSchema) schema);
         } else if (schema instanceof ArraySchema) {
@@ -106,8 +105,6 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
             String name = scope + "ref";
             return ctx.isOrderBy() ? orderByEnum :
                 createInputType(ctx, name + "_", ((ReferenceSchema) schema).getReferredSchema());
-        } else if (isIgnored(schema)) {
-            return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
         } else {
             throw new IllegalArgumentException("Illegal type " + schema.getClass().getName());
         }
@@ -128,7 +125,6 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
             ctx.setRoot(false);
         }
         List<GraphQLInputObjectField> fields = schema.getPropertySchemas().entrySet().stream()
-            .filter(f -> !isIgnored(schema))
             .map(f -> createInputField(
                 ctx, scopedName + "_", new Tuple2<>(f.getKey(), f.getValue())))
             .collect(Collectors.toList());
@@ -221,8 +217,7 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         } else if (schema instanceof BooleanSchema) {
             return Scalars.GraphQLBoolean;
         } else if (schema instanceof NullSchema) {
-            // Return boolean as there is no null type
-            return Scalars.GraphQLBoolean;
+            return JavaScalars.GraphQLVoid;
         } else if (schema instanceof ConstSchema) {
             return createOutputConst(ctx, scope, (ConstSchema) schema);
         } else if (schema instanceof EnumSchema) {
@@ -243,8 +238,7 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
         } else if (schema instanceof EmptySchema) {
             return ExtendedScalars.Json;
         } else if (schema instanceof FalseSchema) {
-            // Return boolean as there is no null type
-            return Scalars.GraphQLBoolean;
+            return JavaScalars.GraphQLVoid;
         } else if (schema instanceof ObjectSchema) {
             return createOutputRecord(ctx, scope, (ObjectSchema) schema);
         } else if (schema instanceof ArraySchema) {
@@ -270,7 +264,6 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
             return new GraphQLTypeReference(cachedName);
         }
         List<GraphQLFieldDefinition> fields = schema.getPropertySchemas().entrySet().stream()
-            .filter(f -> !isIgnored(schema))
             .map(f -> createOutputField(
                 ctx, scopedName + "_", new Tuple2<>(f.getKey(), f.getValue())))
             .collect(Collectors.toList());
@@ -332,9 +325,5 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
                 && combinedSchema.getSubschemas().stream().anyMatch(s -> s instanceof NullSchema);
         }
         return false;
-    }
-
-    private boolean isIgnored(Schema schema) {
-        return schema instanceof NullSchema || schema instanceof FalseSchema;
     }
 }

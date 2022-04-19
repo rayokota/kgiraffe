@@ -13,6 +13,7 @@ import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLTypeReference;
 import io.kgraph.kgiraffe.schema.AttributeFetcher;
+import io.kgraph.kgiraffe.schema.JavaScalars;
 import io.kgraph.kgiraffe.schema.Logical;
 import io.kgraph.kgiraffe.schema.SchemaContext;
 import io.vavr.control.Either;
@@ -64,8 +65,7 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             case BOOLEAN:
                 return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
             case NULL:
-                // Return boolean as there is no null type
-                return ctx.isOrderBy() ? orderByEnum : Scalars.GraphQLBoolean;
+                return ctx.isOrderBy() ? orderByEnum : JavaScalars.GraphQLVoid;
             default:
                 throw new IllegalArgumentException("Illegal type " + schema.getType());
         }
@@ -82,7 +82,6 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             ctx.setRoot(false);
         }
         List<GraphQLInputObjectField> fields = schema.getFields().stream()
-            .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
             .map(f -> createInputField(ctx, schema, f))
             .collect(Collectors.toList());
         GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
@@ -141,7 +140,6 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
         return GraphQLInputObjectType.newInputObject()
             .name(ctx.qualify(schema.getFullName() + "_union_" + ctx.incrementNameIndex()))
             .fields(schema.getTypes().stream()
-                .filter(t -> !t.getType().equals(Schema.Type.NULL))
                 .map(t -> {
                     GraphQLInputType fieldType = createInputType(ctx, t);
                     if (ctx.isWhere()
@@ -191,8 +189,7 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             case BOOLEAN:
                 return Scalars.GraphQLBoolean;
             case NULL:
-                // Return boolean as there is no null type
-                return Scalars.GraphQLBoolean;
+                return JavaScalars.GraphQLVoid;
             default:
                 throw new IllegalArgumentException("Illegal type " + schema.getType());
         }
@@ -205,7 +202,6 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
             return new GraphQLTypeReference(cachedName);
         }
         List<GraphQLFieldDefinition> fields = schema.getFields().stream()
-            .filter(f -> !f.schema().getType().equals(Schema.Type.NULL))
             .map(f -> createOutputField(ctx, f))
             .collect(Collectors.toList());
         GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
@@ -241,7 +237,6 @@ public class GraphQLAvroConverter extends GraphQLSchemaConverter {
         return GraphQLObjectType.newObject()
             .name(ctx.qualify(schema.getFullName() + "_union_" + ctx.incrementNameIndex()))
             .fields(schema.getTypes().stream()
-                .filter(t -> !t.getType().equals(Schema.Type.NULL))
                 .map(t -> GraphQLFieldDefinition.newFieldDefinition()
                     .name(t.getFullName())
                     .type(createOutputType(ctx, t))
