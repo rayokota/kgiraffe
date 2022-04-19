@@ -53,7 +53,6 @@ public class JsonSchemaTest extends AbstractSchemaTest {
                 "      \"type\": \"string\"\n" +
                 "    },\n" +
                 "    \"mysuit\": {\n" +
-                "      \"type\": \"string\",\n" +
                 "      \"enum\": [\"SPADES\", \"HEARTS\", \"DIAMONDS\", \"CLUBS\"]\n" +
                 "    },\n" +
                 "    \"myarray\": {\n" +
