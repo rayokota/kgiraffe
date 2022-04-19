@@ -1,7 +1,11 @@
 package io.kgraph.kgiraffe.util.proto;
 
+import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
+import com.squareup.wire.schema.internal.parser.ProtoFileElement;
 
+import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -17,6 +21,26 @@ public class NamedProtobufSchema implements ParsedSchema {
     public NamedProtobufSchema(Descriptors.Descriptor descriptor) {
         this.name = descriptor.getFullName();
         this.schema = new ProtobufSchema(descriptor).copy(name);
+    }
+
+    public NamedProtobufSchema(Descriptors.EnumDescriptor enumDescriptor) {
+        this.name = enumDescriptor.getFullName();
+        this.schema = new ProtobufSchema(
+            toProtoFile(enumDescriptor.getFile().toProto()),
+            Collections.emptyList(),
+            Collections.emptyMap())
+            .copy(name);
+    }
+
+    private static ProtoFileElement toProtoFile(DescriptorProtos.FileDescriptorProto fileProto) {
+        try {
+            Method m = ProtobufSchema.class.getDeclaredMethod(
+                "toProtoFile", DescriptorProtos.FileDescriptorProto.class);
+            m.setAccessible(true); //if security settings allow this
+            return (ProtoFileElement) m.invoke(null, fileProto);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public String schemaType() {
