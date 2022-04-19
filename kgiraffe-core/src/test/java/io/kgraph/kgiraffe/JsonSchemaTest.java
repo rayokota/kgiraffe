@@ -27,6 +27,7 @@ public class JsonSchemaTest extends AbstractSchemaTest {
             "'t2=json:{ \"type\": \"object\", \"properties\": { \"f1\": { \"type\": \"string\" }," +
             " \"nested\": { \"type\": \"object\", \"properties\": { \"f2\": { \"type\": " +
             "\"string\" } } } } }'";
+
         props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + cycle);
     }
 }

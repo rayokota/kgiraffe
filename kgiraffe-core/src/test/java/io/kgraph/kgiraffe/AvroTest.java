@@ -95,6 +95,7 @@ public class AvroTest extends AbstractSchemaTest {
             "{\"name\":\"nested\"," +
             "\"type\":{\"type\": \"record\",\"name\":\"nested\",\"fields\":[{\"name\":\"f2\"," +
             "\"type\":\"string\"}]}}]}'";
+
         props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + types + cycle);
 
     }

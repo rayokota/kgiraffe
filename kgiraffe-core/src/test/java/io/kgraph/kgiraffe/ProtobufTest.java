@@ -81,13 +81,38 @@ public class ProtobufTest extends AbstractSchemaTest {
             "    LinkedList next = 10;\n" +
             "}\n'";
 
+        String types =
+            ",'types=proto:syntax = \"proto3\";\n" +
+                "import \"google/protobuf/struct.proto\";\n" +
+                "\n" +
+                "message MyMessage {\n" +
+                "    google.protobuf.NullValue mynull = 1;\n" +
+                "    int32 myint = 2;\n" +
+                "    sint32 mynumericlong = 3;\n" +
+                "    int64 mystringlong = 4;\n" +
+                "    float myfloat = 5;\n" +
+                "    double mydouble = 6;\n" +
+                "    bool myboolean = 7;\n" +
+                "    string mystring = 8;\n" +
+                "    bytes mybinary = 9;\n" +
+                "    MyEnum mysuit = 10;\n" +
+                "    repeated string myarray = 11;\n" +
+                "    map<string, string> mymap = 12;\n" +
+                "\n" +
+                "    enum MyEnum {\n" +
+                "        SPADES = 0;\n" +
+                "        HEARTS = 1;\n" +
+                "        DIAMONDS = 2;\n" +
+                "        CLUBS = 3;\n" +
+                "    }\n" +
+                "}\n'";
+
         String serdes = "'t1=proto:message Foo " +
             "{ required string f1 = 1; }'," +
             "'t2=proto:message Foo { required string f1 = 1; optional Nested nested = 2; " +
             "message Nested { required string f2 = 1; } }'";
-        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + cycle + multi);
+
+        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + types + cycle + multi);
         props.put(KGiraffeConfig.TOPICS_CONFIG, props.get(KGiraffeConfig.TOPICS_CONFIG) + ",multi");
-
-
     }
 }

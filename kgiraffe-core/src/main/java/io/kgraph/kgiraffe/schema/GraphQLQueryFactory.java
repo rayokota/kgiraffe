@@ -90,6 +90,7 @@ public class GraphQLQueryFactory {
 
         // For debugging
         //List<Document> docs = Streams.streamOf(coll.find()).collect(Collectors.toList());
+        // For debugging
 
         Optional<Argument> offsetArg = getArgument(env.getField(), OFFSET_PARAM_NAME);
         if (offsetArg.isPresent()) {

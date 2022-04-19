@@ -19,8 +19,10 @@ import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLTypeReference;
 import io.kgraph.kgiraffe.schema.AttributeFetcher;
+import io.kgraph.kgiraffe.schema.JavaScalars;
 import io.kgraph.kgiraffe.schema.Logical;
 import io.kgraph.kgiraffe.schema.SchemaContext;
+import io.kgraph.kgiraffe.util.proto.EnumElem;
 import io.kgraph.kgiraffe.util.proto.NamedProtobufSchema;
 import io.vavr.control.Either;
 import org.ojai.Value.Type;
@@ -55,6 +57,9 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     public static final String PROTOBUF_BYTES_WRAPPER_TYPE = "google.protobuf.BytesValue";
 
     public static final String PROTOBUF_FIELD_MASK_TYPE = "google.protobuf.FieldMask";
+    public static final String PROTOBUF_LIST_VALUE_TYPE = "google.protobuf.ListValue";
+    public static final String PROTOBUF_VALUE_TYPE = "google.protobuf.Value";
+    public static final String PROTOBUF_NULL_VALUE_TYPE = "google.protobuf.NullValue";
     public static final String PROTOBUF_EMPTY_TYPE = "google.protobuf.Empty";
 
     @Override
@@ -102,7 +107,11 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
                 type = createInputRecord(ctx, field.getMessageType());
                 break;
             case ENUM:
-                type = ctx.isOrderBy() ? orderByEnum : createInputEnum(ctx, field.getEnumType());
+                EnumDescriptor enumDescriptor = field.getEnumType();
+                type = enumDescriptor.getFullName().equals(PROTOBUF_NULL_VALUE_TYPE)
+                    ? JavaScalars.GraphQLVoid
+                    : createInputEnum(ctx, enumDescriptor);
+                type = ctx.isOrderBy() ? orderByEnum : type;
                 break;
             case STRING:
             case BYTES:
@@ -140,8 +149,11 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
         switch (schema.getFullName()) {
             case PROTOBUF_ANY_TYPE:
             case PROTOBUF_STRUCT_TYPE:
+            case PROTOBUF_VALUE_TYPE:
             case PROTOBUF_EMPTY_TYPE:
                 return ctx.isOrderBy() ? orderByEnum : ExtendedScalars.Json;
+            case PROTOBUF_LIST_VALUE_TYPE:
+                return ctx.isOrderBy() ? orderByEnum : new GraphQLList(ExtendedScalars.Json);
             case PROTOBUF_TIMESTAMP_TYPE:
             case PROTOBUF_DURATION_TYPE:
             case PROTOBUF_FIELD_MASK_TYPE:
@@ -254,7 +266,10 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
                 type = createOutputRecord(ctx, field.getMessageType());
                 break;
             case ENUM:
-                type = createOutputEnum(ctx, field.getEnumType());
+                EnumDescriptor enumDescriptor = field.getEnumType();
+                type = enumDescriptor.getFullName().equals(PROTOBUF_NULL_VALUE_TYPE)
+                    ? JavaScalars.GraphQLVoid
+                    : createOutputEnum(ctx, enumDescriptor);
                 break;
             case STRING:
             case BYTES:
@@ -292,8 +307,11 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
         switch (schema.getFullName()) {
             case PROTOBUF_ANY_TYPE:
             case PROTOBUF_STRUCT_TYPE:
+            case PROTOBUF_VALUE_TYPE:
             case PROTOBUF_EMPTY_TYPE:
                 return ExtendedScalars.Json;
+            case PROTOBUF_LIST_VALUE_TYPE:
+                return new GraphQLList(ExtendedScalars.Json);
             case PROTOBUF_TIMESTAMP_TYPE:
             case PROTOBUF_DURATION_TYPE:
             case PROTOBUF_FIELD_MASK_TYPE:
