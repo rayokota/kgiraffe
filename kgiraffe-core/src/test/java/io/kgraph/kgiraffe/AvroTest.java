@@ -72,6 +72,10 @@ public class AvroTest extends AbstractSchemaTest {
                 "      }\n" +
                 "    },\n" +
                 "    {\n" +
+                "      \"name\": \"mysuit2\",\n" +
+                "      \"type\": \"ns.Suit\"\n" +
+                "    },\n" +
+                "    {\n" +
                 "      \"name\": \"myarray\",\n" +
                 "      \"type\": {\n" +
                 "        \"type\": \"array\",\n" +

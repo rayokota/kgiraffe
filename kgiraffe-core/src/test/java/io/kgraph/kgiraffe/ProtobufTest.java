@@ -96,8 +96,9 @@ public class ProtobufTest extends AbstractSchemaTest {
                 "    string mystring = 8;\n" +
                 "    bytes mybinary = 9;\n" +
                 "    MyEnum mysuit = 10;\n" +
-                "    repeated string myarray = 11;\n" +
-                "    map<string, string> mymap = 12;\n" +
+                "    MyEnum mysuit2 = 11;\n" +
+                "    repeated string myarray = 12;\n" +
+                "    map<string, string> mymap = 13;\n" +
                 "\n" +
                 "    enum MyEnum {\n" +
                 "        SPADES = 0;\n" +

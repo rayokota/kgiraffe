@@ -53,7 +53,10 @@ public class JsonSchemaTest extends AbstractSchemaTest {
                 "      \"type\": \"string\"\n" +
                 "    },\n" +
                 "    \"mysuit\": {\n" +
-                "      \"enum\": [\"SPADES\", \"HEARTS\", \"DIAMONDS\", \"CLUBS\"]\n" +
+                "      \"$ref\": \"#/definitions/Suits\"\n" +
+                "    },\n" +
+                "    \"mysuit2\": {\n" +
+                "      \"$ref\": \"#/definitions/Suits\"\n" +
                 "    },\n" +
                 "    \"myarray\": {\n" +
                 "      \"type\": \"array\",\n" +
@@ -63,6 +66,11 @@ public class JsonSchemaTest extends AbstractSchemaTest {
                 "    },\n" +
                 "    \"mymap\": {\n" +
                 "      \"type\": \"object\"\n" +
+                "    }\n" +
+                "  },\n" +
+                "  \"definitions\": {\n" +
+                "    \"Suits\": {\n" +
+                "      \"enum\": [\"SPADES\", \"HEARTS\", \"DIAMONDS\", \"CLUBS\"]\n" +
                 "    }\n" +
                 "  }\n" +
                 "}\n'";
