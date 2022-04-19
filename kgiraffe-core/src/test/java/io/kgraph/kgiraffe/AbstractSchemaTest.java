@@ -201,9 +201,8 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
             "    mydouble: 4.56," +
             "    myboolean: true," +
             "    mystring: \"hi\"," +
-            "    mybinary: \"aGk=\"}" +
-            //"    mybinary: \"aGk=\"," +
-            //"    mysuit: SPADES}" +
+            "    mybinary: \"aGk=\"," +
+            "    mysuit: SPADES}" +
             "  ) {\n" +
             "    value {\n" +
             "      mynull\n" +
@@ -214,7 +213,7 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
             "      mydouble\n" +
             "      mystring\n" +
             "      mybinary\n" +
-            //"      mysuit\n" +
+            "      mysuit\n" +
             "    }\n" +
             "  }\n" +
             "}";
@@ -239,7 +238,7 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
             "      mydouble\n" +
             "      mystring\n" +
             "      mybinary\n" +
-            //"      mysuit\n" +
+            "      mysuit\n" +
             "    }\n" +
             "  }\n" +
             "}";

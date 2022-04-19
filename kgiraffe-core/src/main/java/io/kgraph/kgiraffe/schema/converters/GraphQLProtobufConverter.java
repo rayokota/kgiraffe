@@ -211,6 +211,8 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             .values(schema.getValues().stream()
                 .map(v -> GraphQLEnumValueDefinition.newEnumValueDefinition()
                     .name(v.getName())
+                    .value(v.getName())
+                    .description(v.getName())
                     .build())
                 .collect(Collectors.toList()))
             .build();
@@ -334,6 +336,8 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             .values(schema.getValues().stream()
                 .map(v -> GraphQLEnumValueDefinition.newEnumValueDefinition()
                     .name(v.getName())
+                    .value(v.getName())
+                    .description(v.getName())
                     .build())
                 .collect(Collectors.toList()))
             .build();

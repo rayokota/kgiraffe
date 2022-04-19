@@ -62,9 +62,6 @@ public class AvroTest extends AbstractSchemaTest {
                 "    {\n" +
                 "      \"name\": \"mybinary\",\n" +
                 "      \"type\": \"bytes\"\n" +
-
-                "    }\n" +
-                /*
                 "    },\n" +
                 "    {\n" +
                 "      \"name\": \"mysuit\",\n" +
@@ -74,8 +71,6 @@ public class AvroTest extends AbstractSchemaTest {
                 "        \"symbols\" : [\"SPADES\", \"HEARTS\", \"DIAMONDS\", \"CLUBS\"]\n" +
                 "      }\n" +
                 "    }\n" +
-
-                 */
                 "  ]\n" +
                 "}'";
 
