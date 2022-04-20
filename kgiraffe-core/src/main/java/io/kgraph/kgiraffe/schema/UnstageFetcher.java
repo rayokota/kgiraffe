@@ -32,7 +32,7 @@ public class UnstageFetcher implements DataFetcher {
         try {
             Integer id = env.getArgument(ID_ATTR_NAME);
             Tuple2<Document, Optional<ParsedSchema>> optSchema = engine.unstageSchema(id);
-            if (optSchema._2.isEmpty()) {
+            if (optSchema._1.isEmpty()) {
                 throw new IllegalArgumentException("Could not unstage schema with id " + id);
             }
             return optSchema._1;

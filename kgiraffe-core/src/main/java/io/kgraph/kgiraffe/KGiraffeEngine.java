@@ -33,6 +33,7 @@ import io.kcache.CacheUpdateHandler;
 import io.kcache.KafkaCache;
 import io.kcache.KafkaCacheConfig;
 import io.kcache.caffeine.CaffeineCache;
+import io.kcache.utils.Streams;
 import io.kgraph.kgiraffe.notifier.Notifier;
 import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
@@ -92,6 +93,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
@@ -249,6 +251,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         if (urls != null && !urls.isEmpty()) {
             String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
             if (mockScope != null) {
+                // Use reset when CP 7.2 is out
                 MockSchemaRegistry.dropScope(mockScope);
             } else {
                 schemaRegistry.reset();
@@ -340,7 +343,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     public Tuple2<Document, Optional<ParsedSchema>> unstageSchema(int id) {
         Tuple2<Document, Optional<ParsedSchema>> optSchema =
             getCachedSchemaById(id, STAGED_SCHEMAS_COLLECTION_NAME);
-        if (optSchema._2.isPresent()) {
+        if (!optSchema._1.isEmpty()) {
             uncacheSchema(id, STAGED_SCHEMAS_COLLECTION_NAME);
         }
         return optSchema;
@@ -405,7 +408,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     public Tuple2<Document, Optional<ParsedSchema>> getSchemaById(int id) {
         try {
             Tuple2<Document, Optional<ParsedSchema>> optSchema = getCachedSchemaById(id);
-            if (optSchema._2.isPresent()) {
+            if (!optSchema._1.isEmpty()) {
                 return optSchema;
             }
             ParsedSchema schema = getSchemaRegistry().getSchemaById(id);
@@ -421,7 +424,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                                                                    boolean normalize) {
         try {
             Tuple2<Document, Optional<ParsedSchema>> optSchema = getSchemaById(id);
-            if (optSchema._2.isEmpty()) {
+            if (optSchema._1.isEmpty()) {
                 return new Tuple2<>(new HDocument(), Optional.empty());
             }
             Document doc = optSchema._1;
@@ -441,7 +444,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private Tuple2<Document, Optional<ParsedSchema>> getCachedSchemaById(int id) {
         Tuple2<Document, Optional<ParsedSchema>> optSchema =
             getCachedSchemaById(id, STAGED_SCHEMAS_COLLECTION_NAME);
-        if (optSchema._2.isPresent()) {
+        if (!optSchema._1.isEmpty()) {
             return optSchema;
         }
         return getCachedSchemaById(id, REGISTERED_SCHEMAS_COLLECTION_NAME);
@@ -458,11 +461,15 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 doc.getList(REFERENCES_ATTR_NAME), new TypeReference<>() {
                 })
                 : Collections.emptyList();
-            ParsedSchema schema = schemaProvider.parseSchema(
-                doc.getString(SCHEMA_TYPE_ATTR_NAME),
-                doc.getString(SCHEMA_RAW_ATTR_NAME),
-                refs);
-            return new Tuple2<>(doc, Optional.of(schema));
+            String status = doc.getString(STATUS_ATTR_NAME);
+            ParsedSchema schema = null;
+            if (!Status.ERRORED.symbol().equals(status)) {
+                schema = schemaProvider.parseSchema(
+                    doc.getString(SCHEMA_TYPE_ATTR_NAME),
+                    doc.getString(SCHEMA_RAW_ATTR_NAME),
+                    refs);
+            }
+            return new Tuple2<>(doc, Optional.ofNullable(schema));
         } catch (Exception e) {
             return new Tuple2<>(new HDocument(), Optional.empty());
         }

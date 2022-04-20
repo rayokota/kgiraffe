@@ -32,6 +32,7 @@ public class NamedProtobufSchema implements ParsedSchema {
             .copy(name);
     }
 
+    // Remove when CP 7.2 is out
     private static ProtoFileElement toProtoFile(DescriptorProtos.FileDescriptorProto fileProto) {
         try {
             Method m = ProtobufSchema.class.getDeclaredMethod(

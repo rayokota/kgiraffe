@@ -33,7 +33,7 @@ public class RegistrationFetcher implements DataFetcher {
             boolean normalize = env.getArgumentOrDefault(NORMALIZE_PARAM_NAME, false);
             Tuple2<Document, Optional<ParsedSchema>> optSchema =
                 engine.registerSchema(subject, id, normalize);
-            if (optSchema._2.isEmpty()) {
+            if (optSchema._1.isEmpty()) {
                 throw new IllegalArgumentException("Could not register schema with id " + id);
             }
             return optSchema._1;

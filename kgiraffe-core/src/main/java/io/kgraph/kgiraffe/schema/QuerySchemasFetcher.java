@@ -37,7 +37,7 @@ public class QuerySchemasFetcher implements DataFetcher {
             List<Document> docs = new ArrayList<>();
             if (id != null) {
                 Tuple2<Document, Optional<ParsedSchema>> optSchema = engine.getSchemaById(id);
-                if (optSchema._2.isEmpty()) {
+                if (optSchema._1.isEmpty()) {
                     throw new IllegalArgumentException("Could not find schema with id " + id);
                 }
                 Document doc = optSchema._1;
@@ -63,7 +63,7 @@ public class QuerySchemasFetcher implements DataFetcher {
     private Document querySchema(String subject, int version) {
         Tuple2<Document, Optional<ParsedSchema>> optSchema =
             engine.getSchemaByVersion(subject, version);
-        if (optSchema._2.isEmpty()) {
+        if (optSchema._1.isEmpty()) {
             throw new IllegalArgumentException("Could not find schema with subject " + subject
                 + ", version " + version);
         }

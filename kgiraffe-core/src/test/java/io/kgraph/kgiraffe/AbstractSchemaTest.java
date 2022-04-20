@@ -70,7 +70,8 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
         msgStream.subscribe(capturingSubscriber);
 
         mutation = "mutation {\n" +
-            "  t1(value: { f1: \"world\"}) {\n" +
+            "  t1(headers: { mykey: \"myvalue\" }, value: { f1: \"world\"}) {\n" +
+            "    headers \n" +
             "    value {\n" +
             "      f1\n" +
             "    }\n" +
@@ -83,6 +84,9 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
         value = (Map<String, Object>) t1.get("value");
         f1 = (String) value.get("f1");
         assertThat(f1).isEqualTo("world");
+        Map<String, Object> headers = (Map<String, Object>) t1.get("headers");
+        String val = (String) headers.get("mykey");
+        assertThat(val).isEqualTo("myvalue");
 
         List<ExecutionResult> events = capturingSubscriber.getEvents();
         assertThat(events).size().isEqualTo(1);
