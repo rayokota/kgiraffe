@@ -404,7 +404,8 @@ A Kafka record is represented by the following JSON object:
 }
 ```
 
-The GraphQL schemas that are generated for Kafka records follow the JSON mappings specified for 
+The GraphQL schemas that are generated for the `key` and `value` fields of a Kafka record 
+follow the JSON mappings specified for 
 [Avro](https://avro.apache.org/docs/current/spec.html#json_encoding) and 
 [Protobuf](https://developers.google.com/protocol-buffers/docs/proto3#json). 
 Note the following (the last point is not part of the specification):
