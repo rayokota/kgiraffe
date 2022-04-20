@@ -377,7 +377,7 @@ A schema is represented by the following JSON object:
   "version": 1,
   "status": "staged",
   "schema_type": "AVRO",
-  "schema": {"type": "record",...},
+  "schema": {"type": "record",..},
   "schema_raw": "{\"type\": \"record\",..}",
   "references": [{"name": "ref", "subject": "s", "version": 1}],
   "validation_error": null
@@ -389,10 +389,10 @@ A Kafka record is represented by the following JSON object:
 ```json
 {
   "headers": {"header1": ["val1", "val2"]},
-  "key": ...,
+  "key": ..,
   "key_error": null,
   "key_schema_id": 123,
-  "value": ...,
+  "value": ..,
   "value_error": null,
   "value_schema_id": 456,
   "topic": "mytopic",
