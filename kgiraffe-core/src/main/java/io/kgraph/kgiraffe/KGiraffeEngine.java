@@ -121,7 +121,7 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.HEADERS_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.ID_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ERROR_ATTR_NAME;
-import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_SCHEMA_ID;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_SCHEMA_ID_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.OFFSET_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.PARTITION_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.REFERENCES_ATTR_NAME;
@@ -136,7 +136,7 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TOPIC_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALIDATION_ERROR_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ERROR_ATTR_NAME;
-import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_SCHEMA_ID;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_SCHEMA_ID_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VERSION_ATTR_NAME;
 
 public class KGiraffeEngine implements Configurable, Closeable {
@@ -776,7 +776,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                     try {
                         if (getKeySchema(topic).isRight()) {
                             int schemaId = schemaIdFor(key.get());
-                            doc.set(KEY_SCHEMA_ID, (long) schemaId);
+                            doc.set(KEY_SCHEMA_ID_ATTR_NAME, (long) schemaId);
                         }
                         doc.set(KEY_ATTR_NAME, deserializeKey(topic, key.get()));
                     } catch (IOException e) {
@@ -786,7 +786,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 try {
                     if (getValueSchema(topic).isRight()) {
                         int schemaId = schemaIdFor(value.get());
-                        doc.set(VALUE_SCHEMA_ID, (long) schemaId);
+                        doc.set(VALUE_SCHEMA_ID_ATTR_NAME, (long) schemaId);
                     }
                     doc.set(VALUE_ATTR_NAME, deserializeValue(topic, value.get()));
                 } catch (IOException e) {

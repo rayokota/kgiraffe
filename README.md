@@ -368,6 +368,42 @@ mutation {
 
 ### GraphQL Schema Notes
 
+A schema is represented by the following JSON object:
+
+```json
+{
+  "id": 1,
+  "subject": "mysubject",
+  "version": 1,
+  "status": "staged",
+  "schema_type": "AVRO",
+  "schema": {"type": "record",..},
+  "schema_raw": "{\"type\": \"record\",..}",
+  "references": [{"name": "ref", "subject": "s", "version": 1}],
+  "validation_error": null
+}
+```
+
+A Kafka record is represented by the following JSON object:
+
+```json
+{
+  "headers": {"header1": ["val1", "val2"]},
+  "key": ..,
+  "key_error": null,
+  "key_schema_id": 123,
+  "value": ..,
+  "value_error": null,
+  "value_schema_id": 456,
+  "topic": "mytopic",
+  "partition": 1,
+  "offset": 1000,
+  "ts": 123456,
+  "tstype": "CreateTime",
+  "epoch": 0
+}
+```
+
 The generated GraphQL schemas follow the JSON mappings specified for 
 [Avro](https://avro.apache.org/docs/current/spec.html#json_encoding) and 
 [Protobuf](https://developers.google.com/protocol-buffers/docs/proto3#json). 

@@ -55,13 +55,13 @@ public class GraphQLSchemaBuilder {
     public static final String ORDER_BY_PARAM_NAME = "order_by";
     public static final String WHERE_PARAM_NAME = "where";
 
+    public static final String HEADERS_ATTR_NAME = "headers";
     public static final String KEY_ATTR_NAME = "key";
     public static final String KEY_ERROR_ATTR_NAME = "key_error";
-    public static final String KEY_SCHEMA_ID = "key_schema_id";
+    public static final String KEY_SCHEMA_ID_ATTR_NAME = "key_schema_id";
     public static final String VALUE_ATTR_NAME = "value";
     public static final String VALUE_ERROR_ATTR_NAME = "value_error";
-    public static final String VALUE_SCHEMA_ID = "value_schema_id";
-    public static final String HEADERS_ATTR_NAME = "headers";
+    public static final String VALUE_SCHEMA_ID_ATTR_NAME = "value_schema_id";
     public static final String TOPIC_ATTR_NAME = "topic";
     public static final String PARTITION_ATTR_NAME = "partition";
     public static final String OFFSET_ATTR_NAME = "offset";
@@ -76,8 +76,8 @@ public class GraphQLSchemaBuilder {
     public static final String SCHEMA_TYPE_ATTR_NAME = "schema_type";
     public static final String SCHEMA_ATTR_NAME = "schema";
     public static final String SCHEMA_RAW_ATTR_NAME = "schema_raw";
-    public static final String VALIDATION_ERROR_ATTR_NAME = "validation_error";
     public static final String REFERENCES_ATTR_NAME = "references";
+    public static final String VALIDATION_ERROR_ATTR_NAME = "validation_error";
 
     public static final String NAME_ATTR_NAME = "name";
 
@@ -445,7 +445,7 @@ public class GraphQLSchemaBuilder {
                 .type(Scalars.GraphQLString)
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
-                .name(KEY_SCHEMA_ID)
+                .name(KEY_SCHEMA_ID_ATTR_NAME)
                 .description("Kafka record key schema id")
                 .type(Scalars.GraphQLInt)
                 .build())
@@ -460,7 +460,7 @@ public class GraphQLSchemaBuilder {
                 .type(Scalars.GraphQLString)
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
-                .name(VALUE_SCHEMA_ID)
+                .name(VALUE_SCHEMA_ID_ATTR_NAME)
                 .description("Kafka record value schema id")
                 .type(Scalars.GraphQLInt)
                 .build())
