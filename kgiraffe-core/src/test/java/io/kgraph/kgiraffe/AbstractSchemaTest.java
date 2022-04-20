@@ -84,7 +84,6 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
         f1 = (String) value.get("f1");
         assertThat(f1).isEqualTo("world");
 
-
         List<ExecutionResult> events = capturingSubscriber.getEvents();
         assertThat(events).size().isEqualTo(1);
         executionResult = events.get(0);

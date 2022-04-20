@@ -21,7 +21,9 @@ public class QuerySubjectsFetcher implements DataFetcher {
     public Object get(DataFetchingEnvironment env) {
         try {
             String subjectPrefix = env.getArgument(SUBJECT_PREFIX_PARAM_NAME);
-            return engine.getSchemaRegistry().getAllSubjectsByPrefix(subjectPrefix);
+            return subjectPrefix != null
+                ? engine.getSchemaRegistry().getAllSubjectsByPrefix(subjectPrefix)
+                : engine.getSchemaRegistry().getAllSubjects();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

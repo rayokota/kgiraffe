@@ -204,13 +204,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
     public void init(Notifier notifier) {
         this.notifier = notifier;
 
-        List<String> urls = config.getSchemaRegistryUrls();
-        List<SchemaProvider> providers = Arrays.asList(
-            new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
-        );
-        if (urls != null && !urls.isEmpty()) {
-            schemaRegistry = createSchemaRegistry(urls, providers);
-        }
+        createSchemaRegistry();
+
         schemaProvider = new CustomSchemaProvider(this);
         for (KGiraffeConfig.Serde serde : config.getStagedSchemas()) {
             stageSchemas(serde);
@@ -231,13 +226,33 @@ public class KGiraffeEngine implements Configurable, Closeable {
         }
     }
 
-    private SchemaRegistryClient createSchemaRegistry(List<String> urls,
-                                                      List<SchemaProvider> providers) {
-        String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
-        if (mockScope != null) {
-            return MockSchemaRegistry.getClientForScope(mockScope, providers);
-        } else {
-            return new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
+    private void createSchemaRegistry() {
+        List<String> urls = config.getSchemaRegistryUrls();
+        if (urls != null && !urls.isEmpty()) {
+            List<SchemaProvider> providers = Arrays.asList(
+                new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
+            );
+            String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
+            SchemaRegistryClient schemaRegistry;
+            if (mockScope != null) {
+                schemaRegistry = MockSchemaRegistry.getClientForScope(mockScope, providers);
+            } else {
+                schemaRegistry =
+                    new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
+            }
+            this.schemaRegistry = schemaRegistry;
+        }
+    }
+
+    private void resetSchemaRegistry() {
+        List<String> urls = config.getSchemaRegistryUrls();
+        if (urls != null && !urls.isEmpty()) {
+            String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
+            if (mockScope != null) {
+                MockSchemaRegistry.dropScope(mockScope);
+            } else {
+                schemaRegistry.reset();
+            }
         }
     }
 
@@ -407,7 +422,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         try {
             Tuple2<Document, Optional<ParsedSchema>> optSchema = getSchemaById(id);
             if (optSchema._2.isEmpty()) {
-                return new Tuple2<>(new HDocument(), optSchema._2);
+                return new Tuple2<>(new HDocument(), Optional.empty());
             }
             Document doc = optSchema._1;
             ParsedSchema schema = optSchema._2.get();
@@ -462,12 +477,12 @@ public class KGiraffeEngine implements Configurable, Closeable {
         HDocumentCollection coll = docdb.getCollection(collName);
         HDocument doc = new HDocument();
         doc.setId(String.valueOf(id));
-        doc.set(ID_ATTR_NAME, id);
+        doc.set(ID_ATTR_NAME, (long) id);
         if (subject != null) {
             doc.set(SUBJECT_ATTR_NAME, subject);
         }
         if (version > 0) {
-            doc.set(VERSION_ATTR_NAME, version);
+            doc.set(VERSION_ATTR_NAME, (long) version);
         }
         doc.set(STATUS_ATTR_NAME, status.symbol());
         doc.set(SCHEMA_TYPE_ATTR_NAME, schema.schemaType());
@@ -487,7 +502,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         HDocumentCollection coll = docdb.getCollection(STAGED_SCHEMAS_COLLECTION_NAME);
         HDocument doc = new HDocument();
         doc.setId(String.valueOf(id));
-        doc.set(ID_ATTR_NAME, id);
+        doc.set(ID_ATTR_NAME, (long) id);
         doc.set(STATUS_ATTR_NAME, Status.ERRORED.symbol());
         doc.set(SCHEMA_TYPE_ATTR_NAME, schemaType);
         doc.set(SCHEMA_RAW_ATTR_NAME, schema);
@@ -756,7 +771,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                     try {
                         if (getKeySchema(topic).isRight()) {
                             int schemaId = schemaIdFor(key.get());
-                            doc.set(KEY_SCHEMA_ID, schemaId);
+                            doc.set(KEY_SCHEMA_ID, (long) schemaId);
                         }
                         doc.set(KEY_ATTR_NAME, deserializeKey(topic, key.get()));
                     } catch (IOException e) {
@@ -766,7 +781,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 try {
                     if (getValueSchema(topic).isRight()) {
                         int schemaId = schemaIdFor(value.get());
-                        doc.set(VALUE_SCHEMA_ID, schemaId);
+                        doc.set(VALUE_SCHEMA_ID, (long) schemaId);
                     }
                     doc.set(VALUE_ATTR_NAME, deserializeValue(topic, value.get()));
                 } catch (IOException e) {
@@ -774,12 +789,12 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 }
 
                 doc.set(TOPIC_ATTR_NAME, topic);
-                doc.set(PARTITION_ATTR_NAME, partition);
+                doc.set(PARTITION_ATTR_NAME, (long) partition);
                 doc.set(OFFSET_ATTR_NAME, offset);
                 doc.set(TIMESTAMP_ATTR_NAME, ts);
                 doc.set(TIMESTAMP_TYPE_ATTR_NAME, tsType.toString());
                 if (leaderEpoch.isPresent()) {
-                    doc.set(EPOCH_ATTR_NAME, leaderEpoch.get());
+                    doc.set(EPOCH_ATTR_NAME, (long) leaderEpoch.get());
                 }
                 coll.insertOrReplace(doc);
                 coll.flush();
@@ -871,6 +886,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 LOG.warn("Could not close cache for " + key);
             }
         });
+        resetSchemaRegistry();
     }
 
     @SuppressWarnings("unchecked")
