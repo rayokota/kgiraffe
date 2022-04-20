@@ -59,6 +59,47 @@ public class ProtobufTest extends AbstractSchemaTest {
         assertThat(i2).isEqualTo("123");
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testWrapper() throws Exception {
+        GraphQL graphQL = getEngine().getGraphQL();
+
+        String mutation = "mutation {\n" +
+            "  wrapper(value: { s1: \"123\" }) {\n" +
+            "    value {\n" +
+            "      s1\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+
+        ExecutionResult executionResult = graphQL.execute(mutation);
+        Map<String, Object> result = executionResult.getData();
+        Map<String, Object> wrapper = (Map<String, Object>) result.get("wrapper");
+        Map<String, Object> value = (Map<String, Object>) wrapper.get("value");
+        String s1 = (String) value.get("s1");
+        assertThat(s1).isEqualTo("123");
+
+        String query = "query {\n" +
+            "  wrapper (where: {value: {s1: {_eq: \"123\"}}}) {\n" +
+            "    value {\n" +
+            "      s1\n" +
+            "    }\n" +
+            "    topic\n" +
+            "    offset\n" +
+            "    partition\n" +
+            "    ts\n" +
+            "  }\n" +
+            "}";
+
+        executionResult = graphQL.execute(query);
+        result = executionResult.getData();
+        List<Map<String, Object>> wrappers = (List<Map<String, Object>>) result.get("wrapper");
+        wrapper = wrappers.get(0);
+        value = (Map<String, Object>) wrapper.get("value");
+        s1 = (String) value.get("s1");
+        assertThat(s1).isEqualTo("123");
+    }
+
     @Override
     protected void injectKGiraffeProperties(Properties props) {
         super.injectKGiraffeProperties(props);
@@ -71,6 +112,15 @@ public class ProtobufTest extends AbstractSchemaTest {
                 "}\n" +
                 "message Message2 {\n" +
                 "    int64 i2 = 2;\n" +
+                "}\n'";
+
+        String wrapper =
+            ",'wrapper=proto:syntax = \"proto3\";\n" +
+                "\n" +
+                "import \"google/protobuf/wrappers.proto\";\n" +
+                "\n" +
+                "message Message1 {\n" +
+                "    google.protobuf.StringValue s1 = 1;\n" +
                 "}\n'";
 
         String cycle =
@@ -113,7 +163,8 @@ public class ProtobufTest extends AbstractSchemaTest {
             "'t2=proto:message Foo { required string f1 = 1; optional Nested nested = 2; " +
             "message Nested { required string f2 = 1; } }'";
 
-        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + types + cycle + multi);
-        props.put(KGiraffeConfig.TOPICS_CONFIG, props.get(KGiraffeConfig.TOPICS_CONFIG) + ",multi");
+        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + types + cycle + wrapper + multi);
+        props.put(KGiraffeConfig.TOPICS_CONFIG, props.get(KGiraffeConfig.TOPICS_CONFIG) + ","
+            + "wrapper,multi");
     }
 }
