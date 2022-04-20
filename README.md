@@ -365,3 +365,19 @@ mutation {
   }
 }
 ```
+
+### GraphQL Schema Notes
+
+The generated GraphQL schemas follow the JSON mappings specified for 
+[Avro](https://avro.apache.org/docs/current/spec.html#json_encoding) and 
+[Protobuf](https://developers.google.com/protocol-buffers/docs/proto3#json). 
+Note the following (the last point is not part of the specification):
+
+- For Avro, unions are specified by a JSON object with a single property, 
+where the property name is the name of the type being used.
+- For Protobuf, the types `int64`, `fixed64`, and `uint64` correspond to a JSON string.
+- For Protobuf, the wrapper types are represented as the JSON for the wrapped primitive type.
+- For Protobuf, if a schema has multiple messages, then the JSON representation is an
+object with a single property where the property name is the name of the message type 
+being used, and the property value is the JSON representation of the message.  
+This is similar to how an Avro union is represented.
