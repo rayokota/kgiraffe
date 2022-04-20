@@ -368,7 +368,7 @@ mutation {
 
 ### GraphQL Schema Notes
 
-A schema is represented by the following JSON object:
+A schema (Avro, JSON Schema, or Protobuf) is represented by the following JSON object:
 
 ```json
 {
