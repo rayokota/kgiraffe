@@ -101,7 +101,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
             + "  avro:<schema|@file>;refs:<refs|@file>\n"
             + "where refs are schema references\n"
             + "of the form \n"
-            + "  [{name=<name>,subject=<subject>,\n"
+            + "  [{name=\"<name>\",subject=\"<subject>\",\n"
             + "    version=<version>},..]",
         paramLabel = "<topic=serde>")
     private Map<String, KGiraffeConfig.Serde> valueSerdes;

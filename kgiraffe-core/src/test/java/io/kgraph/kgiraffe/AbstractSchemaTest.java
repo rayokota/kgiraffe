@@ -150,6 +150,97 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
 
     @Test
     @SuppressWarnings("unchecked")
+    public void testRef() throws Exception {
+        GraphQL graphQL = getEngine().getGraphQL();
+
+        String mutation = "mutation {\n" +
+            "  ref(value: { f2: \"hello\"}) {\n" +
+            "    value {\n" +
+            "      f2\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+
+        ExecutionResult executionResult = graphQL.execute(mutation);
+        Map<String, Object> result = executionResult.getData();
+        Map<String, Object> ref = (Map<String, Object>) result.get("ref");
+        Map<String, Object> value = (Map<String, Object>) ref.get("value");
+        String f2 = (String) value.get("f2");
+        assertThat(f2).isEqualTo("hello");
+
+        String query = "query {\n" +
+            "  ref (where: {value: {f2: {_eq: \"hello\"}}}) {\n" +
+            "    value {\n" +
+            "      f2\n" +
+            "    }\n" +
+            "    topic\n" +
+            "    offset\n" +
+            "    partition\n" +
+            "    ts\n" +
+            "  }\n" +
+            "}";
+
+        executionResult = graphQL.execute(query);
+        result = executionResult.getData();
+        List<Map<String, Object>> refs = (List<Map<String, Object>>) result.get("ref");
+        ref = refs.get(0);
+        value = (Map<String, Object>) ref.get("value");
+        f2 = (String) value.get("f2");
+        assertThat(f2).isEqualTo("hello");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testRoot() throws Exception {
+        GraphQL graphQL = getEngine().getGraphQL();
+
+        String mutation = "mutation {\n" +
+            "  root(value: { f1: \"hello\", nested: {f2: \"world\"}}) {\n" +
+            "    value {\n" +
+            "      f1\n" +
+            "      nested {\n" +
+            "        f2\n" +
+            "      }\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+
+        ExecutionResult executionResult = graphQL.execute(mutation);
+        Map<String, Object> result = executionResult.getData();
+        Map<String, Object> root = (Map<String, Object>) result.get("root");
+        Map<String, Object> value = (Map<String, Object>) root.get("value");
+        String f1 = (String) value.get("f1");
+        assertThat(f1).isEqualTo("hello");
+        Map<String, Object> nested = (Map<String, Object>) value.get("nested");
+        String f2 = (String) nested.get("f2");
+        assertThat(f2).isEqualTo("world");
+
+        String query = "query {\n" +
+            "  root (where: {value: {nested: {f2: {_eq: \"world\"}}}}) {\n" +
+            "    value {\n" +
+            "      f1\n" +
+            "      nested {\n" +
+            "        f2\n" +
+            "      }\n" +
+            "    }\n" +
+            "    topic\n" +
+            "    offset\n" +
+            "    partition\n" +
+            "    ts\n" +
+            "  }\n" +
+            "}";
+
+        executionResult = graphQL.execute(query);
+        result = executionResult.getData();
+        List<Map<String, Object>> roots = (List<Map<String, Object>>) result.get("root");
+        root = roots.get(0);
+        value = (Map<String, Object>) root.get("value");
+        f1 = (String) value.get("f1");
+        assertThat(f1).isEqualTo("hello");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     public void testCycle() throws Exception {
         GraphQL graphQL = getEngine().getGraphQL();
 
@@ -277,7 +368,7 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
 
     protected void injectKGiraffeProperties(Properties props) {
         super.injectKGiraffeProperties(props);
-        props.put(KGiraffeConfig.TOPICS_CONFIG, "t1,t2,types,cycle");
+        props.put(KGiraffeConfig.TOPICS_CONFIG, "t1,t2,ref,root,types,cycle");
     }
 
 }

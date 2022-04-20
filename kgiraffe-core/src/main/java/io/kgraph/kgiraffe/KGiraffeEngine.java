@@ -103,6 +103,7 @@ import io.confluent.kafka.schemaregistry.avro.AvroSchemaUtils;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.entities.Schema;
 import io.confluent.kafka.schemaregistry.client.rest.entities.SchemaReference;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
@@ -206,7 +207,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     public void init(Notifier notifier) {
         this.notifier = notifier;
 
-        createSchemaRegistry();
+        schemaRegistry = createSchemaRegistry(config.getSchemaRegistryUrls(), config.originals());
 
         schemaProvider = new CustomSchemaProvider(this);
         for (KGiraffeConfig.Serde serde : config.getStagedSchemas()) {
@@ -228,26 +229,23 @@ public class KGiraffeEngine implements Configurable, Closeable {
         }
     }
 
-    private void createSchemaRegistry() {
-        List<String> urls = config.getSchemaRegistryUrls();
-        if (urls != null && !urls.isEmpty()) {
-            List<SchemaProvider> providers = Arrays.asList(
-                new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
-            );
-            String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
-            SchemaRegistryClient schemaRegistry;
-            if (mockScope != null) {
-                schemaRegistry = MockSchemaRegistry.getClientForScope(mockScope, providers);
-            } else {
-                schemaRegistry =
-                    new CachedSchemaRegistryClient(urls, 1000, providers, config.originals());
-            }
-            this.schemaRegistry = schemaRegistry;
+    public static SchemaRegistryClient createSchemaRegistry(
+        List<String> urls, Map<String, Object> configs) {
+        if (urls == null || urls.isEmpty()) {
+            return null;
+        }
+        List<SchemaProvider> providers = Arrays.asList(
+            new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
+        );
+        String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
+        if (mockScope != null) {
+            return MockSchemaRegistry.getClientForScope(mockScope, providers);
+        } else {
+            return new CachedSchemaRegistryClient(urls, 1000, providers, configs);
         }
     }
 
-    private void resetSchemaRegistry() {
-        List<String> urls = config.getSchemaRegistryUrls();
+    public static void resetSchemaRegistry(List<String> urls, SchemaRegistryClient schemaRegistry) {
         if (urls != null && !urls.isEmpty()) {
             String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
             if (mockScope != null) {
@@ -455,6 +453,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
         HDocumentCollection coll = docdb.getCollection(collName);
         try {
             Document doc = coll.findById(String.valueOf(id));
+            if (doc == null) {
+                return new Tuple2<>(new HDocument(), Optional.empty());
+            }
             List<Object> list = doc.getList(REFERENCES_ATTR_NAME);
             List<SchemaReference> refs = list != null
                 ? MAPPER.convertValue(
@@ -893,7 +894,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 LOG.warn("Could not close cache for " + key);
             }
         });
-        resetSchemaRegistry();
+        resetSchemaRegistry(config.getSchemaRegistryUrls(), schemaRegistry);
     }
 
     @SuppressWarnings("unchecked")

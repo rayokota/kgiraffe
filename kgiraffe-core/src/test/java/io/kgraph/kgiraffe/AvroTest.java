@@ -2,7 +2,17 @@ package io.kgraph.kgiraffe;
 
 import java.util.Properties;
 
+import io.confluent.kafka.schemaregistry.avro.AvroSchema;
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+
 public class AvroTest extends AbstractSchemaTest {
+
+    @Override
+    protected void registerInitialSchemas(SchemaRegistryClient schemaRegistry) throws Exception {
+        String schema = "{\"type\": \"record\",\"name\":\"nested\"," +
+            "\"fields\":[{\"name\":\"f2\",\"type\":\"string\"}]}";
+        schemaRegistry.register("ref", new AvroSchema(schema));
+    }
 
     @Override
     protected void injectKGiraffeProperties(Properties props) {
@@ -84,6 +94,11 @@ public class AvroTest extends AbstractSchemaTest {
                 "  ]\n" +
                 "}'";
 
+        String refs = ",ref=1,'root=avro:{\"type\":\"record\",\"name\":\"myrecord\"," +
+            "\"fields\":[{\"name\":\"f1\",\"type\":\"string\"}," +
+            "{\"name\":\"nested\",\"type\":\"nested\"}]}" +
+            ";refs:[{name:\"nested\",subject:\"ref\",version:1}]'";
+
         String serdes = "'t1=avro:{\"type\":\"record\"," +
             "\"name\":\"myrecord\",\"fields\":[{\"name\":\"f1\",\"type\":\"string\"}]}'" +
             ",'t2=avro:{\"type\":\"record\",\"name\":\"myrecord\"," +
@@ -92,7 +107,7 @@ public class AvroTest extends AbstractSchemaTest {
             "\"type\":{\"type\": \"record\",\"name\":\"nested\",\"fields\":[{\"name\":\"f2\"," +
             "\"type\":\"string\"}]}}]}'";
 
-        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + types + cycle);
+        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + refs + types + cycle);
 
     }
 }

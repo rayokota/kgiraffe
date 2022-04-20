@@ -22,8 +22,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Properties;
 
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 
 /**
@@ -33,6 +35,8 @@ import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 public abstract class LocalClusterTestHarness extends ClusterTestHarness {
 
     private static final Logger LOG = LoggerFactory.getLogger(LocalClusterTestHarness.class);
+
+    private static final String MOCK_URL = "mock://test";
 
     protected Properties props;
 
@@ -55,6 +59,9 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
     public void setUp() throws Exception {
         super.setUp();
         setUpServer();
+        SchemaRegistryClient schemaRegistry=
+            KGiraffeEngine.createSchemaRegistry(Collections.singletonList(MOCK_URL), null);
+        registerInitialSchemas(schemaRegistry);
     }
 
     private void setUpServer() {
@@ -73,10 +80,13 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
         }
     }
 
+    protected void registerInitialSchemas(SchemaRegistryClient schemaRegistry) throws Exception {
+    }
+
     protected void injectKGiraffeProperties(Properties props) {
         props.put(KGiraffeConfig.LISTENER_CONFIG, "http://0.0.0.0:" + serverPort);
         props.put(KGiraffeConfig.KAFKACACHE_BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://test");
+        props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, MOCK_URL);
         props.put(AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, "true");
     }
 

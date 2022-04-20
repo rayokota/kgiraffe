@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ProtobufTest extends AbstractSchemaTest {
@@ -101,6 +104,16 @@ public class ProtobufTest extends AbstractSchemaTest {
     }
 
     @Override
+    protected void registerInitialSchemas(SchemaRegistryClient schemaRegistry) throws Exception {
+        String schema = "syntax = \"proto3\";\n" +
+            "\n" +
+            "message Ref {\n" +
+            "    string f2 = 1;\n" +
+            "}";
+        schemaRegistry.register("ref", new ProtobufSchema(schema));
+    }
+
+    @Override
     protected void injectKGiraffeProperties(Properties props) {
         super.injectKGiraffeProperties(props);
 
@@ -158,12 +171,19 @@ public class ProtobufTest extends AbstractSchemaTest {
                 "    }\n" +
                 "}\n'";
 
+        String refs = ",ref=1,'root=proto:" +
+            "import \"ref.proto\"; " +
+            "message Foo " +
+            "{ required string f1 = 1; optional Ref nested = 2; }" +
+            ";refs:[{name:\"ref.proto\",subject:\"ref\",version:1}]'";
+
         String serdes = "'t1=proto:message Foo " +
             "{ required string f1 = 1; }'," +
             "'t2=proto:message Foo { required string f1 = 1; optional Nested nested = 2; " +
             "message Nested { required string f2 = 1; } }'";
 
-        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + types + cycle + wrapper + multi);
+        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG,
+            serdes + refs + types + cycle + wrapper + multi);
         props.put(KGiraffeConfig.TOPICS_CONFIG, props.get(KGiraffeConfig.TOPICS_CONFIG) + ","
             + "wrapper,multi");
     }

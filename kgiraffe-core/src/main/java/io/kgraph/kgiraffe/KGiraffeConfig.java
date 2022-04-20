@@ -624,7 +624,7 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         private static List<SchemaReference> parseRefs(String str) {
             List<SchemaReference> list;
             try {
-                list = objectMapper.convertValue(str, new TypeReference<>() {
+                list = objectMapper.readValue(str, new TypeReference<>() {
                 });
             } catch (Exception e) {
                 throw new ConfigException("Could not parse refs " + str, e);

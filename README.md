@@ -78,7 +78,7 @@ A GraphQL Interface for Apache Kafka and Schema Registry.
                                       avro:<schema|@file>;refs:<refs|@file>
                                     where refs are schema references
                                     of the form
-                                      [{name=<name>,subject=<subject>,
+                                      [{name="<name>",subject="<subject>",
                                         version=<version>},..]
   -r, --schema-registry-url=<url>   SR (Schema Registry) URL
   -s, --stage-schema=<serde>        Validate and stage the given schema(s).
@@ -380,4 +380,4 @@ where the property name is the name of the type being used.
 - For Protobuf, if a schema has multiple message types, then the JSON representation is an
 object with a single property where the property name is the name of the message type 
 being used, and the property value is the JSON representation of the message.  This 
-is similar to how an Avro union is represented.
+is similar to how an Avro union is represented in JSON.

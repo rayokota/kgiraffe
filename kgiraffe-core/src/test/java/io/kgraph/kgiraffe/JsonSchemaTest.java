@@ -2,7 +2,17 @@ package io.kgraph.kgiraffe;
 
 import java.util.Properties;
 
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.json.JsonSchema;
+
 public class JsonSchemaTest extends AbstractSchemaTest {
+
+    @Override
+    protected void registerInitialSchemas(SchemaRegistryClient schemaRegistry) throws Exception {
+        String schema = "{ \"type\": \"object\", \"properties\": { \"f2\": { \"type\": " +
+            "\"string\" } } }";
+        schemaRegistry.register("ref", new JsonSchema(schema));
+    }
 
     @Override
     protected void injectKGiraffeProperties(Properties props) {
@@ -75,12 +85,17 @@ public class JsonSchemaTest extends AbstractSchemaTest {
                 "  }\n" +
                 "}\n'";
 
+        String refs = ",ref=1,'root=json:{ \"type\": \"object\", \"properties\": { \"f1\": { " +
+            "\"type\": \"string\" }," +
+            " \"nested\": { \"$ref\": \"ref\" } } }" +
+            ";refs:[{name:\"ref\",subject:\"ref\",version:1}]'";
+
         String serdes = "'t1=json:{\"type\":\"object\"," +
             "\"properties\":{\"f1\":{\"type\":\"string\"}}}'," +
             "'t2=json:{ \"type\": \"object\", \"properties\": { \"f1\": { \"type\": \"string\" }," +
             " \"nested\": { \"type\": \"object\", \"properties\": { \"f2\": { \"type\": " +
             "\"string\" } } } } }'";
 
-        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + types + cycle);
+        props.put(KGiraffeConfig.VALUE_SERDES_CONFIG, serdes + refs + types + cycle);
     }
 }
