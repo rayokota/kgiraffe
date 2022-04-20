@@ -76,6 +76,10 @@
             <artifactId>rxjava</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.esotericsoftware</groupId>
+            <artifactId>kryo</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.graphql-java</groupId>
             <artifactId>graphql-java</artifactId>
         </dependency>

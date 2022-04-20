@@ -53,6 +53,7 @@
         <mockito.version>4.4.0</mockito.version>
         <ojai.version>3.1.1</ojai.version>
         <picocli-version>4.6.3</picocli-version>
+        <reactive.streams.version>1.0.3</reactive.streams.version>
         <rxjava.version>3.0.0</rxjava.version>
         <scala.version>2.13.8</scala.version>
         <sl4j.version>1.7.36</sl4j.version>
@@ -148,6 +149,11 @@
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
                 <version>${jackson.databind.version}</version>
             </dependency>
@@ -200,6 +206,11 @@
                 <groupId>io.reactivex.rxjava3</groupId>
                 <artifactId>rxjava</artifactId>
                 <version>${rxjava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.reactivestreams</groupId>
+                <artifactId>reactive-streams</artifactId>
+                <version>${reactive.streams.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.esotericsoftware</groupId>
