@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class SchemaRegistryTest extends LocalClusterTestHarness {
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testSchemaOperations() throws Exception {
         GraphQL graphQL = getEngine().getGraphQL();

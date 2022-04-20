@@ -172,11 +172,11 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
             ctx.setRoot(false);
         }
         List<GraphQLInputObjectField> fields = schema.getFields().stream()
-            .map(f -> createInputField(ctx, schema, f))
+            .map(f -> createInputField(ctx, f))
             .collect(Collectors.toList());
         List<GraphQLInputObjectField> oneofs = schema.getRealOneofs().stream()
             .flatMap(o -> o.getFields().stream())
-            .map(f -> createInputField(ctx, schema, f))
+            .map(f -> createInputField(ctx, f))
             .collect(Collectors.toList());
         GraphQLInputObjectType.Builder builder = GraphQLInputObjectType.newInputObject()
             .name(name)
@@ -201,7 +201,6 @@ public class GraphQLProtobufConverter extends GraphQLSchemaConverter {
     }
 
     private GraphQLInputObjectField createInputField(SchemaContext ctx,
-                                                     Descriptor schema,
                                                      FieldDescriptor field) {
         String name = ctx.qualify(field.getFullName());
         GraphQLInputType fieldType = createInputType(ctx, field);

@@ -18,7 +18,7 @@ import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 
 // TODO remove once CP 7.2.0 is released
 public class CustomSchemaProvider extends AbstractSchemaProvider {
-    private static final Logger log = LoggerFactory.getLogger(CustomSchemaProvider.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CustomSchemaProvider.class);
 
     private final KGiraffeEngine engine;
 

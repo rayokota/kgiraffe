@@ -161,7 +161,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
     }
 
     @Override
-    public void start() throws Exception {
+    public void start() {
         KGiraffeEngine engine = KGiraffeEngine.getInstance();
         try {
             Router router = Router.router(vertx);

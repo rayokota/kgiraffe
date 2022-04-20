@@ -288,7 +288,6 @@ public class GraphQLJsonSchemaConverter extends GraphQLSchemaConverter {
                                                      Tuple2<String, Schema> field) {
         String fieldName = field._1;
         String scopedName = scope + fieldName;
-        String name = ctx.qualify(scopedName);
         return GraphQLFieldDefinition.newFieldDefinition()
             .name(fieldName)
             .description(field._2.getDescription())
