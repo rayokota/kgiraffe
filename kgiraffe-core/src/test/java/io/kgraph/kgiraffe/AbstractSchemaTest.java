@@ -21,6 +21,37 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
         GraphQL graphQL = getEngine().getGraphQL();
 
         String mutation = "mutation {\n" +
+            "  str(value: \"howdy\") {\n" +
+            "    value \n" +
+            "  }\n" +
+            "}";
+
+        ExecutionResult executionResult = graphQL.execute(mutation);
+        Map<String, Object> result = executionResult.getData();
+        Map<String, Object> str = (Map<String, Object>) result.get("str");
+        String v = (String) str.get("value");
+        assertThat(v).isEqualTo("howdy");
+
+        String query = "query {\n" +
+            "  str (where: {value: {_eq: \"howdy\"}}, " +
+            "      offset: 0, limit: 1000,\n" +
+            "      order_by: {value: asc}) {\n" +
+            "    value \n" +
+            "    topic\n" +
+            "    offset\n" +
+            "    partition\n" +
+            "    ts\n" +
+            "  }\n" +
+            "}";
+
+        executionResult = graphQL.execute(query);
+        result = executionResult.getData();
+        List<Map<String, Object>> strs = (List<Map<String, Object>>) result.get("str");
+        str = strs.get(0);
+        v = (String) str.get("value");
+        assertThat(v).isEqualTo("howdy");
+
+        mutation = "mutation {\n" +
             "  t1(value: { f1: \"hello\"}) {\n" +
             "    value {\n" +
             "      f1\n" +
@@ -28,15 +59,17 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
             "  }\n" +
             "}";
 
-        ExecutionResult executionResult = graphQL.execute(mutation);
-        Map<String, Object> result = executionResult.getData();
+        executionResult = graphQL.execute(mutation);
+        result = executionResult.getData();
         Map<String, Object> t1 = (Map<String, Object>) result.get("t1");
         Map<String, Object> value = (Map<String, Object>) t1.get("value");
         String f1 = (String) value.get("f1");
         assertThat(f1).isEqualTo("hello");
 
-        String query = "query {\n" +
-            "  t1 (where: {value: {f1: {_eq: \"hello\"}}}) {\n" +
+        query = "query {\n" +
+            "  t1 (where: {value: {f1: {_eq: \"hello\"}}}, " +
+            "      offset: 0, limit: 1000,\n" +
+            "      order_by: {value: {f1: asc}}) {\n" +
             "    value {\n" +
             "      f1 \n" +
             "    }\n" +
@@ -183,6 +216,47 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
         executionResult = graphQL.execute(query);
         result = executionResult.getData();
         List<Map<String, Object>> refs = (List<Map<String, Object>>) result.get("ref");
+        ref = refs.get(0);
+        value = (Map<String, Object>) ref.get("value");
+        f2 = (String) value.get("f2");
+        assertThat(f2).isEqualTo("hello");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testRefById() throws Exception {
+        GraphQL graphQL = getEngine().getGraphQL();
+
+        String mutation = "mutation {\n" +
+            "  refbyid(value: { f2: \"hello\"}) {\n" +
+            "    value {\n" +
+            "      f2\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+
+        ExecutionResult executionResult = graphQL.execute(mutation);
+        Map<String, Object> result = executionResult.getData();
+        Map<String, Object> ref = (Map<String, Object>) result.get("refbyid");
+        Map<String, Object> value = (Map<String, Object>) ref.get("value");
+        String f2 = (String) value.get("f2");
+        assertThat(f2).isEqualTo("hello");
+
+        String query = "query {\n" +
+            "  refbyid (where: {value: {f2: {_eq: \"hello\"}}}) {\n" +
+            "    value {\n" +
+            "      f2\n" +
+            "    }\n" +
+            "    topic\n" +
+            "    offset\n" +
+            "    partition\n" +
+            "    ts\n" +
+            "  }\n" +
+            "}";
+
+        executionResult = graphQL.execute(query);
+        result = executionResult.getData();
+        List<Map<String, Object>> refs = (List<Map<String, Object>>) result.get("refbyid");
         ref = refs.get(0);
         value = (Map<String, Object>) ref.get("value");
         f2 = (String) value.get("f2");
@@ -368,7 +442,6 @@ public abstract class AbstractSchemaTest extends LocalClusterTestHarness {
 
     protected void injectKGiraffeProperties(Properties props) {
         super.injectKGiraffeProperties(props);
-        props.put(KGiraffeConfig.TOPICS_CONFIG, "t1,t2,ref,root,types,cycle");
+        props.put(KGiraffeConfig.TOPICS_CONFIG, "str,t1,t2,ref,refbyid,root,types,cycle");
     }
-
 }

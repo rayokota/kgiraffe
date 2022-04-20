@@ -11,7 +11,7 @@ public class JsonSchemaTest extends AbstractSchemaTest {
     protected void registerInitialSchemas(SchemaRegistryClient schemaRegistry) throws Exception {
         String schema = "{ \"type\": \"object\", \"properties\": { \"f2\": { \"type\": " +
             "\"string\" } } }";
-        schemaRegistry.register("ref", new JsonSchema(schema));
+        schemaRegistry.register("ref-value", new JsonSchema(schema));
     }
 
     @Override
@@ -85,12 +85,13 @@ public class JsonSchemaTest extends AbstractSchemaTest {
                 "  }\n" +
                 "}\n'";
 
-        String refs = ",ref=1,'root=json:{ \"type\": \"object\", \"properties\": { \"f1\": { " +
-            "\"type\": \"string\" }," +
+        String refs = ",ref=latest,refbyid=1," +
+            "'root=json:{ \"type\": \"object\", \"properties\": { \"f1\": " +
+            "{ \"type\": \"string\" }," +
             " \"nested\": { \"$ref\": \"ref\" } } }" +
-            ";refs:[{name:\"ref\",subject:\"ref\",version:1}]'";
+            ";refs:[{name:\"ref\",subject:\"ref-value\",version:1}]'";
 
-        String serdes = "'t1=json:{\"type\":\"object\"," +
+        String serdes = "str=string,'t1=json:{\"type\":\"object\"," +
             "\"properties\":{\"f1\":{\"type\":\"string\"}}}'," +
             "'t2=json:{ \"type\": \"object\", \"properties\": { \"f1\": { \"type\": \"string\" }," +
             " \"nested\": { \"type\": \"object\", \"properties\": { \"f2\": { \"type\": " +

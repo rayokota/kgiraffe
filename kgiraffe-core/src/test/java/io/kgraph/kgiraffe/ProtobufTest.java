@@ -110,7 +110,7 @@ public class ProtobufTest extends AbstractSchemaTest {
             "message Ref {\n" +
             "    string f2 = 1;\n" +
             "}";
-        schemaRegistry.register("ref", new ProtobufSchema(schema));
+        schemaRegistry.register("ref-value", new ProtobufSchema(schema));
     }
 
     @Override
@@ -171,13 +171,13 @@ public class ProtobufTest extends AbstractSchemaTest {
                 "    }\n" +
                 "}\n'";
 
-        String refs = ",ref=1,'root=proto:" +
+        String refs = ",ref=latest,refbyid=1,'root=proto:" +
             "import \"ref.proto\"; " +
             "message Foo " +
             "{ required string f1 = 1; optional Ref nested = 2; }" +
-            ";refs:[{name:\"ref.proto\",subject:\"ref\",version:1}]'";
+            ";refs:[{name:\"ref.proto\",subject:\"ref-value\",version:1}]'";
 
-        String serdes = "'t1=proto:message Foo " +
+        String serdes = "str=string,'t1=proto:message Foo " +
             "{ required string f1 = 1; }'," +
             "'t2=proto:message Foo { required string f1 = 1; optional Nested nested = 2; " +
             "message Nested { required string f2 = 1; } }'";

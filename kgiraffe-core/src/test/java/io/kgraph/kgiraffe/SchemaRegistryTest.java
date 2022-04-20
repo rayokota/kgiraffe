@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,6 +16,21 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
     @Test
     public void testSchemaOperations() throws Exception {
         GraphQL graphQL = getEngine().getGraphQL();
+
+        String query = "query {\n" +
+            "  _query_staged_schemas(where: {id: {_eq: -1}}) {\n" +
+            "    id\n" +
+            "    schema\n" +
+            "  }\n" +
+            "}";
+
+        ExecutionResult executionResult = graphQL.execute(query);
+        Map<String, Object> result = executionResult.getData();
+        List<Map<String, Object>> bodies =
+            (List<Map<String, Object>>) result.get("_query_staged_schemas");
+        Map<String, Object> body = bodies.get(0);
+        Number id = (Number) body.get("id");
+        assertThat(id.intValue()).isEqualTo(-1);
 
         String mutation = "mutation {\n" +
             " \t_stage_schema (\n" +
@@ -28,11 +44,11 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
             "  }\n" +
             "}";
 
-        ExecutionResult executionResult = graphQL.execute(mutation);
-        Map<String, Object> result = executionResult.getData();
-        Map<String, Object> body = (Map<String, Object>) result.get("_stage_schema");
-        Number id = (Number) body.get("id");
-        assertThat(id.intValue()).isEqualTo(-1);
+        executionResult = graphQL.execute(mutation);
+        result = executionResult.getData();
+        body = (Map<String, Object>) result.get("_stage_schema");
+        id = (Number) body.get("id");
+        assertThat(id.intValue()).isEqualTo(-2);
 
         mutation = "mutation {\n" +
             " \t_stage_schema (\n" +
@@ -50,7 +66,7 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
         result = executionResult.getData();
         body = (Map<String, Object>) result.get("_stage_schema");
         id = (Number) body.get("id");
-        assertThat(id.intValue()).isEqualTo(-2);
+        assertThat(id.intValue()).isEqualTo(-3);
 
         mutation = "mutation {\n" +
             " \t_stage_schema (\n" +
@@ -70,10 +86,10 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
         body = (Map<String, Object>) result.get("_stage_schema");
         id = (Number) body.get("id");
         String validationError = (String) body.get("validation_error");
-        assertThat(id.intValue()).isEqualTo(-3);
+        assertThat(id.intValue()).isEqualTo(-4);
         assertThat(validationError).isNotNull();
 
-        String query = "query {\n" +
+        query = "query {\n" +
             "  _test_schema_compatibility (next_id: -2, prev_id: -1) {\n" +
             "    is_backward_compatible\n" +
             "    compatibility_errors\n" +
@@ -87,22 +103,7 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
         assertThat(isBackwardCompatible.booleanValue()).isEqualTo(false);
 
         query = "query {\n" +
-            "  _query_staged_schemas(where: {id: {_eq: -1}}) {\n" +
-            "    id\n" +
-            "    schema\n" +
-            "  }\n" +
-            "}";
-
-        executionResult = graphQL.execute(query);
-        result = executionResult.getData();
-        List<Map<String, Object>> bodies =
-            (List<Map<String, Object>>) result.get("_query_staged_schemas");
-        body = bodies.get(0);
-        id = (Number) body.get("id");
-        assertThat(id.intValue()).isEqualTo(-1);
-
-        query = "query {\n" +
-            "  _query_staged_schemas(where: {id: {_eq: -3}}) {\n" +
+            "  _query_staged_schemas(where: {id: {_eq: -4}}) {\n" +
             "    id\n" +
             "    schema\n" +
             "  }\n" +
@@ -113,7 +114,7 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
         bodies = (List<Map<String, Object>>) result.get("_query_staged_schemas");
         body = bodies.get(0);
         id = (Number) body.get("id");
-        assertThat(id.intValue()).isEqualTo(-3);
+        assertThat(id.intValue()).isEqualTo(-4);
 
         mutation = "mutation {\n" +
             "  _register_schema(id: -1, subject: \"new-subject\") {\n" +
@@ -219,6 +220,19 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
         id = (Number) body.get("id");
         assertThat(id.intValue()).isEqualTo(-3);
 
+        mutation = "mutation {\n" +
+            "  _unstage_schema(id: -4) {\n" +
+            "    id\n" +
+            "    schema\n" +
+            "  }\n" +
+            "}";
+
+        executionResult = graphQL.execute(mutation);
+        result = executionResult.getData();
+        body = (Map<String, Object>) result.get("_unstage_schema");
+        id = (Number) body.get("id");
+        assertThat(id.intValue()).isEqualTo(-4);
+
         query = "query {\n" +
             "  _query_staged_schemas {\n" +
             "    id\n" +
@@ -231,5 +245,11 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
         bodies =
             (List<Map<String, Object>>) result.get("_query_staged_schemas");
         assertThat(bodies).isEmpty();
+    }
+
+    protected void injectKGiraffeProperties(Properties props) {
+        super.injectKGiraffeProperties(props);
+        props.put(KGiraffeConfig.STAGE_SCHEMAS_CONFIG, "'avro:{\"type\":\"record\"," +
+            "\"name\":\"myrecord\",\"fields\":[{\"name\":\"f1\",\"type\":\"string\"}]}'");
     }
 }
