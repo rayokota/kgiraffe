@@ -86,6 +86,7 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
     protected void injectKGiraffeProperties(Properties props) {
         props.put(KGiraffeConfig.LISTENER_CONFIG, "http://0.0.0.0:" + serverPort);
         props.put(KGiraffeConfig.KAFKACACHE_BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(KGiraffeConfig.KAFKACACHE_TOPIC_REPLICATION_FACTOR_CONFIG, 1);
         props.put(KGiraffeConfig.SCHEMA_REGISTRY_URL_CONFIG, MOCK_URL);
         props.put(AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, "true");
     }
