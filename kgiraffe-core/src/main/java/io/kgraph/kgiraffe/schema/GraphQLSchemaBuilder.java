@@ -77,7 +77,7 @@ public class GraphQLSchemaBuilder {
     public static final String SCHEMA_ATTR_NAME = "schema";
     public static final String SCHEMA_RAW_ATTR_NAME = "schema_raw";
     public static final String REFERENCES_ATTR_NAME = "references";
-    public static final String VALIDATION_ERROR_ATTR_NAME = "validation_error";
+    public static final String SCHEMA_ERROR_ATTR_NAME = "schema_error";
 
     public static final String NAME_ATTR_NAME = "name";
 
@@ -672,7 +672,7 @@ public class GraphQLSchemaBuilder {
                 .type(new GraphQLList(refType))
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
-                .name(VALIDATION_ERROR_ATTR_NAME)
+                .name(SCHEMA_ERROR_ATTR_NAME)
                 .description("Schema validation error")
                 .type(Scalars.GraphQLString)
                 .build())

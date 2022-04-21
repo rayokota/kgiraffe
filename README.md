@@ -142,7 +142,7 @@ $ kgiraffe -b mybroker -t mytopic -r http://schema-registry-url:8081 -X auto.reg
 ### Schema Management
 
 Validate and stage the given Avro schema. The validation result will be in the 
-`validation_error` GraphQL field.
+`schema_error` GraphQL field.
 
 ```bash
 $ kgiraffe -r http://schema-registry-url:8081 \
@@ -256,7 +256,7 @@ mutation {
     id
     schema
     status
-    validation_error
+    schema_error
   }
 }
 ```
@@ -294,7 +294,7 @@ query {
     id
     schema
     status
-    validation_error
+    schema_error
   }
 }
 ```
@@ -380,7 +380,7 @@ A schema (Avro, JSON Schema, or Protobuf) is represented by the following JSON o
   "schema": {"type": "record",..},
   "schema_raw": "{\"type\": \"record\",..}",
   "references": [{"name": "ref", "subject": "s", "version": 1}],
-  "validation_error": null
+  "schema_error": null
 }
 ```
 

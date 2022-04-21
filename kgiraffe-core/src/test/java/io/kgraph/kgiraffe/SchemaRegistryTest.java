@@ -78,7 +78,7 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
             "  ) {\n" +
             "    id \n" +
             "    schema\n" +
-            "    validation_error\n" +
+            "    schema_error\n" +
             "  }\n" +
             "}";
 
@@ -86,9 +86,9 @@ public class SchemaRegistryTest extends LocalClusterTestHarness {
         result = executionResult.getData();
         body = (Map<String, Object>) result.get("_stage_schema");
         id = (Number) body.get("id");
-        String validationError = (String) body.get("validation_error");
+        String schemaError = (String) body.get("schema_error");
         assertThat(id.intValue()).isEqualTo(-4);
-        assertThat(validationError).isNotNull();
+        assertThat(schemaError).isNotNull();
 
         query = "query {\n" +
             "  _test_schema_compatibility (next_id: -2, prev_id: -1) {\n" +

@@ -133,7 +133,7 @@ import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.SUBJECT_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TIMESTAMP_TYPE_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.TOPIC_ATTR_NAME;
-import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALIDATION_ERROR_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.SCHEMA_ERROR_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_ERROR_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.VALUE_SCHEMA_ID_ATTR_NAME;
@@ -515,7 +515,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
             MAPPER.convertValue(references,
                 new TypeReference<List<Map<String, Object>>>() {
                 }));
-        doc.set(VALIDATION_ERROR_ATTR_NAME, e.getLocalizedMessage());
+        doc.set(SCHEMA_ERROR_ATTR_NAME, e.getLocalizedMessage());
         coll.insertOrReplace(doc);
         coll.flush();
         return doc;
