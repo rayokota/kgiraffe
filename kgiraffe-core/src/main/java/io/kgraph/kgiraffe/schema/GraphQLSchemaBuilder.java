@@ -66,8 +66,8 @@ public class GraphQLSchemaBuilder {
     public static final String PARTITION_ATTR_NAME = "partition";
     public static final String OFFSET_ATTR_NAME = "offset";
     public static final String TIMESTAMP_ATTR_NAME = "ts";
-    public static final String TIMESTAMP_TYPE_ATTR_NAME = "tstype";
-    public static final String EPOCH_ATTR_NAME = "epoch";
+    public static final String TIMESTAMP_TYPE_ATTR_NAME = "ts_type";
+    public static final String LEADER_EPOCH_ATTR_NAME = "leader_epoch";
 
     public static final String ID_ATTR_NAME = "id";
     public static final String SUBJECT_ATTR_NAME = "subject";
@@ -114,7 +114,7 @@ public class GraphQLSchemaBuilder {
 
     public static final GraphQLEnumType tsTypeEnum =
         GraphQLEnumType.newEnum()
-            .name("tstype_enum")
+            .name("ts_type_enum")
             .description("Specifies the timestamp type")
             .value(
                 TimestampType.NO_TIMESTAMP_TYPE.toString(),
@@ -490,7 +490,7 @@ public class GraphQLSchemaBuilder {
                 .type(tsTypeEnum)
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
-                .name(EPOCH_ATTR_NAME)
+                .name(LEADER_EPOCH_ATTR_NAME)
                 .description("Kafka record leader epoch")
                 .type(Scalars.GraphQLInt)
                 .build())

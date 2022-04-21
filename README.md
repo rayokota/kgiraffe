@@ -399,8 +399,8 @@ A Kafka record is represented by the following JSON object:
   "partition": 1,
   "offset": 1000,
   "ts": 123456,
-  "tstype": "CreateTime",
-  "epoch": 0
+  "ts_type": "CreateTime",
+  "leader_epoch": 0
 }
 ```
 

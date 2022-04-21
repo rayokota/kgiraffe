@@ -116,7 +116,7 @@ import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
 
-import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.EPOCH_ATTR_NAME;
+import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.LEADER_EPOCH_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.HEADERS_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.ID_ATTR_NAME;
 import static io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder.KEY_ATTR_NAME;
@@ -799,7 +799,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 doc.set(TIMESTAMP_ATTR_NAME, ts);
                 doc.set(TIMESTAMP_TYPE_ATTR_NAME, tsType.toString());
                 if (leaderEpoch.isPresent()) {
-                    doc.set(EPOCH_ATTR_NAME, (long) leaderEpoch.get());
+                    doc.set(LEADER_EPOCH_ATTR_NAME, (long) leaderEpoch.get());
                 }
                 coll.insertOrReplace(doc);
                 coll.flush();
