@@ -22,6 +22,8 @@ public class Jackson {
 
     /**
      * Creates a new {@link com.fasterxml.jackson.databind.ObjectMapper}.
+     *
+     * @return an object mapper
      */
     public static ObjectMapper newObjectMapper() {
         return newObjectMapper(false);
@@ -31,6 +33,7 @@ public class Jackson {
      * Creates a new {@link com.fasterxml.jackson.databind.ObjectMapper}.
      *
      * @param sorted whether to sort object properties
+     * @return an object mapper
      */
     public static ObjectMapper newObjectMapper(boolean sorted) {
         final ObjectMapper mapper = JsonMapper.builder()
@@ -47,6 +50,7 @@ public class Jackson {
      *
      * @param jsonFactory instance of {@link com.fasterxml.jackson.core.JsonFactory} to use
      *     for the created {@link com.fasterxml.jackson.databind.ObjectMapper} instance.
+     * @return an object mapper
      */
     public static ObjectMapper newObjectMapper(JsonFactory jsonFactory) {
         final ObjectMapper mapper = JsonMapper.builder(jsonFactory)
