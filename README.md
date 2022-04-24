@@ -1,5 +1,5 @@
 
-![logo](./resources/kgiraffe-small.png)
+![logo](./resources/kgiraffe.png)
 
 # kgiraffe
 
