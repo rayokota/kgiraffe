@@ -9,6 +9,7 @@ import org.ojai.store.QueryCondition.Op;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -108,7 +109,7 @@ class PredicateFilter implements Comparable<PredicateFilter> {
 
     @Override
     public int compareTo(PredicateFilter o) {
-        return this.getField().compareTo(o.getField());
+        return getField().compareTo(o.getField());
     }
 
     public HQueryCondition toQueryCondition(DataFetchingEnvironment env) {
@@ -146,7 +147,7 @@ class PredicateFilter implements Comparable<PredicateFilter> {
         return HValue.initFromObject(value);
     }
 
-    private String getValueAsString() {
+    public String getValueAsString() {
         return getValueAsString(typedValue);
     }
 
@@ -165,5 +166,20 @@ class PredicateFilter implements Comparable<PredicateFilter> {
         } else {
             return typedValue.toString();
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PredicateFilter that = (PredicateFilter) o;
+        return Objects.equals(field, that.field)
+            && Objects.equals(typedValue, that.typedValue)
+            && criteria == that.criteria;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(field, typedValue, criteria);
     }
 }

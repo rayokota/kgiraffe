@@ -1,7 +1,6 @@
 package io.kgraph.kgiraffe.schema;
 
 import com.google.common.collect.Iterables;
-import graphql.GraphQLContext;
 import graphql.GraphQLException;
 import graphql.execution.ValuesResolver;
 import graphql.language.Argument;
@@ -83,7 +82,6 @@ public class GraphQLQueryFactory {
     }
 
     public Iterable<Document> queryResult(DataFetchingEnvironment env) {
-        GraphQLContext context = env.getGraphQlContext();
         QueryCondition query = getCriteriaQuery(env, env.getField());
         DocumentStore coll = engine.getDocDB().getCollection(name);
         Iterable<Document> result = query == null || query.isEmpty() ? coll.find() : coll.find(query);

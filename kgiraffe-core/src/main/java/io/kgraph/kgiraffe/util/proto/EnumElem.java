@@ -11,7 +11,8 @@ public class EnumElem {
     public final String name;
     public final List<OptionElem> options;
     public final List<EnumConstantElem> constants;
-    public List<ReservedElem> reserveds;
+    // TODO upgrade wire once CP 7.2.0 is out
+    //public List<ReservedElem> reserveds;
 
     public EnumElem(EnumElement elem) {
         name = elem.getName();

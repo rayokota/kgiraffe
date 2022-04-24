@@ -422,7 +422,6 @@ public class KGiraffeEngine implements Configurable, Closeable {
             if (optSchema._1.isEmpty()) {
                 return new Tuple2<>(new HDocument(), Optional.empty());
             }
-            Document doc = optSchema._1;
             ParsedSchema schema = optSchema._2.get();
             int newId = getSchemaRegistry().register(subject, schema, normalize);
             int newVersion = getSchemaRegistry().getVersion(subject, schema, normalize);
@@ -760,55 +759,51 @@ public class KGiraffeEngine implements Configurable, Closeable {
                                  Bytes key, Bytes value, Bytes oldValue,
                                  TopicPartition tp, long offset, long ts, TimestampType tsType,
                                  Optional<Integer> leaderEpoch) {
-            try {
-                String topic = tp.topic();
-                int partition = tp.partition();
-                String id = topic + "-" + partition + "-" + offset;
-                HDocumentCollection coll = docdb.getCollection(topic);
-                Document doc = new HDocument();
-                doc.setId(id);
+            String topic = tp.topic();
+            int partition = tp.partition();
+            String id = topic + "-" + partition + "-" + offset;
+            HDocumentCollection coll = docdb.getCollection(topic);
+            Document doc = new HDocument();
+            doc.setId(id);
 
-                Map<String, Object> headersObj = convertHeaders(headers);
-                if (headersObj != null) {
-                    doc.set(HEADERS_ATTR_NAME, headersObj);
-                }
-                if (key != null && key.get() != Bytes.EMPTY) {
-                    try {
-                        if (getKeySchema(topic).isRight()) {
-                            int schemaId = schemaIdFor(key.get());
-                            doc.set(KEY_SCHEMA_ID_ATTR_NAME, (long) schemaId);
-                        }
-                        doc.set(KEY_ATTR_NAME, deserializeKey(topic, key.get()));
-                    } catch (IOException e) {
-                        doc.set(KEY_ERROR_ATTR_NAME, trace(e));
-                    }
-                }
-                try {
-                    if (getValueSchema(topic).isRight()) {
-                        int schemaId = schemaIdFor(value.get());
-                        doc.set(VALUE_SCHEMA_ID_ATTR_NAME, (long) schemaId);
-                    }
-                    doc.set(VALUE_ATTR_NAME, deserializeValue(topic, value.get()));
-                } catch (IOException e) {
-                    doc.set(VALUE_ERROR_ATTR_NAME, trace(e));
-                }
-
-                doc.set(TOPIC_ATTR_NAME, topic);
-                doc.set(PARTITION_ATTR_NAME, (long) partition);
-                doc.set(OFFSET_ATTR_NAME, offset);
-                doc.set(TIMESTAMP_ATTR_NAME, ts);
-                doc.set(TIMESTAMP_TYPE_ATTR_NAME, tsType.toString());
-                if (leaderEpoch.isPresent()) {
-                    doc.set(LEADER_EPOCH_ATTR_NAME, (long) leaderEpoch.get());
-                }
-                coll.insertOrReplace(doc);
-                coll.flush();
-                doc = coll.findById(id);
-
-                notifier.publish(topic, doc);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            Map<String, Object> headersObj = convertHeaders(headers);
+            if (headersObj != null) {
+                doc.set(HEADERS_ATTR_NAME, headersObj);
             }
+            if (key != null && key.get() != Bytes.EMPTY) {
+                try {
+                    if (getKeySchema(topic).isRight()) {
+                        int schemaId = schemaIdFor(key.get());
+                        doc.set(KEY_SCHEMA_ID_ATTR_NAME, (long) schemaId);
+                    }
+                    doc.set(KEY_ATTR_NAME, deserializeKey(topic, key.get()));
+                } catch (IOException e) {
+                    doc.set(KEY_ERROR_ATTR_NAME, trace(e));
+                }
+            }
+            try {
+                if (getValueSchema(topic).isRight()) {
+                    int schemaId = schemaIdFor(value.get());
+                    doc.set(VALUE_SCHEMA_ID_ATTR_NAME, (long) schemaId);
+                }
+                doc.set(VALUE_ATTR_NAME, deserializeValue(topic, value.get()));
+            } catch (IOException e) {
+                doc.set(VALUE_ERROR_ATTR_NAME, trace(e));
+            }
+
+            doc.set(TOPIC_ATTR_NAME, topic);
+            doc.set(PARTITION_ATTR_NAME, (long) partition);
+            doc.set(OFFSET_ATTR_NAME, offset);
+            doc.set(TIMESTAMP_ATTR_NAME, ts);
+            doc.set(TIMESTAMP_TYPE_ATTR_NAME, tsType.toString());
+            if (leaderEpoch.isPresent()) {
+                doc.set(LEADER_EPOCH_ATTR_NAME, (long) leaderEpoch.get());
+            }
+            coll.insertOrReplace(doc);
+            coll.flush();
+            doc = coll.findById(id);
+
+            notifier.publish(topic, doc);
         }
 
         public void handleUpdate(Bytes key, Bytes value, Bytes oldValue,

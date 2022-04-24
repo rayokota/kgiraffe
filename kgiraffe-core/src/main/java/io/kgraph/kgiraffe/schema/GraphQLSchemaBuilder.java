@@ -909,7 +909,6 @@ public class GraphQLSchemaBuilder {
 
     private GraphQLFieldDefinition querySubjectsFieldDefinition(
         GraphQLCodeRegistry.Builder codeRegistry) {
-        GraphQLOutputType objectType = getSchemaObjectType();
 
         return GraphQLFieldDefinition.newFieldDefinition()
             .name("_query_subjects")
