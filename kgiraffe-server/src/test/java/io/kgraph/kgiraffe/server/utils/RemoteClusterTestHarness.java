@@ -75,6 +75,8 @@ public abstract class RemoteClusterTestHarness extends ClusterTestHarness {
     public void setUp(Vertx vertx, VertxTestContext testContext) throws Exception {
         super.setUp();
 
+        Thread.sleep(1000);
+
         serverPort = choosePort();
         setUpClient(vertx);
         setUpServer(vertx);
