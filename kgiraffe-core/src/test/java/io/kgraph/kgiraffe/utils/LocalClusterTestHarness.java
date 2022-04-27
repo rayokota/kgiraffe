@@ -58,6 +58,9 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
     @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
+
+        Thread.sleep(1000);
+
         setUpServer();
         SchemaRegistryClient schemaRegistry=
             KGiraffeEngine.createSchemaRegistry(Collections.singletonList(MOCK_URL), null);

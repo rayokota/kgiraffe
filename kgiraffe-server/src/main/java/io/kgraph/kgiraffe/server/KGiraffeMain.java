@@ -8,6 +8,7 @@ import io.kgraph.kgiraffe.KGiraffeConfig.MapPropertyParser;
 import io.kgraph.kgiraffe.KGiraffeEngine;
 import io.kgraph.kgiraffe.server.notifier.VertxNotifier;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.ext.web.Router;
@@ -161,7 +162,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
     }
 
     @Override
-    public void start() {
+    public void start(Promise<Void> startPromise) {
         KGiraffeEngine engine = KGiraffeEngine.getInstance();
         try {
             Router router = Router.router(vertx);
@@ -200,7 +201,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
                 .requestHandler(router)
                 .exceptionHandler(it -> LOG.error("Server error", it))
                 // Start listening
-                .listen(listener.getPort(), ar -> {
+                .listen(listener.getPort(), listener.getHost(), ar -> {
                     if (ar.succeeded()) {
                         LOG.info("Server started, listening on {}", listener.getPort());
                         LOG.info("GraphQL:     http://localhost:{}/graphql", listener.getPort());
@@ -213,14 +214,18 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
                         LOG.info("   /#/      ");
                         LOG.info("  /#/       ");
                         LOG.info("KGiraffe is at your service...");
+                        startPromise.complete();
                     } else {
-                        LOG.info("Could not start server " + ar.cause());
+                        LOG.info("Could not start server: {}", ar.cause());
+                        startPromise.fail(ar.cause());
                         LOG.error("Server died unexpectedly: ", ar.cause());
                         System.exit(1);
                     }
                 });
         } catch (Exception e) {
-            LOG.error("Could not start server: {}", e.getLocalizedMessage());
+            LOG.info("Could not start server: {}", e.getLocalizedMessage());
+            startPromise.fail(e);
+            LOG.error("Server died unexpectedly: ", e);
             System.exit(1);
         }
     }
