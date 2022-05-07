@@ -96,7 +96,7 @@ public class GraphQLSchemaBuilder {
     private static final String SCHEMA = "schema";
 
     private final KGiraffeEngine engine;
-    private final List<String> topics;
+    private final Set<String> topics;
     private final GraphQLAvroConverter avroConverter;
     private final GraphQLJsonSchemaConverter jsonSchemaConverter;
     private final GraphQLProtobufConverter protobufConverter;
@@ -140,7 +140,7 @@ public class GraphQLSchemaBuilder {
 
 
     public GraphQLSchemaBuilder(KGiraffeEngine engine,
-                                List<String> topics) {
+                                Set<String> topics) {
         this.engine = engine;
         this.topics = topics;
         this.avroConverter = new GraphQLAvroConverter();

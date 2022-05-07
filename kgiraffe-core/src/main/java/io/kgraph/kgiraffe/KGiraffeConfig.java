@@ -45,12 +45,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.confluent.kafka.schemaregistry.client.rest.entities.SchemaReference;
@@ -435,8 +437,8 @@ public class KGiraffeConfig extends KafkaCacheConfig {
         return getList(SCHEMA_REGISTRY_URL_CONFIG);
     }
 
-    public List<String> getTopics() {
-        return getList(TOPICS_CONFIG);
+    public Set<String> getTopics() {
+        return new HashSet<>(getList(TOPICS_CONFIG));
     }
 
     public Map<String, Serde> getKeySerdes() {
