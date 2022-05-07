@@ -216,7 +216,7 @@ public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> 
                         LOG.info("KGiraffe is at your service...");
                         startPromise.complete();
                     } else {
-                        LOG.info("Could not start server: {}", ar.cause());
+                        LOG.info("Could not start server: ", ar.cause());
                         startPromise.fail(ar.cause());
                         LOG.error("Server died unexpectedly: ", ar.cause());
                         System.exit(1);
