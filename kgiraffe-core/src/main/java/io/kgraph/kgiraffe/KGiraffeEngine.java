@@ -38,7 +38,6 @@ import io.kgraph.kgiraffe.schema.GraphQLExecutor;
 import io.kgraph.kgiraffe.schema.GraphQLSchemaBuilder;
 import io.kgraph.kgiraffe.schema.Status;
 import io.kgraph.kgiraffe.schema.converters.GraphQLProtobufConverter;
-import io.kgraph.kgiraffe.util.CustomSchemaProvider;
 import io.kgraph.kgiraffe.util.Jackson;
 import io.kgraph.kgiraffe.util.proto.ProtoFileElem;
 import io.vavr.Tuple2;
@@ -92,6 +91,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
@@ -150,7 +150,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
     private KGiraffeConfig config;
     private Notifier notifier;
     private SchemaRegistryClient schemaRegistry;
-    private CustomSchemaProvider schemaProvider;
+    private Map<String, SchemaProvider> schemaProviders;
     private GraphQLExecutor executor;
     private Map<String, KGiraffeConfig.Serde> keySerdes;
     private Map<String, KGiraffeConfig.Serde> valueSerdes;
@@ -204,9 +204,14 @@ public class KGiraffeEngine implements Configurable, Closeable {
     public void init(Notifier notifier) {
         this.notifier = notifier;
 
-        schemaRegistry = createSchemaRegistry(config.getSchemaRegistryUrls(), config.originals());
+        List<SchemaProvider> providers = Arrays.asList(
+            new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
+        );
+        schemaRegistry = createSchemaRegistry(
+            config.getSchemaRegistryUrls(), providers, config.originals());
+        schemaProviders = providers.stream()
+            .collect(Collectors.toMap(SchemaProvider::schemaType, p -> p));
 
-        schemaProvider = new CustomSchemaProvider(this);
         for (KGiraffeConfig.Serde serde : config.getStagedSchemas()) {
             stageSchemas(serde);
         }
@@ -227,13 +232,10 @@ public class KGiraffeEngine implements Configurable, Closeable {
     }
 
     public static SchemaRegistryClient createSchemaRegistry(
-        List<String> urls, Map<String, Object> configs) {
+        List<String> urls, List<SchemaProvider> providers, Map<String, Object> configs) {
         if (urls == null || urls.isEmpty()) {
             return null;
         }
-        List<SchemaProvider> providers = Arrays.asList(
-            new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
-        );
         String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
         if (mockScope != null) {
             return MockSchemaRegistry.getClientForScope(mockScope, providers);
@@ -246,7 +248,6 @@ public class KGiraffeEngine implements Configurable, Closeable {
         if (urls != null && !urls.isEmpty()) {
             String mockScope = MockSchemaRegistry.validateAndMaybeGetMockScope(urls);
             if (mockScope != null) {
-                // Use reset when CP 7.2 is out
                 MockSchemaRegistry.dropScope(mockScope);
             } else {
                 schemaRegistry.reset();
@@ -265,8 +266,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
         return schemaRegistry;
     }
 
-    public CustomSchemaProvider getSchemaProvider() {
-        return schemaProvider;
+    public SchemaProvider getSchemaProvider(String schemaType) {
+        return schemaProviders.get(schemaType);
     }
 
     public int nextId() {
@@ -324,7 +325,8 @@ public class KGiraffeEngine implements Configurable, Closeable {
     public Tuple2<Document, Optional<ParsedSchema>> stageSchemas(String schemaType, String schema,
                                                                  List<SchemaReference> references) {
         try {
-            ParsedSchema parsedSchema = schemaProvider.parseSchema(schemaType, schema, references);
+            ParsedSchema parsedSchema = getSchemaProvider(schemaType).parseSchemaOrElseThrow(
+                schema, references, false);
             parsedSchema.validate();
             Document doc = cacheSchema(nextId(), null, 0, Status.STAGED, parsedSchema);
             return new Tuple2<>(doc, Optional.of(parsedSchema));
@@ -461,10 +463,11 @@ public class KGiraffeEngine implements Configurable, Closeable {
             String status = doc.getString(STATUS_ATTR_NAME);
             ParsedSchema schema = null;
             if (!Status.ERRORED.symbol().equals(status)) {
-                schema = schemaProvider.parseSchema(
-                    doc.getString(SCHEMA_TYPE_ATTR_NAME),
+                String schemaType = doc.getString(SCHEMA_TYPE_ATTR_NAME);
+                schema = getSchemaProvider(schemaType).parseSchemaOrElseThrow(
                     doc.getString(SCHEMA_RAW_ATTR_NAME),
-                    refs);
+                    refs,
+                    false);
             }
             return new Tuple2<>(doc, Optional.ofNullable(schema));
         } catch (Exception e) {

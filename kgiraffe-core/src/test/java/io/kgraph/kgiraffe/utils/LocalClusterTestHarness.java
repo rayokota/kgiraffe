@@ -22,10 +22,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
+import io.confluent.kafka.schemaregistry.SchemaProvider;
+import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
+import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 
 /**
@@ -62,8 +68,11 @@ public abstract class LocalClusterTestHarness extends ClusterTestHarness {
         Thread.sleep(1000);
 
         setUpServer();
-        SchemaRegistryClient schemaRegistry=
-            KGiraffeEngine.createSchemaRegistry(Collections.singletonList(MOCK_URL), null);
+        List<SchemaProvider> providers = Arrays.asList(
+            new AvroSchemaProvider(), new JsonSchemaProvider(), new ProtobufSchemaProvider()
+        );
+        SchemaRegistryClient schemaRegistry = KGiraffeEngine.createSchemaRegistry(
+            Collections.singletonList(MOCK_URL), providers, null);
         registerInitialSchemas(schemaRegistry);
     }
 

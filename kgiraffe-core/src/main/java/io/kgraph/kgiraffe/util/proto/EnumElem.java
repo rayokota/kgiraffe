@@ -11,8 +11,7 @@ public class EnumElem {
     public final String name;
     public final List<OptionElem> options;
     public final List<EnumConstantElem> constants;
-    // TODO upgrade wire once CP 7.2.0 is out
-    //public List<ReservedElem> reserveds;
+    public final List<ReservedElem> reserveds;
 
     public EnumElem(EnumElement elem) {
         name = elem.getName();
@@ -22,11 +21,8 @@ public class EnumElem {
         constants = elem.getConstants().stream()
             .map(EnumConstantElem::new)
             .collect(Collectors.toList());
-        /* TODO upgrade wire once CP 7.2.0 is out
         reserveds = elem.getReserveds().stream()
-            .map(o -> new ReservedElem(o))
+            .map(ReservedElem::new)
             .collect(Collectors.toList());
-
-         */
     }
 }

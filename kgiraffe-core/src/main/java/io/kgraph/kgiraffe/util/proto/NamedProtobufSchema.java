@@ -25,23 +25,7 @@ public class NamedProtobufSchema implements ParsedSchema {
 
     public NamedProtobufSchema(Descriptors.EnumDescriptor enumDescriptor) {
         this.name = enumDescriptor.getFullName();
-        this.schema = new ProtobufSchema(
-            toProtoFile(enumDescriptor.getFile().toProto()),
-            Collections.emptyList(),
-            Collections.emptyMap())
-            .copy(name);
-    }
-
-    // Remove when CP 7.2 is out
-    private static ProtoFileElement toProtoFile(DescriptorProtos.FileDescriptorProto fileProto) {
-        try {
-            Method m = ProtobufSchema.class.getDeclaredMethod(
-                "toProtoFile", DescriptorProtos.FileDescriptorProto.class);
-            m.setAccessible(true); //if security settings allow this
-            return (ProtoFileElement) m.invoke(null, fileProto);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        this.schema = new ProtobufSchema(enumDescriptor, Collections.emptyList()).copy(name);
     }
 
     public String schemaType() {

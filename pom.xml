@@ -46,7 +46,7 @@
         <jackson.version>2.13.3</jackson.version>
         <jackson.databind.version>2.13.3</jackson.databind.version>
         <junit-jupiter.version>5.8.2</junit-jupiter.version>
-        <kafka.version>3.1.0</kafka.version>
+        <kafka.version>3.2.0</kafka.version>
         <kafka.scala.version>2.13</kafka.scala.version>
         <kcache.version>4.0.3</kcache.version>
         <kryo.version>5.3.0</kryo.version>
@@ -57,10 +57,10 @@
         <rxjava.version>3.1.5</rxjava.version>
         <scala.version>2.13.8</scala.version>
         <sl4j.version>1.7.36</sl4j.version>
-        <schema.registry.version>7.1.1</schema.registry.version>
+        <schema.registry.version>7.2.0</schema.registry.version>
         <vavr.version>0.10.4</vavr.version>
         <vertx.version>4.3.2</vertx.version>
-        <wire.version>4.2.0</wire.version>
+        <wire.version>4.4.0</wire.version>
     </properties>
 
     <repositories>
