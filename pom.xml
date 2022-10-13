@@ -44,7 +44,7 @@
         <guava.version>31.1-jre</guava.version>
         <hdocdb.version>2.0.0</hdocdb.version>
         <jackson.version>2.13.4</jackson.version>
-        <jackson.databind.version>2.13.4</jackson.databind.version>
+        <jackson.databind.version>2.13.4.1</jackson.databind.version>
         <junit-jupiter.version>5.9.1</junit-jupiter.version>
         <kafka.version>3.2.0</kafka.version>
         <kafka.scala.version>2.13</kafka.scala.version>
