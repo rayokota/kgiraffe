@@ -101,6 +101,7 @@ import io.confluent.kafka.schemaregistry.avro.AvroSchemaUtils;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.entities.Schema;
 import io.confluent.kafka.schemaregistry.client.rest.entities.SchemaReference;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
@@ -325,8 +326,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
     public Tuple2<Document, Optional<ParsedSchema>> stageSchemas(String schemaType, String schema,
                                                                  List<SchemaReference> references) {
         try {
-            ParsedSchema parsedSchema = getSchemaProvider(schemaType).parseSchemaOrElseThrow(
-                schema, references, false);
+            Schema s = new Schema(null, null, null, schemaType, references, schema);
+            ParsedSchema parsedSchema =
+                getSchemaProvider(schemaType).parseSchemaOrElseThrow(s, false);
             parsedSchema.validate();
             Document doc = cacheSchema(nextId(), null, 0, Status.STAGED, parsedSchema);
             return new Tuple2<>(doc, Optional.of(parsedSchema));
@@ -357,10 +359,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         try {
             SchemaMetadata schema = getSchemaRegistry().getSchemaMetadata(subject, version);
             Optional<ParsedSchema> optSchema =
-                getSchemaRegistry().parseSchema(
-                    schema.getSchemaType(),
-                    schema.getSchema(),
-                    schema.getReferences());
+                getSchemaRegistry().parseSchema(new Schema(null, schema));
             if (optSchema.isPresent()) {
                 Document doc = cacheSchema(schema.getId(), subject, schema.getVersion(),
                     Status.REGISTERED, optSchema.get());
@@ -381,10 +380,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         try {
             SchemaMetadata schema = getSchemaRegistry().getLatestSchemaMetadata(subject);
             Optional<ParsedSchema> optSchema =
-                getSchemaRegistry().parseSchema(
-                    schema.getSchemaType(),
-                    schema.getSchema(),
-                    schema.getReferences());
+                getSchemaRegistry().parseSchema(new Schema(null, schema));
             if (optSchema.isPresent()) {
                 cacheSchema(schema.getId(), subject, schema.getVersion(),
                     Status.REGISTERED, optSchema.get());
@@ -464,10 +460,9 @@ public class KGiraffeEngine implements Configurable, Closeable {
             ParsedSchema schema = null;
             if (!Status.ERRORED.symbol().equals(status)) {
                 String schemaType = doc.getString(SCHEMA_TYPE_ATTR_NAME);
-                schema = getSchemaProvider(schemaType).parseSchemaOrElseThrow(
-                    doc.getString(SCHEMA_RAW_ATTR_NAME),
-                    refs,
-                    false);
+                String schemaString = doc.getString(SCHEMA_RAW_ATTR_NAME);
+                Schema s = new Schema(null, null, null, schemaType, refs, schemaString);
+                schema = getSchemaProvider(schemaType).parseSchemaOrElseThrow(s, false);
             }
             return new Tuple2<>(doc, Optional.ofNullable(schema));
         } catch (Exception e) {
