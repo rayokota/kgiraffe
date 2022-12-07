@@ -1,6 +1,7 @@
 package io.kgraph.kgiraffe.schema;
 
 import com.google.common.collect.Iterables;
+import graphql.GraphQLContext;
 import graphql.GraphQLException;
 import graphql.execution.ValuesResolver;
 import graphql.language.Argument;
@@ -51,6 +52,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -189,7 +191,8 @@ public class GraphQLQueryFactory {
                 .getArgument(argument.getName());
 
             return (R) ValuesResolver.valueToLiteral(
-                InputValueWithState.newExternalValue(variableValue), graphQLArgument.getType());
+                InputValueWithState.newExternalValue(variableValue), graphQLArgument.getType(),
+                GraphQLContext.getDefault(), Locale.getDefault());
         }
 
         return (R) value;
