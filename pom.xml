@@ -57,10 +57,10 @@
         <rxjava.version>3.1.5</rxjava.version>
         <scala.version>2.13.10</scala.version>
         <sl4j.version>2.0.5</sl4j.version>
-        <schema.registry.version>7.3.0</schema.registry.version>
+        <schema.registry.version>7.3.1</schema.registry.version>
         <vavr.version>0.10.4</vavr.version>
         <vertx.version>4.3.5</vertx.version>
-        <wire.version>4.4.1</wire.version>
+        <wire.version>4.4.3</wire.version>
     </properties>
 
     <repositories>
