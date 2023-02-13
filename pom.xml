@@ -60,7 +60,7 @@
         <schema.registry.version>7.3.1</schema.registry.version>
         <vavr.version>0.10.4</vavr.version>
         <vertx.version>4.3.8</vertx.version>
-        <wire.version>4.5.0</wire.version>
+        <wire.version>4.5.1</wire.version>
     </properties>
 
     <repositories>
