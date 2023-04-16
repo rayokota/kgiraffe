@@ -328,7 +328,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
         try {
             Schema s = new Schema(null, null, null, schemaType, references, schema);
             ParsedSchema parsedSchema =
-                getSchemaProvider(schemaType).parseSchemaOrElseThrow(s, false);
+                getSchemaProvider(schemaType).parseSchemaOrElseThrow(s, false, false);
             parsedSchema.validate();
             Document doc = cacheSchema(nextId(), null, 0, Status.STAGED, parsedSchema);
             return new Tuple2<>(doc, Optional.of(parsedSchema));
@@ -462,7 +462,7 @@ public class KGiraffeEngine implements Configurable, Closeable {
                 String schemaType = doc.getString(SCHEMA_TYPE_ATTR_NAME);
                 String schemaString = doc.getString(SCHEMA_RAW_ATTR_NAME);
                 Schema s = new Schema(null, null, null, schemaType, refs, schemaString);
-                schema = getSchemaProvider(schemaType).parseSchemaOrElseThrow(s, false);
+                schema = getSchemaProvider(schemaType).parseSchemaOrElseThrow(s, false, false);
             }
             return new Tuple2<>(doc, Optional.ofNullable(schema));
         } catch (Exception e) {
