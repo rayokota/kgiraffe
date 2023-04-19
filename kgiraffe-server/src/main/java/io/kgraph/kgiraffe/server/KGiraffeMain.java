@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 @Command(name = "kgiraffe", mixinStandardHelpOptions = true,
     versionProvider = KGiraffeMain.ManifestVersionProvider.class,
     description = "A GraphQL Interface for Apache Kafka and Schema Registry.",
-    sortOptions = false)
+    sortOptions = false, sortSynopsis = false)
 public class KGiraffeMain extends AbstractVerticle implements Callable<Integer> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KGiraffeMain.class);
