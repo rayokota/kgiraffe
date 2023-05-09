@@ -7,9 +7,14 @@ import com.squareup.wire.schema.internal.parser.ProtoFileElement;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
+import io.confluent.kafka.schemaregistry.SchemaEntity;
+import io.confluent.kafka.schemaregistry.client.rest.entities.Metadata;
+import io.confluent.kafka.schemaregistry.client.rest.entities.RuleSet;
 import io.confluent.kafka.schemaregistry.client.rest.entities.SchemaReference;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 
@@ -40,8 +45,37 @@ public class NamedProtobufSchema implements ParsedSchema {
         return schema.canonicalString();
     }
 
+    public Integer version() {
+        return schema.version();
+    }
+
     public List<SchemaReference> references() {
         return schema.references();
+    }
+
+    public Metadata metadata() {
+        return schema.metadata();
+    }
+
+    public RuleSet ruleSet() {
+        return schema.ruleSet();
+    }
+
+    public ParsedSchema copy() {
+        return schema.copy();
+    }
+
+    public ParsedSchema copy(Integer var1) {
+        return schema.copy(var1);
+    }
+
+    public ParsedSchema copy(Metadata var1, RuleSet var2) {
+        return schema.copy(var1, var2);
+    }
+
+    public ParsedSchema copy(Map<SchemaEntity, Set<String>> var1,
+                             Map<SchemaEntity, Set<String>> var2) {
+        return schema.copy(var1, var2);
     }
 
     public List<String> isBackwardCompatible(ParsedSchema schema) {
