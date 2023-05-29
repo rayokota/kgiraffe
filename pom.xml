@@ -39,7 +39,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <antlr.version>4.9.3</antlr.version>
         <assertj.version>3.24.2</assertj.version>
-        <graphql.version>20.2</graphql.version>
+        <graphql.version>20.3</graphql.version>
         <graphql.java.extended.scalars.version>20.2</graphql.java.extended.scalars.version>
         <guava.version>31.1-jre</guava.version>
         <hdocdb.version>2.0.0</hdocdb.version>
