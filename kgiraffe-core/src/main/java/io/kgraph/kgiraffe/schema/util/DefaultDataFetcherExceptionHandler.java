@@ -10,6 +10,7 @@ import graphql.language.SourceLocation;
 import graphql.util.LogKit;
 import org.slf4j.Logger;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 /**
@@ -22,7 +23,7 @@ public class DefaultDataFetcherExceptionHandler implements DataFetcherExceptionH
     private static final Logger logNotSafe = LogKit.getNotPrivacySafeLogger(DefaultDataFetcherExceptionHandler.class);
 
     @Override
-    public DataFetcherExceptionHandlerResult onException(
+    public CompletableFuture<DataFetcherExceptionHandlerResult> handleException(
         DataFetcherExceptionHandlerParameters handlerParameters) {
         Throwable exception = unwrap(handlerParameters.getException());
         SourceLocation sourceLocation = handlerParameters.getSourceLocation();
@@ -31,7 +32,9 @@ public class DefaultDataFetcherExceptionHandler implements DataFetcherExceptionH
         GraphQLError error = new DefaultGraphQLError(path, exception, sourceLocation);
         logNotSafe.warn(error.getMessage(), exception);
 
-        return DataFetcherExceptionHandlerResult.newResult().error(error).build();
+        DataFetcherExceptionHandlerResult result =
+            DataFetcherExceptionHandlerResult.newResult().error(error).build();
+        return CompletableFuture.completedFuture(result);
     }
 
     /**
