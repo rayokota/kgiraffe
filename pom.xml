@@ -43,7 +43,7 @@
         <graphql.java.extended.scalars.version>21.0</graphql.java.extended.scalars.version>
         <guava.version>32.1.3-jre</guava.version>
         <hdocdb.version>2.0.0</hdocdb.version>
-        <jackson.version>2.15.2</jackson.version>
+        <jackson.version>2.15.3</jackson.version>
         <jackson.databind.version>2.15.3</jackson.databind.version>
         <junit-jupiter.version>5.10.1</junit-jupiter.version>
         <kafka.version>3.3.0</kafka.version>
