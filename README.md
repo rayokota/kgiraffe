@@ -40,6 +40,7 @@ kgiraffe wraps the following functionality with a GraphQL interface:
 
 ## Getting Started
 
+kgiraffe requires Java 11 or higher. 
 To run kgiraffe, download a [release](https://github.com/rayokota/kgiraffe/releases), unpack it.
 Then change to the `kgiraffe-${version}` directory and run the following to see the command-line options:
 
