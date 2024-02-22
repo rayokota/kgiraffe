@@ -55,7 +55,7 @@
         <picocli-version>4.7.5</picocli-version>
         <reactive.streams.version>1.0.4</reactive.streams.version>
         <rxjava.version>3.1.8</rxjava.version>
-        <scala.version>2.13.12</scala.version>
+        <scala.version>2.13.13</scala.version>
         <sl4j.version>2.0.12</sl4j.version>
         <schema.registry.version>7.5.3</schema.registry.version>
         <vavr.version>0.10.4</vavr.version>
