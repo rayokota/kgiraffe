@@ -59,7 +59,7 @@
         <sl4j.version>2.0.12</sl4j.version>
         <schema.registry.version>7.6.0</schema.registry.version>
         <vavr.version>0.10.4</vavr.version>
-        <vertx.version>4.5.4</vertx.version>
+        <vertx.version>4.5.7</vertx.version>
         <wire.version>4.9.9</wire.version>
     </properties>
 
