@@ -2,6 +2,7 @@ package io.kgraph.kgiraffe.schema.timeout;
 
 import graphql.execution.instrumentation.InstrumentationState;
 import graphql.execution.instrumentation.SimpleInstrumentation;
+import graphql.execution.instrumentation.parameters.InstrumentationCreateStateParameters;
 import graphql.execution.instrumentation.parameters.InstrumentationFieldFetchParameters;
 import graphql.schema.DataFetcher;
 import org.slf4j.Logger;
@@ -19,20 +20,21 @@ public class MaxQueryDurationInstrumentation extends SimpleInstrumentation {
     }
 
     @Override
-    public InstrumentationState createState() {
+    public InstrumentationState createState(InstrumentationCreateStateParameters parameters) {
         return new MaxQueryInstrumentationState();
     }
 
     @Override
     public DataFetcher<?> instrumentDataFetcher(DataFetcher<?> dataFetcher,
-                                                InstrumentationFieldFetchParameters parameters) {
+                                                InstrumentationFieldFetchParameters parameters,
+                                                InstrumentationState instrumentationState) {
 
-        MaxQueryInstrumentationState state = parameters.getInstrumentationState();
+        MaxQueryInstrumentationState state = (MaxQueryInstrumentationState) instrumentationState;
 
         if (state.getTime() > maxDuration) {
             LOG.warn("Max duration: {}, current time: {}", maxDuration, state.getTime());
             return new TimeoutDataFetcher<>(maxDuration);
         }
-        return super.instrumentDataFetcher(dataFetcher, parameters);
+        return super.instrumentDataFetcher(dataFetcher, parameters, state);
     }
 }
