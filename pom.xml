@@ -39,9 +39,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <antlr.version>4.9.3</antlr.version>
         <assertj.version>3.26.3</assertj.version>
-        <graphql.version>22.0</graphql.version>
+        <graphql.version>22.1</graphql.version>
         <graphql.java.extended.scalars.version>22.0</graphql.java.extended.scalars.version>
-        <guava.version>33.1.0-jre</guava.version>
+        <guava.version>33.2.1-jre</guava.version>
         <hdocdb.version>2.0.0</hdocdb.version>
         <jackson.version>2.17.1</jackson.version>
         <jackson.databind.version>2.17.1</jackson.databind.version>
@@ -50,7 +50,7 @@
         <kafka.scala.version>2.13</kafka.scala.version>
         <kcache.version>5.0.0</kcache.version>
         <kryo.version>5.6.0</kryo.version>
-        <mockito.version>5.11.0</mockito.version>
+        <mockito.version>5.12.0</mockito.version>
         <ojai.version>3.2.0</ojai.version>
         <picocli-version>4.7.6</picocli-version>
         <reactive.streams.version>1.0.4</reactive.streams.version>
@@ -59,7 +59,7 @@
         <sl4j.version>2.0.13</sl4j.version>
         <schema.registry.version>7.6.1</schema.registry.version>
         <vavr.version>0.10.4</vavr.version>
-        <vertx.version>4.5.7</vertx.version>
+        <vertx.version>4.5.8</vertx.version>
         <wire.version>4.9.9</wire.version>
     </properties>
 
@@ -347,7 +347,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.6.3</version>
+                        <version>3.8.0</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
@@ -394,7 +394,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.6.3</version>
+                        <version>3.8.0</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
@@ -429,7 +429,7 @@
 	    </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>3.3.1</version>
                 <configuration>
                     <argLine>-Xms1024m -Xmx2048m -Dis.testing=true
                     </argLine>
@@ -457,7 +457,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>3.0.1</version>
+                <version>3.1.1</version>
                 <configuration>
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <useReleaseProfile>false</useReleaseProfile>
@@ -468,7 +468,7 @@
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.13</version>
+                <version>1.7.0</version>
                 <extensions>true</extensions>
                 <configuration>
                     <serverId>ossrh</serverId>
