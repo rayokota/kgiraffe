@@ -4,7 +4,7 @@
     <parent>
         <artifactId>kgiraffe-parent</artifactId>
         <groupId>io.kgraph</groupId>
-        <version>0.0.4</version>
+        <version>0.0.5-SNAPSHOT</version>
     </parent>
 
     <groupId>io.kgraph</groupId>
