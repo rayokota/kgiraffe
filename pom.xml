@@ -3,7 +3,7 @@
 
     <groupId>io.kgraph</groupId>
     <artifactId>kgiraffe-parent</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>kgiraffe</name>
@@ -27,7 +27,7 @@
         <connection>scm:git:git://github.com:rayokota/kgiraffe.git</connection>
         <developerConnection>scm:git:git@github.com:rayokota/kgiraffe.git</developerConnection>
         <url>git@github.com:rayokota/kgiraffe.git</url>
-        <tag>kgiraffe-parent-0.0.3</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <modules>
